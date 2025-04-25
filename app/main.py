@@ -1,20 +1,10 @@
-from graph_tool.all import Graph, graph_draw
-import numpy
-import pandas
-import matplotlib.pyplot as plt
+from app.load_ontology import load_go_graph
+from app.analyze_graph import calculate_nodes_level
 
-g = Graph(directed=True)
+def main():
+    obo_path = "data/go-basic.obo" # example file, should be passed as argument or sth
+    g = load_go_graph(obo_path)
+    calculate_nodes_level(g)
 
-v1 = g.add_vertex()
-v2 = g.add_vertex()
-v3 = g.add_vertex()
-
-g.add_edge(v1, v2)
-g.add_edge(v2, v3)
-g.add_edge(v3, v1)
-
-print(f"Liczba wierzchołków: {g.num_vertices()}")
-print(f"Liczba krawędzi: {g.num_edges()}")
-
-graph_draw(g, output_size=(300, 300), output="/app/graph.svg")
-print("Wizualizacja zapisana jako graph.svg")
+if __name__ == "__main__":
+    main()

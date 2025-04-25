@@ -10,4 +10,6 @@ RUN python3 -m venv /opt/venv --system-site-packages && \
 
 ENV PATH="/opt/venv/bin:$PATH"
 
-CMD ["python", "app/main.py"]
+WORKDIR /app
+
+CMD ["python", "-m", "app.main"]
