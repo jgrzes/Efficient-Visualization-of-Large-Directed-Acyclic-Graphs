@@ -1,3 +1,4 @@
+import os
 import plotly.graph_objects as go
 import networkx as nx
 from .graph_utils import convert_to_networkx, sample_graph
@@ -83,6 +84,7 @@ def draw_sampled_graph(g, sample_size=500):
                         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
                     )
-
+    # Make sure the output directory exists
+    os.makedirs("output", exist_ok=True)
     fig.write_html("output/network_graph.html", auto_open=True)
     print("Graph saved to html file")
