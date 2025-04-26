@@ -1,21 +1,14 @@
 import obonet
 from graph_tool.all import Graph
+from .graph_utils import convert_to_graph_tool
 
-def load_go_graph(obo_path, verbose=True):
+def load_go_graph(obo_path, verbose=True, to_graph_tool=True):
     # Returns a graph-tool graph from an OBO file.
     if verbose: print(f"Loading ontology from {obo_path}...")
 
-    networkx_graph = obonet.read_obo(obo_path)
+    g = obonet.read_obo(obo_path)
 
-    g = Graph(directed=True)
-    node_mapping = {}
-
-    for node in networkx_graph.nodes():
-        v = g.add_vertex()
-        node_mapping[node] = v
-
-    for source, target in networkx_graph.edges():
-        g.add_edge(node_mapping[source], node_mapping[target])
+    if to_graph_tool: g = convert_to_graph_tool(g)
 
     if verbose: print(f"Graph loaded: {g.num_vertices()} vertices, {g.num_edges()} edges\n")
     return g

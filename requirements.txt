@@ -2,3 +2,4 @@ cosmograph
 networkx
 goatools
 obonet
+plotly
