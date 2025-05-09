@@ -1,0 +1,9 @@
+numpy
+cosmograph
+networkx
+goatools
+obonet
+plotly
+uvicorn
+flask
+flask_cors
