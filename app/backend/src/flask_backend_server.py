@@ -9,22 +9,22 @@ CORS(app)
 
 @app.route("/flask_make_graph_structure", methods=["POST"])
 def flask_make_graph_structure():
-    print("A")
+    # print("A")
     data = request.get_json()
     N = data.get("size", 0)
     E = data.get("edges", [])
-    print("B")
+    # print("B")
 
     G = gt.Graph() 
     V = [G.add_vertex() for _ in range (0, N)]
-    print("C")
+    # print("C")
 
     for u, v in E:
         G.add_edge(V[u], V[v])
-    print("D")
+    # print("D")
 
     canvas_positions = make_graph_structure(G)
-    print(canvas_positions)
+    # print(canvas_positions)
     return jsonify({"canvas_positions": canvas_positions})
 
 
