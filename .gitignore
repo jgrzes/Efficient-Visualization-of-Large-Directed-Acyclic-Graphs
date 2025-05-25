@@ -174,3 +174,43 @@ cython_debug/
 .pypirc
 
 *.html
+
+# ==================
+# NODE / FRONTEND
+# ==================
+app/frontend/node_modules/
+app/frontend/.vite/
+app/frontend/dist/
+app/frontend/.DS_Store
+app/frontend/*.log
+app/frontend/.env
+
+# zależności
+app/frontend/yarn.lock
+
+# edytory
+app/frontend/.idea/
+app/frontend/.vscode/
+
+# ==================
+# PYTHON / BACKEND
+# ==================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+app/backend/__pycache__/
+app/backend/**/*.pyc
+app/backend/.venv/
+app/backend/venv/
+app/backend/.env
+
+# ==================
+# SYSTEM / GLOBAL
+# ==================
+.DS_Store
+.env
+*.log
+*.bak
+*.swp
+Thumbs.db
