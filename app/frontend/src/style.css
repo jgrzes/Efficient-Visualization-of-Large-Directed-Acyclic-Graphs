@@ -1,6 +1,9 @@
 body {
   font-family: sans-serif;
   margin: 0px;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
 }
 
 .app {
@@ -27,4 +30,60 @@ body {
   text-decoration: underline;
   cursor: pointer;
   user-select: none;
+}
+
+
+#layout {
+  display: flex;
+  height: 100vh;
+  /* width: 100%; */
+  position: relative;
+  overflow: hidden;
+}
+
+#controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  background-color: #f3f3f3;
+  border-right: 1px solid #ccc;
+  min-width: 220px;
+}
+
+#controls button {
+  padding: 10px 12px;
+  font-size: 14px;
+  background-color: rgba(75, 91, 191, 0.1);
+  color: #4b5bbf;                      /* kolor tekstu */
+  border: 2px solid #4b5bbf;           /* obramowanie */
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+#controls button:hover {
+  background-color: rgba(75, 91, 191, 0.1); /* lekko niebieskie tło przy hoverze */
+}
+
+#graph {
+  flex-grow: 1;
+  height: 100vh;
+}
+
+#stats-panel {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: sans-serif;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+#stats-panel h4 {
+  margin: 0 0 0 0;
 }
