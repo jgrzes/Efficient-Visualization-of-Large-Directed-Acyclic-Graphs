@@ -8,11 +8,11 @@ interface StatsProps {
 
 const Stats: React.FC<StatsProps> = ({ nodeCount, edgeCount, pathCount }) => {
   return (
-    <div id="stats-panel">
-      <h4>Statystyki</h4>
-      <p><strong>Węzły:</strong> {nodeCount}</p>
-      <p><strong>Krawędzie:</strong> {edgeCount}</p>
-      <p><strong>Ścieżki:</strong> {pathCount}</p>
+    <div id="stats-panel" style={{ display: 'flex', flexDirection: 'column', width: '200px' }}>
+      <h4 style={{ textAlign: 'center' }}>Statistics</h4>
+      <p><strong>Nodes:</strong> {nodeCount}</p>
+      <p><strong>Edges:</strong> {edgeCount}</p>
+      <p><strong>Paths:</strong> {pathCount}</p>
     </div>
   );
 };
