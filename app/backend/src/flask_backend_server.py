@@ -61,6 +61,10 @@ def flask_make_graph_structure():
         #     "canvas_positions": [],
         #     "links": []
         # })
+
+        for e in G_gt.edges():
+            print(e.source(), e.target())
+
         canvas_positions = make_graph_structure(G_gt)
         print("Found canvas positions")
         transformed_canvas_positions, links = build_reponse_json_string_for_make_graph_structure_req(

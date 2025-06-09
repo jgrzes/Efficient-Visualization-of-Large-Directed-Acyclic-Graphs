@@ -6,7 +6,7 @@ export function useGraph(
   graphRef: React.RefObject<HTMLDivElement | null>,
   canvasRef: React.RefObject<HTMLDivElement | null>,
   pointPositions: Float32Array,
-  links: Float32Array,
+  links: number[],
   setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>
 ) {
   const graphInstance = useRef<Graph | null>(null);

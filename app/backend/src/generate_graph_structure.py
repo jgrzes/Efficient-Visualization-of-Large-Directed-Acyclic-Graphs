@@ -14,7 +14,7 @@ RADIUS = 15
 
 
 def find_roots(G: gt.Graph) -> list[gt.Vertex]:
-    print([v for v in G.vertices() if v.in_degree() == 0])
+    # print([v for v in G.vertices() if v.in_degree() == 0])
     return [v for v in G.vertices() if v.in_degree() == 0]
 
 
@@ -38,9 +38,9 @@ def compute_min_distances_after_finding_roots(G: gt.Graph, roots: list[gt.Vertex
     print(f"Preparing to compute min distances starting in each root, number of roots = {len(roots)}")
     for i in range (0, len(roots)):
         root = roots[i]
-        print(f"For root: {root}")
+        # print(f"For root: {root}")
         min_dists_for_root, pred_map =  gt_top.shortest_distance(G, source=root, directed=True, pred_map=pred_map)
-        print("Finding distances concluded")
+        # print("Finding distances concluded")
         min_dists = update_min_dists(current=min_dists, newly_found=build_newly_found(min_dists_for_root, pred_map))
 
     return min_dists
@@ -50,8 +50,19 @@ def compute_min_distances(G: gt.Graph) -> list[MinDistsEntry]:
     return compute_min_distances_after_finding_roots(G, find_roots(G))
 
 
+def fix_for_vertices_with_inf_distance(G: gt.Graph, min_distances: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    pred_map = G.vertex_index.copy()
+    for i in range (0, len(min_distances)):
+        if min_distances[i][0] == INFINITY:
+            min_dists_for_root, pred_map = gt_top.shortest_distance(G, source=i, directed=True, pred_map=pred_map)
+            min_distances = update_min_dists(current=min_distances, newly_found=build_newly_found(dist_map=min_dists_for_root, pred_map=pred_map))
+
+    return min_distances        
+
+
 def make_graph_structure(G: gt.Graph) -> list[tuple[Number, Number]]:
     min_distances = list(compute_min_distances_after_finding_roots(G, find_roots(G)))
+    min_distances = list(fix_for_vertices_with_inf_distance(G, min_distances))
     print("Computed min distances")
 
     for i in range (0, len(min_distances)):
@@ -66,7 +77,7 @@ def make_graph_structure(G: gt.Graph) -> list[tuple[Number, Number]]:
     valid_degree_ranges: list[tuple[Number, Number]] = [None for _ in range (0, len(min_distances))]
     number_of_children: list[int] = [0 for _ in range (0, len(min_distances))]
     
-    print(min_distances)
+    # print(min_distances)
 
     aux_eroding_number_of_children: list[int] = [0 for _ in range (0, len(min_distances))]
     print("Initialized algorithm arrays")
@@ -109,8 +120,8 @@ def make_graph_structure(G: gt.Graph) -> list[tuple[Number, Number]]:
             while j < c:
                 _, pred, index = min_distances[j]
                 order, size = aux_eroding_number_of_children[pred], number_of_children[pred]
-                if valid_degree_ranges[pred] is None:
-                    print(pred, valid_degree_ranges[pred])
+                # if valid_degree_ranges[pred] is None:
+                #     print(pred, valid_degree_ranges[pred])
                 low, high = valid_degree_ranges[pred]
                 degree = low + order*(high-low)/(size+1)
                 x, y = r*np.cos(degree), r*np.sin(degree)

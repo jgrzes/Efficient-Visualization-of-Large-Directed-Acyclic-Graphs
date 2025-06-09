@@ -7,9 +7,9 @@ interface ControlsProps {
   graphRef: RefObject<HTMLDivElement | null>;
   canvasRef: RefObject<HTMLDivElement | null>;
   pointPositions: Float32Array;
-  links: Float32Array;
+  links: number[];
   setPointPositions: Dispatch<SetStateAction<Float32Array>>;
-  setLinks: Dispatch<SetStateAction<Float32Array>>;
+  setLinks: Dispatch<SetStateAction<number[]>>;
   setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>
 }
 
@@ -40,7 +40,7 @@ const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions
       // graphRef?.setPointPositions(new Float32Array(data.canvas_positions));
       // useGraph(graphRef, canvasRef, new Float32Array(data.canvas_positions)!, links!, setSelectedNode);
       const newPositions = new Float32Array(data.canvas_positions);
-      const newLinks = new Float32Array(data.links);
+      const newLinks = [...data.links];
       setPointPositions(newPositions);
       setLinks(newLinks);
       setSelectedNode(null);

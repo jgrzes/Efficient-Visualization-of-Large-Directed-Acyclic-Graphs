@@ -10,7 +10,7 @@ const App: React.FC = () => {
   const graphRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [pointPositions, setPointPositions] = useState<Float32Array>(new Float32Array(initialPointPositions));
-  const [links, setLinks] = useState<Float32Array>(new Float32Array(initialLinks));
+  const [links, setLinks] = useState<number[]>([...initialLinks]);
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
 
 
