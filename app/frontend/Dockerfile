@@ -8,4 +8,11 @@ COPY . .
 
 RUN npm install
 
-CMD ["bash", "-it"]
+EXPOSE 30306
+EXPOSE 30307
+EXPOSE 30308
+EXPOSE 30309
+EXPOSE 30310
+
+# CMD ["bash", "-it"]
+CMD ["npm", "run", "dev", "--", "--host", "--port", "30306"]

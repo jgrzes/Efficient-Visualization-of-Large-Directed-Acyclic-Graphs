@@ -3,7 +3,7 @@ import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import graph_tool as gt
-from graph_utils import build_gt_graph_from_obo
+from graph_utils import build_gt_graph_from_obo, build_graph_from_txt
 from generate_graph_structure import make_graph_structure
 
 
@@ -44,10 +44,13 @@ def flask_make_graph_structure():
         if file.filename.split(".")[-1] == "obo":
             G_gt = build_gt_graph_from_obo(file.read().decode("utf-8"))
             print(f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges")
-
-        print(f"Constructed graph from obo file")
+            print(f"Constructed graph from obo file")
+        elif file.filename.split(".")[-1] == 'txt':
+            G_gt = build_graph_from_txt(file.read().decode("utf-8"))
+            print(f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges")
+            print(f"Constructed graph from txt file")
     except Exception as e:
-        print("Something went wrong when trying to construct the obo graph") 
+        print("Something went wrong when trying to construct the graph") 
 
     # try:
     #     contents = file.read().decode("utf-8")

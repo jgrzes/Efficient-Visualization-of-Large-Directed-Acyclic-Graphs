@@ -26,7 +26,7 @@ export function useGraph(
     const config: GraphConfigInterface = {
       spaceSize: 256,
       backgroundColor: '#1a1a1a',
-      pointSize: 1.2,
+      pointSize: 1.,
       pointColor: '#3bc2ff',
       pointGreyoutOpacity: 0.1,
 

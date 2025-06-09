@@ -10,7 +10,7 @@ INFINITY = 2_147_483_647
 PI = np.pi
 
 
-RADIUS = 15
+RADIUS = 10
 
 
 def find_roots(G: gt.Graph) -> list[gt.Vertex]:

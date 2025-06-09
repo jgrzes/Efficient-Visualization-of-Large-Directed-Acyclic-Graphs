@@ -22,3 +22,20 @@ def build_gt_graph_from_obo(obo_file_contents: str) -> gt.Graph:
     obo_file_wrapper = io.StringIO(obo_file_contents)
     return convert_to_graph_tool_graph(obonet.read_obo(obo_file_wrapper))
 
+
+def build_graph_from_txt(txt_file_contents: str) -> gt.Graph:
+    elems = txt_file_contents.split(sep=None)
+    if len(elems) == 0: return gt.Graph(directed=True)
+    elems = [int(elem) for elem in elems]
+    print(elems)
+    n = elems[0]
+    G_gt = gt.Graph(directed=True)
+
+    V = [G_gt.add_vertex() for _ in range (0, n)]
+    for i in range (1, len(elems), 2):
+        u, v = elems[i], elems[i+1]
+        G_gt.add_edge(V[u], V[v])
+
+    return G_gt    
+
+
