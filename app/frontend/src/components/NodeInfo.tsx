@@ -1,6 +1,7 @@
 import React from 'react';
 
 export interface NodeInfoProps {
+  id: string;
   name: string;
   namespace: string;
   def: string;
@@ -8,10 +9,11 @@ export interface NodeInfoProps {
   is_a?: string[];
 }
 
-const NodeInfo: React.FC<NodeInfoProps> = ({ name, namespace, def, synonym, is_a }) => {
+const NodeInfo: React.FC<NodeInfoProps> = ({ id, name, namespace, def, synonym, is_a }) => {
   return (
     <div id="info-panel" style={{ display: 'flex', flexDirection: 'column', width: '300px', padding: '16px' }}>
-      <h4 style={{ textAlign: 'center', marginBottom: '12px' }}>{name}</h4>
+      <h4 style={{ textAlign: 'center', marginBottom: '12px' }}>{id}</h4>
+      <p><strong>Name:</strong> {name}</p>
       <p><strong>Namespace:</strong> {namespace}</p>
       <p><strong>Definition:</strong> {def}</p>
       {synonym && synonym.length > 0 && (

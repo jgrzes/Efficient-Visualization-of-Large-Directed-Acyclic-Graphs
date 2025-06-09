@@ -19,3 +19,4 @@ EXPOSE 30304
 EXPOSE 30305
 
 CMD ["bash", "-it"]
+CMD ["python3", "src/flask_backend_server.py"]

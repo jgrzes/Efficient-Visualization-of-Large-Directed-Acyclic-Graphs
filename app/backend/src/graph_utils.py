@@ -4,18 +4,21 @@ import obonet
 import io
 
 
-def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> gt.Graph:
+def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict[int, dict]]:
     G_gt = gt.Graph(directed=True)
     vertice_mapping = {}
+    node_data = {}
 
     for node in G_nx.nodes():
         v = G_gt.add_vertex()
+        node_data[v] = G_nx.nodes[node]
+        node_data[v]['id'] = node # e.g. GO:0000001
         vertice_mapping[node] = v
 
     for source, dest in G_nx.edges():
         G_gt.add_edge(vertice_mapping[source], vertice_mapping[dest])
 
-    return G_gt
+    return G_gt, node_data
 
 
 def build_gt_graph_from_obo(obo_file_contents: str) -> gt.Graph:

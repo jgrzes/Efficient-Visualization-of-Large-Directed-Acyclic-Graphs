@@ -80,6 +80,7 @@ body {
   color: #e4e4e7;
   overflow-y: auto;
   box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+  height: 100vh;
 }
 
 

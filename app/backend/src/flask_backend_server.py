@@ -9,6 +9,7 @@ from generate_graph_structure import make_graph_structure
 
 PORT_NUMBER = 30_301
 app = Flask(__name__)
+app.config["NODE_DATA"] = {}
 CORS(app)
 
 
@@ -30,6 +31,17 @@ def build_reponse_json_string_for_make_graph_structure_req(
 
     return transformed_canvas_positions, links
 
+@app.route("/node/<int:node_id>")
+def get_node(node_id):
+    data = app.config["NODE_DATA"].get(node_id, None)
+    return jsonify({
+        "id": data.get("id", ""),
+        "name": data.get("name", ""),
+        "namespace": data.get("namespace", ""),
+        "def": data.get('def', '').replace('"', ""),
+        "synonym": data.get("synonym", []),
+        "is_a": data.get("is_a", []),
+    })
 
 @app.route("/flask_make_graph_structure", methods=["POST"])
 def flask_make_graph_structure():
@@ -42,7 +54,8 @@ def flask_make_graph_structure():
     G_gt: gt.Graph | None = None
     try:
         if file.filename.split(".")[-1] == "obo":
-            G_gt = build_gt_graph_from_obo(file.read().decode("utf-8"))
+            G_gt, node_data = build_gt_graph_from_obo(file.read().decode("utf-8"))
+            app.config["NODE_DATA"] = node_data
             print(f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges")
             print(f"Constructed graph from obo file")
         elif file.filename.split(".")[-1] == 'txt':

@@ -45,19 +45,31 @@ export function useGraph(
       simulationDecay: 100,        // jak szybko energia wygasa
 
 
-      onClick: (index) => {
-        if (index !== undefined) {
+      onClick: async (index) => {
+      if (index !== undefined) {
+        try {
+          const res = await fetch(`http://localhost:30301/node/${index}`);
+          if (!res.ok) {
+            console.error("Failed to fetch node data:", res.statusText);
+            return;
+          }
+
+          const data = await res.json();
           setSelectedNode({
-            name: `Node ${index}`,
-            namespace: 'biological_process',
-            def: 'Example definition.',
-            synonym: ['"example synonym" EXACT []'],
-            is_a: ['GO:0000001', 'GO:0000002']
+            id: data.id,
+            name: data.name,
+            namespace: data.namespace,
+            def: data.def,
+            synonym: data.synonym,
+            is_a: data.is_a,
           });
-        } else {
-          setSelectedNode(null); // klik poza nodem → ukryj info
+        } catch (err) {
+          console.error("Fetch error:", err);
         }
-      },
+      } else {
+        setSelectedNode(null); // klik poza nodem → ukryj info
+      }
+    },
 
 
       onPointMouseOver: (index, _, event) => {

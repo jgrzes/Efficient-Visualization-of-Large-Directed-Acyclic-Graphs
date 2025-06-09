@@ -48,13 +48,18 @@ const App: React.FC = () => {
       {/* <div id="graph" ref={graphRef}></div> */}
       <div id="tooltip" />
 
-      {selectedNode && <NodeInfo
-        name="Example Node"
-        namespace="Example Namespace"
-        def="This is an example definition of a node."
-        synonym={['Synonym1', 'Synonym2']}
-        is_a={['Parent1', 'Parent2']}
-      />}
+      {selectedNode && (
+        <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
+          <NodeInfo
+            id={selectedNode.id}
+            name={selectedNode.name}
+            namespace={selectedNode.namespace}
+            def={selectedNode.def}
+            synonym={selectedNode.synonym}
+            is_a={selectedNode.is_a}
+          />
+        </div>
+      )}
 
       <Stats
         nodeCount={stats.nodeCount}
