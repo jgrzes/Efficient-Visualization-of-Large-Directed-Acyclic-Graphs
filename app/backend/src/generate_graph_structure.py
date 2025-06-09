@@ -14,6 +14,7 @@ RADIUS = 15
 
 
 def find_roots(G: gt.Graph) -> list[gt.Vertex]:
+    print([v for v in G.vertices() if v.in_degree() == 0])
     return [v for v in G.vertices() if v.in_degree() == 0]
 
 
@@ -65,6 +66,8 @@ def make_graph_structure(G: gt.Graph) -> list[tuple[Number, Number]]:
     valid_degree_ranges: list[tuple[Number, Number]] = [None for _ in range (0, len(min_distances))]
     number_of_children: list[int] = [0 for _ in range (0, len(min_distances))]
     
+    print(min_distances)
+
     aux_eroding_number_of_children: list[int] = [0 for _ in range (0, len(min_distances))]
     print("Initialized algorithm arrays")
 
@@ -106,6 +109,8 @@ def make_graph_structure(G: gt.Graph) -> list[tuple[Number, Number]]:
             while j < c:
                 _, pred, index = min_distances[j]
                 order, size = aux_eroding_number_of_children[pred], number_of_children[pred]
+                if valid_degree_ranges[pred] is None:
+                    print(pred, valid_degree_ranges[pred])
                 low, high = valid_degree_ranges[pred]
                 degree = low + order*(high-low)/(size+1)
                 x, y = r*np.cos(degree), r*np.sin(degree)
