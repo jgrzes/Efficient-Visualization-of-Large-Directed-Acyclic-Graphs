@@ -2,11 +2,15 @@ import graph_tool as gt
 import graph_tool.topology as gt_top
 import numpy as np
 from numbers import Number
+import matplotlib.pyplot as plt
 
 MinDistsEntry = tuple[Number, gt.Vertex | None]
 
 INFINITY = 2_147_483_647
 PI = np.pi
+
+
+RADIUS = 15
 
 
 def find_roots(G: gt.Graph) -> list[gt.Vertex]:
@@ -30,9 +34,12 @@ def compute_min_distances_after_finding_roots(G: gt.Graph, roots: list[gt.Vertex
     min_dists: np.ndarray[MinDistsEntry] = np.array([(INFINITY, None) for _ in range (0, len(G))])
     pred_map = G.vertex_index.copy()
 
+    print(f"Preparing to compute min distances starting in each root, number of roots = {len(roots)}")
     for i in range (0, len(roots)):
         root = roots[i]
+        print(f"For root: {root}")
         min_dists_for_root, pred_map =  gt_top.shortest_distance(G, source=root, directed=True, pred_map=pred_map)
+        print("Finding distances concluded")
         min_dists = update_min_dists(current=min_dists, newly_found=build_newly_found(min_dists_for_root, pred_map))
 
     return min_dists
@@ -44,21 +51,25 @@ def compute_min_distances(G: gt.Graph) -> list[MinDistsEntry]:
 
 def make_graph_structure(G: gt.Graph) -> list[tuple[Number, Number]]:
     min_distances = list(compute_min_distances_after_finding_roots(G, find_roots(G)))
+    print("Computed min distances")
 
     for i in range (0, len(min_distances)):
         dist, pred = min_distances[i]
         min_distances[i] = (dist, pred, i)
+    print("Converted min distances to algorithm-friendly form")
 
     min_distances.sort(key=lambda x : x[0])
     i = 0
-    r = 1
+    r = RADIUS
     canvas_positions: list[tuple[Number, Number]] = [None for _ in range (0, len(min_distances))]
     valid_degree_ranges: list[tuple[Number, Number]] = [None for _ in range (0, len(min_distances))]
     number_of_children: list[int] = [0 for _ in range (0, len(min_distances))]
     
     aux_eroding_number_of_children: list[int] = [0 for _ in range (0, len(min_distances))]
+    print("Initialized algorithm arrays")
 
     while i < len(min_distances):
+        print(f"So far processed {i} nodes")
         dist = min_distances[i][0]
         j = i
         if dist == 0:
@@ -115,8 +126,18 @@ def make_graph_structure(G: gt.Graph) -> list[tuple[Number, Number]]:
 
             i = j     
 
-        r += 1
+        r += RADIUS
 
+    # canvas_positions = np.array(canvas_positions).astype(np.float32)
+    # print(canvas_positions)
+    min_x = abs(min([x for (x, y) in canvas_positions]))
+    min_y = abs(min([y for (x, y) in canvas_positions]))
+    for i in range (0, len(canvas_positions)):
+        x, y = canvas_positions[i]
+        canvas_positions[i] = (x+min_x, y+min_y)
+    # plt.scatter(x_pos, y_pos)
+    # plt.show()
+    # input()
     return canvas_positions    
 
 

@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useState } from 'react';
 import './style.css';
-import { pointPositions, links } from './data-gen';
+import { initialPointPositions, initialLinks } from './data-gen';
 import Controls from './components/Controls';
 import Stats from './components/Stats';
 import { useGraph } from './hooks/useGraph';
@@ -9,6 +9,8 @@ import NodeInfo, { NodeInfoProps } from './components/NodeInfo';
 const App: React.FC = () => {
   const graphRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [pointPositions, setPointPositions] = useState<Float32Array>(new Float32Array(initialPointPositions));
+  const [links, setLinks] = useState<Float32Array>(new Float32Array(initialLinks));
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
 
 
@@ -29,13 +31,21 @@ const App: React.FC = () => {
     <div id="layout">
       <div id="controls-panel">
         {(
-          <Controls pointPositions={pointPositions} links={links} />
+          <Controls 
+            graphRef={graphRef} 
+            canvasRef={canvasRef} 
+            pointPositions={pointPositions} 
+            links={links} 
+            setPointPositions={setPointPositions}
+            setLinks={setLinks}
+            setSelectedNode={setSelectedNode} 
+          />
         )}
       </div>
       
-      <div ref={graphRef} id="graph" />    
       <div ref={canvasRef}/>
-      <div id="graph" ref={graphRef}></div>
+      <div ref={graphRef} id="graph" />    
+      {/* <div id="graph" ref={graphRef}></div> */}
       <div id="tooltip" />
 
       {selectedNode && <NodeInfo

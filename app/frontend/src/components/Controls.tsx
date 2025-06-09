@@ -1,12 +1,19 @@
-import React, { useRef } from 'react';
+import React, { useRef, RefObject, Dispatch, SetStateAction} from 'react';
 import ControlButton from './ControlButton';
+import { NodeInfoProps } from './NodeInfo';
+
 
 interface ControlsProps {
+  graphRef: RefObject<HTMLDivElement | null>;
+  canvasRef: RefObject<HTMLDivElement | null>;
   pointPositions: Float32Array;
-  links: number[];
+  links: Float32Array;
+  setPointPositions: Dispatch<SetStateAction<Float32Array>>;
+  setLinks: Dispatch<SetStateAction<Float32Array>>;
+  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>
 }
 
-const Controls: React.FC<ControlsProps> = ({ pointPositions, links }) => {
+const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions, links, setPointPositions, setLinks, setSelectedNode }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleLoadClick = () => {
@@ -15,7 +22,9 @@ const Controls: React.FC<ControlsProps> = ({ pointPositions, links }) => {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    console.log(file?.arrayBuffer);
     if (!file) return;
+    if (graphRef === null) console.log("Graph undefined");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -28,6 +37,13 @@ const Controls: React.FC<ControlsProps> = ({ pointPositions, links }) => {
 
       const data = await response.json();
       console.log("canvas_positions:", data.canvas_positions);
+      // graphRef?.setPointPositions(new Float32Array(data.canvas_positions));
+      // useGraph(graphRef, canvasRef, new Float32Array(data.canvas_positions)!, links!, setSelectedNode);
+      const newPositions = new Float32Array(data.canvas_positions);
+      const newLinks = new Float32Array(data.links);
+      setPointPositions(newPositions);
+      setLinks(newLinks);
+      setSelectedNode(null);
 
       // TODO: przekaż canvas_positions do kosmografu
     } catch (err) {
