@@ -1,0 +1,30 @@
+{
+  "name": "evldag",
+  "private": true,
+  "version": "0.0.0",
+  "description": "frontend for evldag",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.5",
+    "@types/react-dom": "^19.1.5",
+    "typescript": "^5.2.2",
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "@cosmograph/cosmos": "^2.0.0-beta.22",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@tailwindcss/vite": "^4.1.8",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.511.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwind-variants": "^1.0.0"
+  },
+  "keywords": []
+}
