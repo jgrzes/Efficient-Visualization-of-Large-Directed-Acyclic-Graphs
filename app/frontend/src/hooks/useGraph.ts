@@ -67,7 +67,7 @@ export function useGraph(
           console.error("Fetch error:", err);
         }
       } else {
-        setSelectedNode(null); // klik poza nodem → ukryj info
+        setSelectedNode(null); // klik poza nodem -> ukryj info
       }
     },
 
