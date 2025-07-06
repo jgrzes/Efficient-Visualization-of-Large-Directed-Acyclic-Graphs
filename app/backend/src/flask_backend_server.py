@@ -5,7 +5,7 @@ from flask_cors import CORS
 import graph_tool as gt
 from graph_utils import build_gt_graph_from_obo, build_graph_from_txt
 from generate_graph_structure import make_graph_structure
-
+from graph_analysis import compute_hierarchy_levels
 
 PORT_NUMBER = 30_301
 app = Flask(__name__)
@@ -55,13 +55,13 @@ def flask_make_graph_structure():
     try:
         if file.filename.split(".")[-1] == "obo":
             G_gt, node_data = build_gt_graph_from_obo(file.read().decode("utf-8"))
-            app.config["NODE_DATA"] = node_data
-            print(f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges")
+            app.config["NODE_DATA"] = node_data # only for obo files, should it be like this?
             print(f"Constructed graph from obo file")
         elif file.filename.split(".")[-1] == 'txt':
             G_gt = build_graph_from_txt(file.read().decode("utf-8"))
-            print(f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges")
             print(f"Constructed graph from txt file")
+        app.config["G_GT"] = G_gt
+        print(f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges")
     except Exception as e:
         print("Something went wrong when trying to construct the graph") 
 
@@ -121,6 +121,17 @@ def flask_make_graph_structure():
     #         "links": [random.randint(0, 100) for _ in range(100)],
     #     })
 
+@app.route("/analyze_graph", methods=["POST"])
+def analyze_graph():
+    G_gt = app.config.get("G_GT", None)
+    if not G_gt:
+        return jsonify({"error": "Graph not found"}), 404
+    
+    hierarchy_levels = compute_hierarchy_levels(G_gt)
+    return jsonify({
+        "hierarchy_levels": hierarchy_levels
+    })
+    
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT_NUMBER)

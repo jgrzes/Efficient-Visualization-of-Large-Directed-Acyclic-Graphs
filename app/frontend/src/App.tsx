@@ -5,6 +5,7 @@ import Controls from './components/Controls';
 import Stats from './components/Stats';
 import { useGraph } from './hooks/useGraph';
 import NodeInfo, { NodeInfoProps } from './components/NodeInfo';
+import AnalysisPanel from './components/AnalysisPanel';
 
 const App: React.FC = () => {
   const graphRef = useRef<HTMLDivElement>(null);
@@ -12,6 +13,7 @@ const App: React.FC = () => {
   const [pointPositions, setPointPositions] = useState<Float32Array>(new Float32Array(initialPointPositions));
   const [links, setLinks] = useState<number[]>([...initialLinks]);
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<any | null>(null);
 
 
   useGraph(graphRef, canvasRef, pointPositions!, links!, setSelectedNode);
@@ -39,6 +41,7 @@ const App: React.FC = () => {
             setPointPositions={setPointPositions}
             setLinks={setLinks}
             setSelectedNode={setSelectedNode} 
+            setAnalysisResult={setAnalysisResult}
           />
         )}
       </div>
@@ -59,6 +62,13 @@ const App: React.FC = () => {
             is_a={selectedNode.is_a}
           />
         </div>
+      )}
+
+      {analysisResult && (
+        <AnalysisPanel
+          result={analysisResult}
+          onClose={() => setAnalysisResult(null)}
+        />
       )}
 
       <Stats

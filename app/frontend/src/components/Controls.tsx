@@ -10,10 +10,11 @@ interface ControlsProps {
   links: number[];
   setPointPositions: Dispatch<SetStateAction<Float32Array>>;
   setLinks: Dispatch<SetStateAction<number[]>>;
-  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>
+  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>;
+  setAnalysisResult: Dispatch<SetStateAction<any | null>>;
 }
 
-const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions, links, setPointPositions, setLinks, setSelectedNode }) => {
+const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions, links, setPointPositions, setLinks, setSelectedNode, setAnalysisResult, }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleLoadClick = () => {
@@ -81,6 +82,23 @@ const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions
     URL.revokeObjectURL(url);
   };
 
+  const handleAnalyzeClick = async () => {
+    const confirm = window.confirm("This will analyze the graph and may take a while. Do you want to continue?");
+    if (!confirm) return;
+
+    try {
+      const response = await fetch("http://localhost:30301/analyze_graph", {
+        method: "POST",
+      });
+
+      if (!response.ok) throw new Error("Failed");
+
+      const result = await response.json();
+      setAnalysisResult(result);
+    } catch (err) {
+      console.error("Analyze fetch failed:", err);
+    }
+  };
 
 
   return (
@@ -89,6 +107,7 @@ const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions
       <ControlButton id="fit-view" label="Fit view" />
       <ControlButton id="reset" label="Reset view" />
       <ControlButton id="export" label="Export" onClick={handleExportClick} />
+      <ControlButton id="analyze" label="Analyze" onClick={handleAnalyzeClick} />
 
       {/* ukryty input do obsługi pliku */}
       <input
