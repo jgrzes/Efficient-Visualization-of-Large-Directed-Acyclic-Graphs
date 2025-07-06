@@ -74,7 +74,6 @@ const App: React.FC = () => {
       <Stats
         nodeCount={stats.nodeCount}
         edgeCount={stats.edgeCount}
-        pathCount={stats.pathCount}
       />
     </div>
   );

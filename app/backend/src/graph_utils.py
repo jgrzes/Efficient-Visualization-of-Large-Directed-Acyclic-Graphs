@@ -16,7 +16,7 @@ def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict[i
         vertice_mapping[node] = v
 
     for source, dest in G_nx.edges():
-        G_gt.add_edge(vertice_mapping[source], vertice_mapping[dest])
+        G_gt.add_edge(vertice_mapping[dest], vertice_mapping[source]) # obo files are in reverse direction
 
     return G_gt, node_data
 

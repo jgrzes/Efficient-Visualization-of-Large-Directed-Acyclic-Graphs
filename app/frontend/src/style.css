@@ -16,6 +16,7 @@ body {
 }
 
 #controls {
+  position: absolute;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -83,6 +84,12 @@ body {
   height: 100vh;
 }
 
+#analysis-panel {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
 
 .info-card {
   background-color: #1f1f1f;
