@@ -54,9 +54,15 @@ def flask_make_graph_structure():
     G_gt: gt.Graph | None = None
     try:
         if file.filename.split(".")[-1] == "obo":
-            G_gt, node_data = build_gt_graph_from_obo(file.read().decode("utf-8"))
+            G_gt, node_data, roots = build_gt_graph_from_obo(file.read().decode("utf-8"))
             app.config["NODE_DATA"] = node_data # only for obo files, should it be like this?
             print(f"Constructed graph from obo file")
+
+            root = request.form.get("root", None)
+            root_id = roots.get(root, None)
+            from graph_utils import filter_graph_by_root
+            G_gt = filter_graph_by_root(G_gt, node_data, root_id)
+
         elif file.filename.split(".")[-1] == 'txt':
             G_gt = build_graph_from_txt(file.read().decode("utf-8"))
             print(f"Constructed graph from txt file")
@@ -78,14 +84,12 @@ def flask_make_graph_structure():
         #     "links": []
         # })
 
-        for e in G_gt.edges():
-            print(e.source(), e.target())
-
         canvas_positions = make_graph_structure(G_gt)
         print("Found canvas positions")
         transformed_canvas_positions, links = build_reponse_json_string_for_make_graph_structure_req(
             G_gt=G_gt, canvas_positions=canvas_positions
         )
+        print(roots)
         print("Built data to return to frontend")
 
         return jsonify({

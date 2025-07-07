@@ -16,6 +16,8 @@ interface ControlsProps {
 
 const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions, links, setPointPositions, setLinks, setSelectedNode, setAnalysisResult, }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [showOntologyOptions, setShowOntologyOptions] = React.useState<boolean>(false);
 
   const handleLoadClick = () => {
     fileInputRef.current?.click();
@@ -25,10 +27,17 @@ const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions
     const file = event.target.files?.[0];
     console.log(file?.arrayBuffer);
     if (!file) return;
-    if (graphRef === null) console.log("Graph undefined");
+    setSelectedFile(file);
+    setShowOntologyOptions(true);
+  };
+
+  const uploadFileWithNamespace = async (namespace: string) => {
+    console.log("Uploading file with namespace:", namespace);
+    if (!selectedFile) return;
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", selectedFile);
+    formData.append("root", namespace);
 
     try {
       const response = await fetch("http://localhost:30301/flask_make_graph_structure", {
@@ -45,6 +54,8 @@ const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions
       setPointPositions(newPositions);
       setLinks(newLinks);
       setSelectedNode(null);
+      setSelectedFile(null);
+      setShowOntologyOptions(false);
 
       // TODO: przekaż canvas_positions do kosmografu
     } catch (err) {
@@ -104,6 +115,14 @@ const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions
   return (
     <div id="controls">
       <ControlButton id="load" label="Load data" onClick={handleLoadClick} />
+      {showOntologyOptions && (
+        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          <p>Choose GO category: <strong>{selectedFile.name}</strong></p>
+          <button onClick={() => uploadFileWithNamespace("cellular_component")}>Cellular Component</button>
+          <button onClick={() => uploadFileWithNamespace("molecular_function")}>Molecular Function</button>
+          <button onClick={() => uploadFileWithNamespace("biological_process")}>Biological Process</button>
+        </div>
+      )}
       <ControlButton id="fit-view" label="Fit view" />
       <ControlButton id="reset" label="Reset view" />
       <ControlButton id="export" label="Export" onClick={handleExportClick} />
@@ -111,11 +130,11 @@ const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions
 
       {/* ukryty input do obsługi pliku */}
       <input
-        type="file"
-        accept=".txt"
-        ref={fileInputRef}
-        onChange={handleFileUpload}
-        style={{ display: 'none' }}
+      type="file"
+      accept=".txt,.obo"
+      ref={fileInputRef}
+      onChange={handleFileUpload}
+      style={{ display: 'none' }}
       />
     </div>
   );
