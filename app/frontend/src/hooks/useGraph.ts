@@ -2,6 +2,15 @@ import { Dispatch, SetStateAction, useEffect, useRef } from 'react';
 import { Graph, GraphConfigInterface } from '@cosmograph/cosmos';
 import { NodeInfoProps } from '../components/NodeInfo';
 
+
+let mouseX = 0;
+let mouseY = 0;
+
+window.addEventListener("mousemove", (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
 export function useGraph(
   graphRef: React.RefObject<HTMLDivElement | null>,
   canvasRef: React.RefObject<HTMLDivElement | null>,
@@ -72,19 +81,23 @@ export function useGraph(
     },
 
 
-      onPointMouseOver: (index, _, event) => {
+    onPointMouseOver: async (index, event) => {
         const tooltip = document.getElementById("tooltip");
         if (!tooltip || !event || index === undefined) return;
-
+        
         currentHoveredIndex = index;
 
-        // const goId = index_to_id[index];
-        // const node = nodeMetadataMap[goId];
+        const res = await fetch(`http://localhost:30301/node/${index}`);
 
-        tooltip.innerHTML = `<strong>"Node.Name"</strong><br/>
-                            "Node.Namespace"<br/>"Node.Definition"<br/>`;
-        tooltip.style.left = `${event.clientX + 10}px`;
-        tooltip.style.top = `${event.clientY + 10}px`;
+        const data = await res.json();
+        tooltip.innerHTML = `
+          <strong>${data.name}</strong><br/>
+          <br/>
+          ${data.def}
+        `;
+          
+        tooltip.style.left = `${mouseX + 10}px`;
+        tooltip.style.top = `${mouseY + 10}px`;
         tooltip.style.display = "block";
       },
 

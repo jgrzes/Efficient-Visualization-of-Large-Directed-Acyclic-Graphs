@@ -22,11 +22,8 @@ const App: React.FC = () => {
   const stats = useMemo(() => {
     const nodeCount = pointPositions ? pointPositions.length / 2 : 0;
     const edgeCount = links ? links.length / 2 : 0;
-    
-    // Przykładowa liczba ścieżek; Do zastąpienia rzeczywistą logiką
-    const pathCount = Math.floor(Math.random() * 10); 
 
-    return { nodeCount, edgeCount, pathCount };
+    return { nodeCount, edgeCount };
   }, [pointPositions, links]);
 
   return (
