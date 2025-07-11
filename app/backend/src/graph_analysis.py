@@ -1,7 +1,6 @@
 import graph_tool as gt
 import graph_tool.topology as gt_top
 from collections import defaultdict
-from typing import Dict
 
 INFINITY = 2_147_483_647
 
