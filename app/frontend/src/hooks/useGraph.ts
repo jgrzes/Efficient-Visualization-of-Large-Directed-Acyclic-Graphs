@@ -160,9 +160,9 @@ export function useGraph(
 
   }, [graphRef, canvasRef, setSelectedNode]);
 
-  useEffect(() => {
-    if (!graphInstance.current) return;
-    if (!pointPositions || !links) return;
+useEffect(() => {
+  if (!graphInstance.current) return;
+  if (!pointPositions || !links) return;
 
     console.log(pointPositions);
     console.log(links);

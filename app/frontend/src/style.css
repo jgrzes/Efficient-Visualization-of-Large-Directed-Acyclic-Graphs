@@ -125,3 +125,31 @@ body {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
   display: none; /* domyślnie ukryty */
 }
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    margin-top: -50px;
+  }
+  to {
+    opacity: 1;
+    margin-top: 0;
+  }
+}
+
+
+
+button {
+  padding: 10px 16px;
+  font-size: 14px;
+  background-color: #1f1f1f;
+  color: #e4e4e7;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+button:hover {
+  background-color: #374151;
+}
