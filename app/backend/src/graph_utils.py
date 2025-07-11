@@ -4,10 +4,11 @@ import obonet
 import io
 
 
-def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict[int, dict]]:
+def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict, dict]:
     G_gt = gt.Graph(directed=True)
     vertice_mapping = {}
     node_data = {}
+    roots = {} # cc: GO:0000001, mf: GO:0000002, bp: GO:0000003
 
     for node in G_nx.nodes():
         v = G_gt.add_vertex()
@@ -16,9 +17,14 @@ def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict[i
         vertice_mapping[node] = v
 
     for source, dest in G_nx.edges():
-        G_gt.add_edge(vertice_mapping[source], vertice_mapping[dest])
+        G_gt.add_edge(vertice_mapping[dest], vertice_mapping[source]) # obo files are in reverse direction
 
-    return G_gt, node_data
+    for node, v in vertice_mapping.items():
+        if v.in_degree() == 0:
+            namespace = node_data[v].get("namespace", "").lower()
+            roots[namespace] = node_data[v]["id"]
+
+    return G_gt, node_data, roots
 
 
 def build_gt_graph_from_obo(obo_file_contents: str) -> gt.Graph:
@@ -42,3 +48,18 @@ def build_graph_from_txt(txt_file_contents: str) -> gt.Graph:
     return G_gt    
 
 
+def filter_graph_by_root(G_gt: gt.Graph, node_data: dict, root_id: str) -> gt.Graph:
+    for vertex in G_gt.get_vertices():
+        if node_data[vertex]['id'] == root_id:
+            root_vertex = vertex
+            break
+
+    if root_vertex is None:
+        raise ValueError(f"Root vertex with id {root_id} not found in the graph.")
+
+    reachable = gt.topology.label_out_component(G_gt, root_vertex)
+
+    subgraph_view = gt.GraphView(G_gt, vfilt=reachable)
+    filtered_graph = gt.Graph(subgraph_view, prune=True)
+
+    return filtered_graph

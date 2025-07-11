@@ -10,11 +10,14 @@ interface ControlsProps {
   links: number[];
   setPointPositions: Dispatch<SetStateAction<Float32Array>>;
   setLinks: Dispatch<SetStateAction<number[]>>;
-  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>
+  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>;
+  setAnalysisResult: Dispatch<SetStateAction<any | null>>;
 }
 
-const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions, links, setPointPositions, setLinks, setSelectedNode }) => {
+const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions, links, setPointPositions, setLinks, setSelectedNode, setAnalysisResult, }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [showOntologyOptions, setShowOntologyOptions] = React.useState<boolean>(false);
 
   const handleLoadClick = () => {
     fileInputRef.current?.click();
@@ -24,10 +27,17 @@ const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions
     const file = event.target.files?.[0];
     console.log(file?.arrayBuffer);
     if (!file) return;
-    if (graphRef === null) console.log("Graph undefined");
+    setSelectedFile(file);
+    setShowOntologyOptions(true);
+  };
+
+  const uploadFileWithNamespace = async (namespace: string) => {
+    console.log("Uploading file with namespace:", namespace);
+    if (!selectedFile) return;
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", selectedFile);
+    formData.append("root", namespace);
 
     try {
       const response = await fetch("http://localhost:30301/flask_make_graph_structure", {
@@ -44,6 +54,8 @@ const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions
       setPointPositions(newPositions);
       setLinks(newLinks);
       setSelectedNode(null);
+      setSelectedFile(null);
+      setShowOntologyOptions(false);
 
       // TODO: przekaż canvas_positions do kosmografu
     } catch (err) {
@@ -81,22 +93,71 @@ const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions
     URL.revokeObjectURL(url);
   };
 
+  const handleAnalyzeClick = async () => {
+    const confirm = window.confirm("This will analyze the graph and may take a while. Do you want to continue?");
+    if (!confirm) return;
+
+    try {
+      const response = await fetch("http://localhost:30301/analyze_graph", {
+        method: "POST",
+      });
+
+      if (!response.ok) throw new Error("Failed");
+
+      const result = await response.json();
+      setAnalysisResult(result);
+    } catch (err) {
+      console.error("Analyze fetch failed:", err);
+    }
+  };
 
 
   return (
     <div id="controls">
       <ControlButton id="load" label="Load data" onClick={handleLoadClick} />
+      {showOntologyOptions && selectedFile && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '250px',
+            left: '50%',
+            backgroundColor: '#2a2a2a',
+            padding: '20px',
+            border: '1px solid #3f3f46',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            animation: 'slideDown 0.5s ease-out',
+            minWidth: '320px',
+            maxWidth: '80%',
+          }}
+        >
+          <p style={{ color: '#f4f4f5', fontWeight: 500 }}>
+            Choose GO category: <strong>{selectedFile.name}</strong>
+          </p>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => uploadFileWithNamespace("cellular_component")}>Cellular Component</button>
+            <button onClick={() => uploadFileWithNamespace("molecular_function")}>Molecular Function</button>
+            <button onClick={() => uploadFileWithNamespace("biological_process")}>Biological Process</button>
+          </div>
+        </div>
+      )}
+
       <ControlButton id="fit-view" label="Fit view" />
       <ControlButton id="reset" label="Reset view" />
       <ControlButton id="export" label="Export" onClick={handleExportClick} />
+      <ControlButton id="analyze" label="Analyze" onClick={handleAnalyzeClick} />
 
       {/* ukryty input do obsługi pliku */}
       <input
-        type="file"
-        accept=".txt"
-        ref={fileInputRef}
-        onChange={handleFileUpload}
-        style={{ display: 'none' }}
+      type="file"
+      accept=".txt,.obo"
+      ref={fileInputRef}
+      onChange={handleFileUpload}
+      style={{ display: 'none' }}
       />
     </div>
   );

@@ -1,17 +1,16 @@
-import random
-import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import graph_tool as gt
 from graph_utils import build_gt_graph_from_obo, build_graph_from_txt
 from generate_graph_structure import make_graph_structure
-
+from graph_analysis import compute_hierarchy_levels
+from graph_utils import filter_graph_by_root
 
 PORT_NUMBER = 30_301
 app = Flask(__name__)
-app.config["NODE_DATA"] = {}
 CORS(app)
 
+GRAPH_CACHE = {}
 
 def build_reponse_json_string_for_make_graph_structure_req(
     G_gt: gt.Graph, 
@@ -33,7 +32,7 @@ def build_reponse_json_string_for_make_graph_structure_req(
 
 @app.route("/node/<int:node_id>")
 def get_node(node_id):
-    data = app.config["NODE_DATA"].get(node_id, None)
+    data = GRAPH_CACHE.get("NODE_DATA", {}).get(node_id, {})
     return jsonify({
         "id": data.get("id", ""),
         "name": data.get("name", ""),
@@ -54,16 +53,24 @@ def flask_make_graph_structure():
     G_gt: gt.Graph | None = None
     try:
         if file.filename.split(".")[-1] == "obo":
-            G_gt, node_data = build_gt_graph_from_obo(file.read().decode("utf-8"))
-            app.config["NODE_DATA"] = node_data
-            print(f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges")
+            G_gt, node_data, roots = build_gt_graph_from_obo(file.read().decode("utf-8"))
+            GRAPH_CACHE["NODE_DATA"] = node_data # only for obo files, should it be like this?
             print(f"Constructed graph from obo file")
+
+            root = request.form.get("root", None)
+            root_id = roots.get(root, None)
+            G_gt = filter_graph_by_root(G_gt, node_data, root_id)
+
+
         elif file.filename.split(".")[-1] == 'txt':
             G_gt = build_graph_from_txt(file.read().decode("utf-8"))
-            print(f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges")
             print(f"Constructed graph from txt file")
+
+        GRAPH_CACHE["G_GT"] = G_gt
+        print(f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges")
+        
     except Exception as e:
-        print("Something went wrong when trying to construct the graph") 
+        print("Something went wrong when trying to construct the graph: ", e) 
 
     # try:
     #     contents = file.read().decode("utf-8")
@@ -78,14 +85,12 @@ def flask_make_graph_structure():
         #     "links": []
         # })
 
-        for e in G_gt.edges():
-            print(e.source(), e.target())
-
         canvas_positions = make_graph_structure(G_gt)
         print("Found canvas positions")
         transformed_canvas_positions, links = build_reponse_json_string_for_make_graph_structure_req(
             G_gt=G_gt, canvas_positions=canvas_positions
         )
+        print(roots)
         print("Built data to return to frontend")
 
         return jsonify({
@@ -121,6 +126,17 @@ def flask_make_graph_structure():
     #         "links": [random.randint(0, 100) for _ in range(100)],
     #     })
 
+@app.route("/analyze_graph", methods=["POST"])
+def analyze_graph():
+    G_gt = GRAPH_CACHE.get("G_GT", None)
+    if not G_gt:
+        return jsonify({"error": "Graph not found"}), 404
+    
+    hierarchy_levels = compute_hierarchy_levels(G_gt)
+    return jsonify({
+        "hierarchy_levels": hierarchy_levels
+    })
+    
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT_NUMBER)
