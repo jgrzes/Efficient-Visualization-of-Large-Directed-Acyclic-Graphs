@@ -14,7 +14,7 @@ interface ControlsProps {
   setAnalysisResult: Dispatch<SetStateAction<any | null>>;
 }
 
-const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions, links, setPointPositions, setLinks, setSelectedNode, setAnalysisResult, }) => {
+const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPositions, setLinks, setSelectedNode, setAnalysisResult, }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [showOntologyOptions, setShowOntologyOptions] = React.useState<boolean>(false);
@@ -116,51 +116,34 @@ const Controls: React.FC<ControlsProps> = ({ graphRef, canvasRef, pointPositions
     <div id="controls">
       <ControlButton id="load" label="Load data" onClick={handleLoadClick} />
       {showOntologyOptions && selectedFile && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '250px',
-            left: '50%',
-            backgroundColor: '#2a2a2a',
-            padding: '20px',
-            border: '1px solid #3f3f46',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-            zIndex: 9999,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            animation: 'slideDown 0.5s ease-out',
-            minWidth: '320px',
-            maxWidth: '80%',
-          }}
-        >
-          <p style={{ color: '#f4f4f5', fontWeight: 500 }}>
+        <div className="ontology-options">
+          <p>
             Choose GO category: <strong>{selectedFile.name}</strong>
           </p>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div className="button-group">
             <button onClick={() => uploadFileWithNamespace("cellular_component")}>Cellular Component</button>
             <button onClick={() => uploadFileWithNamespace("molecular_function")}>Molecular Function</button>
             <button onClick={() => uploadFileWithNamespace("biological_process")}>Biological Process</button>
           </div>
         </div>
       )}
-
+  
       <ControlButton id="fit-view" label="Fit view" />
       <ControlButton id="reset" label="Reset view" />
       <ControlButton id="export" label="Export" onClick={handleExportClick} />
       <ControlButton id="analyze" label="Analyze" onClick={handleAnalyzeClick} />
-
+  
       {/* ukryty input do obsługi pliku */}
       <input
-      type="file"
-      accept=".txt,.obo"
-      ref={fileInputRef}
-      onChange={handleFileUpload}
-      style={{ display: 'none' }}
+        type="file"
+        accept=".txt,.obo"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        style={{ display: 'none' }}
       />
     </div>
   );
+  
 };
 
 export default Controls;

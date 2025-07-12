@@ -29,27 +29,24 @@ const App: React.FC = () => {
   return (
     <div id="layout">
       <div id="controls-panel">
-        {(
-          <Controls 
-            graphRef={graphRef} 
-            canvasRef={canvasRef} 
-            pointPositions={pointPositions} 
-            links={links} 
-            setPointPositions={setPointPositions}
-            setLinks={setLinks}
-            setSelectedNode={setSelectedNode} 
-            setAnalysisResult={setAnalysisResult}
-          />
-        )}
+        <Controls 
+          graphRef={graphRef} 
+          canvasRef={canvasRef} 
+          pointPositions={pointPositions} 
+          links={links} 
+          setPointPositions={setPointPositions}
+          setLinks={setLinks}
+          setSelectedNode={setSelectedNode} 
+          setAnalysisResult={setAnalysisResult}
+        />
       </div>
       
-      <div ref={canvasRef}/>
+      <div ref={canvasRef} />
       <div ref={graphRef} id="graph" />    
-      {/* <div id="graph" ref={graphRef}></div> */}
       <div id="tooltip" />
-
+  
       {selectedNode && (
-        <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
+        <div className="node-info">
           <NodeInfo
             id={selectedNode.id}
             name={selectedNode.name}
@@ -60,17 +57,18 @@ const App: React.FC = () => {
           />
         </div>
       )}
-
+  
       {analysisResult && (
         <AnalysisPanel
           result={analysisResult}
           onClose={() => setAnalysisResult(null)}
         />
       )}
-
+  
       <Stats
         nodeCount={stats.nodeCount}
         edgeCount={stats.edgeCount}
+        pathCount={0}
       />
     </div>
   );

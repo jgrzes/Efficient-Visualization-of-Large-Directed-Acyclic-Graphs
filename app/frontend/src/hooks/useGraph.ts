@@ -188,7 +188,8 @@ useEffect(() => {
 
   }, [pointPositions, links]);
 }
-function setSelectedNode(nodeInfo: any) {
-  throw new Error('Function not implemented.');
-}
+
+// function setSelectedNode(nodeInfo: any) {
+//   throw new Error('Function not implemented.');
+// }
 

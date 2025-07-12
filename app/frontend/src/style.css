@@ -123,7 +123,7 @@ body {
   pointer-events: none;
   z-index: 9999;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-  display: none; /* domyślnie ukryty */
+  display: none;
 }
 
 @keyframes slideDown {
@@ -136,8 +136,6 @@ body {
     margin-top: 0;
   }
 }
-
-
 
 button {
   padding: 10px 16px;
@@ -152,4 +150,132 @@ button {
 
 button:hover {
   background-color: #374151;
+}
+
+.ontology-options {
+  position: fixed;
+  top: 250px;
+  left: 50%;
+  background-color: #2a2a2a;
+  padding: 20px;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slideDown 0.5s ease-out;
+  min-width: 320px;
+  max-width: 80%;
+}
+
+.ontology-options p {
+  color: #f4f4f5;
+  font-weight: 500;
+}
+
+.ontology-options .button-group {
+  display: flex;
+  gap: 10px;
+}
+
+#analysis-panel {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid #444;
+  border-radius: 12px;
+  background-color: #1f1f1f;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  color: #f0f0f0;
+}
+
+#analysis-panel h2 {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+#analysis-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #ddd;
+}
+
+#analysis-panel th,
+#analysis-panel td {
+  border-bottom: 1px solid #555;
+  padding: 0.5rem;
+}
+
+#analysis-panel th {
+  text-align: left;
+}
+
+#analysis-panel td:last-child {
+  text-align: right;
+}
+
+.button-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.close-button {
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: none;
+  background-color: #007bff;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.close-button:hover {
+  background-color: #0056b3;
+}
+
+#info-panel {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  padding: 16px;
+}
+
+#info-panel h4 {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+#info-panel p {
+  margin: 4px 0;
+}
+
+#stats-panel {
+  display: flex;
+  flex-direction: column;
+  width: 200px;
+}
+
+#stats-panel h4 {
+  text-align: center;
+}
+
+#stats-panel p {
+  margin: 4px 0;
+}
+
+#layout {
+  position: relative;
+}
+
+.node-info {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
 }

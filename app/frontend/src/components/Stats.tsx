@@ -8,12 +8,12 @@ interface StatsProps {
 
 const Stats: React.FC<StatsProps> = ({ nodeCount, edgeCount }) => {
   return (
-    <div id="stats-panel" style={{ display: 'flex', flexDirection: 'column', width: '200px' }}>
-      <h4 style={{ textAlign: 'center' }}>Statistics</h4>
+    <div id="stats-panel">
+      <h4>Statistics</h4>
       <p><strong>Nodes:</strong> {nodeCount}</p>
       <p><strong>Edges:</strong> {edgeCount}</p>
     </div>
-  );
+  );  
 };
 
 export default Stats;

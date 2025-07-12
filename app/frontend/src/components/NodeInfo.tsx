@@ -11,8 +11,8 @@ export interface NodeInfoProps {
 
 const NodeInfo: React.FC<NodeInfoProps> = ({ id, name, namespace, def, synonym, is_a }) => {
   return (
-    <div id="info-panel" style={{ display: 'flex', flexDirection: 'column', width: '300px', padding: '16px' }}>
-      <h4 style={{ textAlign: 'center', marginBottom: '12px' }}>{id}</h4>
+    <div id="info-panel">
+      <h4>{id}</h4>
       <p><strong>Name:</strong> {name}</p>
       <p><strong>Namespace:</strong> {namespace}</p>
       <p><strong>Definition:</strong> {def}</p>
@@ -23,7 +23,7 @@ const NodeInfo: React.FC<NodeInfoProps> = ({ id, name, namespace, def, synonym, 
         <p><strong>is_a:</strong> {is_a.join(', ')}</p>
       )}
     </div>
-  );
+  );  
 };
 
 export default NodeInfo;
