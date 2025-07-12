@@ -113,33 +113,73 @@ const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPosit
 
 
   return (
-    <div id="controls">
-      <ControlButton id="load" label="Load data" onClick={handleLoadClick} />
+    <div
+      id="controls"
+      className="fixed top-4 left-4 p-4 bg-black rounded-lg shadow-lg flex flex-col gap-2 text-gray-200 w-[300px] border"
+    >
+      <ControlButton
+        id="load"
+        label="Load data"
+        onClick={handleLoadClick}
+      />
       {showOntologyOptions && selectedFile && (
-        <div className="ontology-options">
-          <p>
-            Choose GO category: <strong>{selectedFile.name}</strong>
+        <div className="ontology-options mt-4 p-4 bg-black rounded shadow-lg border">
+          <p className="text-sm font-medium mb-2 text-gray-300">
+            Choose GO category: <strong className="text-gray-100">{selectedFile.name}</strong>
           </p>
-          <div className="button-group">
-            <button onClick={() => uploadFileWithNamespace("cellular_component")}>Cellular Component</button>
-            <button onClick={() => uploadFileWithNamespace("molecular_function")}>Molecular Function</button>
-            <button onClick={() => uploadFileWithNamespace("biological_process")}>Biological Process</button>
+          <div className="button-group flex flex-col gap-2 bg-black p-2 rounded">
+            <button
+              onClick={() => uploadFileWithNamespace("cellular_component")}
+              className="px-4 py-2 bg-transparent border border-white text-gray-200 rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 cursor-pointer"
+            >
+              Cellular Component
+            </button>
+            <button
+              onClick={() => uploadFileWithNamespace("molecular_function")}
+              className="px-4 py-2 bg-transparent border border-white text-gray-200 rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 cursor-pointer"
+            >
+              Molecular Function
+            </button>
+            <button
+              onClick={() => uploadFileWithNamespace("biological_process")}
+              className="px-4 py-2 bg-transparent border border-white text-gray-200 rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 cursor-pointer"
+            >
+              Biological Process
+            </button>
           </div>
         </div>
       )}
-  
-      <ControlButton id="fit-view" label="Fit view" />
-      <ControlButton id="reset" label="Reset view" />
-      <ControlButton id="export" label="Export" onClick={handleExportClick} />
-      <ControlButton id="analyze" label="Analyze" onClick={handleAnalyzeClick} />
-  
+
+      <ControlButton
+        id="fit-view"
+        label="Fit view"
+        className="w-full px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
+      />
+      <ControlButton
+        id="reset"
+        label="Reset view"
+        className="w-full px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
+      />
+      <ControlButton
+        id="export"
+        label="Export"
+        onClick={handleExportClick}
+        className="w-full px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
+      />
+      <ControlButton
+        id="analyze"
+        label="Analyze"
+        onClick={handleAnalyzeClick}
+        className="w-full px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
+      />
+
       {/* ukryty input do obsługi pliku */}
       <input
         type="file"
         accept=".txt,.obo"
         ref={fileInputRef}
         onChange={handleFileUpload}
-        style={{ display: 'none' }}
+        className="hidden"
       />
     </div>
   );

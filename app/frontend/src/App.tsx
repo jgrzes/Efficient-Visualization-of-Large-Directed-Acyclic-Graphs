@@ -15,9 +15,7 @@ const App: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
 
-
   useGraph(graphRef, canvasRef, pointPositions!, links!, setSelectedNode);
-
 
   const stats = useMemo(() => {
     const nodeCount = pointPositions ? pointPositions.length / 2 : 0;
@@ -27,8 +25,8 @@ const App: React.FC = () => {
   }, [pointPositions, links]);
 
   return (
-    <div id="layout">
-      <div id="controls-panel">
+    <div id="layout" className="bg-black text-gray-200 min-h-screen flex flex-col">
+      <div id="controls-panel" className="flex-none">
         <Controls 
           graphRef={graphRef} 
           canvasRef={canvasRef} 
@@ -41,12 +39,12 @@ const App: React.FC = () => {
         />
       </div>
       
-      <div ref={canvasRef} />
-      <div ref={graphRef} id="graph" />    
-      <div id="tooltip" />
+      <div ref={canvasRef} className="flex-grow" />
+      <div ref={graphRef} id="graph" className="flex-grow" />    
+      <div id="tooltip" className="absolute border rounded" />
   
       {selectedNode && (
-        <div className="node-info">
+        <div className="node-info fixed top-4 right-4 p-4 rounded-lg shadow-lg">
           <NodeInfo
             id={selectedNode.id}
             name={selectedNode.name}
