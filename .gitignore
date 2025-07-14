@@ -184,6 +184,7 @@ app/frontend/dist/
 app/frontend/.DS_Store
 app/frontend/*.log
 app/frontend/.env
+app/frontend/vite-env.d.ts
 
 # zależności
 app/frontend/yarn.lock
@@ -204,6 +205,12 @@ app/backend/**/*.pyc
 app/backend/.venv/
 app/backend/venv/
 app/backend/.env
+
+# ==================
+# RESEARCH SCRIPTS
+# ==================
+
+*.png
 
 # ==================
 # SYSTEM / GLOBAL

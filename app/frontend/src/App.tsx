@@ -15,9 +15,7 @@ const App: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
 
-
   useGraph(graphRef, canvasRef, pointPositions!, links!, setSelectedNode);
-
 
   const stats = useMemo(() => {
     const nodeCount = pointPositions ? pointPositions.length / 2 : 0;
@@ -27,29 +25,26 @@ const App: React.FC = () => {
   }, [pointPositions, links]);
 
   return (
-    <div id="layout">
-      <div id="controls-panel">
-        {(
-          <Controls 
-            graphRef={graphRef} 
-            canvasRef={canvasRef} 
-            pointPositions={pointPositions} 
-            links={links} 
-            setPointPositions={setPointPositions}
-            setLinks={setLinks}
-            setSelectedNode={setSelectedNode} 
-            setAnalysisResult={setAnalysisResult}
-          />
-        )}
+    <div id="layout" className="bg-black text-gray-200 min-h-screen flex flex-col">
+      <div id="controls-panel" className="flex-none">
+        <Controls 
+          graphRef={graphRef} 
+          canvasRef={canvasRef} 
+          pointPositions={pointPositions} 
+          links={links} 
+          setPointPositions={setPointPositions}
+          setLinks={setLinks}
+          setSelectedNode={setSelectedNode} 
+          setAnalysisResult={setAnalysisResult}
+        />
       </div>
       
-      <div ref={canvasRef}/>
-      <div ref={graphRef} id="graph" />    
-      {/* <div id="graph" ref={graphRef}></div> */}
-      <div id="tooltip" />
-
+      <div ref={canvasRef} className="flex-grow" />
+      <div ref={graphRef} id="graph" className="flex-grow" />    
+      <div id="tooltip" className="absolute border rounded" />
+  
       {selectedNode && (
-        <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
+        <div className="node-info fixed top-4 right-4 p-4 rounded-lg shadow-lg">
           <NodeInfo
             id={selectedNode.id}
             name={selectedNode.name}
@@ -60,17 +55,18 @@ const App: React.FC = () => {
           />
         </div>
       )}
-
+  
       {analysisResult && (
         <AnalysisPanel
           result={analysisResult}
           onClose={() => setAnalysisResult(null)}
         />
       )}
-
+  
       <Stats
         nodeCount={stats.nodeCount}
         edgeCount={stats.edgeCount}
+        pathCount={0}
       />
     </div>
   );
