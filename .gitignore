@@ -207,6 +207,12 @@ app/backend/venv/
 app/backend/.env
 
 # ==================
+# RESEARCH SCRIPTS
+# ==================
+
+*.png
+
+# ==================
 # SYSTEM / GLOBAL
 # ==================
 .DS_Store
