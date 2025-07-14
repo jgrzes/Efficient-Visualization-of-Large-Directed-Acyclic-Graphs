@@ -47,8 +47,6 @@ const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPosit
 
       const data = await response.json();
       console.log("canvas_positions:", data.canvas_positions);
-      // graphRef?.setPointPositions(new Float32Array(data.canvas_positions));
-      // useGraph(graphRef, canvasRef, new Float32Array(data.canvas_positions)!, links!, setSelectedNode);
       const newPositions = new Float32Array(data.canvas_positions);
       const newLinks = [...data.links];
       setPointPositions(newPositions);

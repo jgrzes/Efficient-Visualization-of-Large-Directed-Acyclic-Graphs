@@ -2,7 +2,6 @@ import { Dispatch, SetStateAction, useEffect, useRef } from 'react';
 import { Graph, GraphConfigInterface } from '@cosmograph/cosmos';
 import { NodeInfoProps } from '../components/NodeInfo';
 
-
 let mouseX = 0;
 let mouseY = 0;
 
@@ -22,14 +21,9 @@ export function useGraph(
   
   useEffect(() => {
     console.log("Begin\n");
-    if (
-      !graphRef.current
-      // !pointPositions ||
-      // !links
-    ) return;
+    if (!graphRef.current) return;
     console.log("After first check");
 
-    // let graph: Graph;
     let currentHoveredIndex: number | undefined = undefined;
 
     const config: GraphConfigInterface = {
@@ -122,34 +116,9 @@ export function useGraph(
       }
     };
 
-    // if (!graphInstance.current) {
     graphInstance.current = new Graph(graphRef.current, config);
-    // }
 
     console.log("After building config\n");
-
-    // graph = new Graph(graphRef.current, config);
-    // console.log(pointPositions);
-    // console.log(links);
-    // graphInstance.current.setPointPositions(new Float32Array(pointPositions));
-    // graphInstance.current.setLinks(new Float32Array(links));
-    // graphInstance.current.render();
-
-    // function fitView() {
-    //   graphInstance.current?.fitView();
-    // }
-
-    // function restartView() {
-    //   graphInstance.current?.restart();
-    // }
-
-    // graphInstance.current.fitView();
-
-    // console.log("fit-view button:", document.getElementById("fit-view"));
-    // console.log("reset button:", document.getElementById("reset"));
-
-    // document.getElementById("fit-view")?.addEventListener("click", fitView);
-    // document.getElementById("reset")?.addEventListener("click", restartView);
 
     return () => {
       if (graphInstance.current) {
@@ -188,8 +157,3 @@ useEffect(() => {
 
   }, [pointPositions, links]);
 }
-
-// function setSelectedNode(nodeInfo: any) {
-//   throw new Error('Function not implemented.');
-// }
-
