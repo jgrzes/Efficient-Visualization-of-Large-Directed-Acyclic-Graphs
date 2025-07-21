@@ -22,7 +22,7 @@ def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict, 
     for node, v in vertice_mapping.items():
         if v.in_degree() == 0:
             namespace = node_data[v].get("namespace", "").lower()
-            roots[namespace] = node_data[v]["id"]
+            roots[namespace] = (node_data[v]["id"], v)
 
     return G_gt, node_data, roots
 
@@ -48,14 +48,7 @@ def build_graph_from_txt(txt_file_contents: str) -> gt.Graph:
     return G_gt    
 
 
-def filter_graph_by_root(G_gt: gt.Graph, node_data: dict, root_id: str) -> gt.Graph:
-    for vertex in G_gt.get_vertices():
-        if node_data[vertex]['id'] == root_id:
-            root_vertex = vertex
-            break
-
-    if root_vertex is None:
-        raise ValueError(f"Root vertex with id {root_id} not found in the graph.")
+def filter_graph_by_root(G_gt: gt.Graph, root_vertex: gt.Vertex) -> gt.Graph:
 
     reachable = gt.topology.label_out_component(G_gt, root_vertex)
 

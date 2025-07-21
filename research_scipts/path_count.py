@@ -65,7 +65,7 @@ def plot_counters(counters):
     plt.show()
 
 if __name__ == "__main__":
-    with open("/home/jgrzes/Efficient-Visualization-of-Large-Directed-Acyclic-Graphs/app/backend/data/go-basic.obo", "r") as f: # adjust path to your OBO file
+    with open("...", "r") as f: # adjust path to your OBO file
         obo_contents = f.read()
 
     graph, node_data, roots = build_gt_graph_from_obo(obo_contents)

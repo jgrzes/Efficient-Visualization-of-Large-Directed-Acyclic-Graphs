@@ -57,9 +57,10 @@ def flask_make_graph_structure():
             GRAPH_CACHE["NODE_DATA"] = node_data # only for obo files, should it be like this?
             print(f"Constructed graph from obo file")
 
-            root = request.form.get("root", None)
-            root_id = roots.get(root, None)
-            G_gt = filter_graph_by_root(G_gt, node_data, root_id)
+            root_namespace = request.form.get("root", None)
+            _, root_vertex = roots.get(root_namespace, None) # returns (id, vertex)
+
+            G_gt = filter_graph_by_root(G_gt, root_vertex)
 
 
         elif file.filename.split(".")[-1] == 'txt':
