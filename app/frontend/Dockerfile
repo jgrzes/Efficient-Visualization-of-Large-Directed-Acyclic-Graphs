@@ -14,5 +14,4 @@ EXPOSE 30308
 EXPOSE 30309
 EXPOSE 30310
 
-# CMD ["bash", "-it"]
 CMD ["npm", "run", "dev", "--", "--host", "--port", "30306"]

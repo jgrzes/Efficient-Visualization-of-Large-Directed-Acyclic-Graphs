@@ -35,7 +35,7 @@ export function useGraph(
 
       linkWidth: 0.8,
       linkColor: '#a1a1a1',
-      linkArrows: true,                
+      linkArrows: true,
       linkGreyoutOpacity: 0,
       curvedLinks: false,
 
@@ -156,4 +156,40 @@ useEffect(() => {
     document.getElementById("reset")?.addEventListener("click", restartView);
 
   }, [pointPositions, links]);
+
+  const clusterGraph = async (nClusters = 5) => {
+    const numberOfPoints = pointPositions.length / 2;
+    try {
+      const response = await fetch("http://localhost:30301/cluster_graph", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ n_clusters: nClusters })
+      });
+      if (!response.ok) throw new Error("Failed to fetch clusters");
+
+      const data = await response.json();
+      const clusterIds = data.labels;
+
+      const pointColors = new Float32Array(numberOfPoints * 4);
+      for (let i = 0; i < numberOfPoints; i++) {
+        const clusterId = clusterIds[i] % 3;
+        pointColors.set(
+          clusterId === 0 ? [0, 0.5, 1, 1] :
+            clusterId === 1 ? [1, 0.2, 0.2, 1] :
+              [0.2, 1, 0.2, 1],
+          i * 4
+        );
+      }
+
+      graphInstance.current?.setPointClusters(clusterIds);
+      graphInstance.current?.setPointColors(pointColors);
+      graphInstance.current?.render();
+
+    } catch (err) {
+      console.error("Error fetching clusters:", err);
+      alert("Failed to fetch clusters. Please try again later.");
+    }
+  };
+
+  return { graphInstance, clusterGraph };
 }

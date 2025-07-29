@@ -5,6 +5,7 @@ from graph_utils import build_gt_graph_from_obo, build_graph_from_txt
 from generate_graph_structure import make_graph_structure
 from graph_analysis import compute_hierarchy_levels
 from graph_utils import filter_graph_by_root
+from clustering.clustering import cluster_graph
 
 PORT_NUMBER = 30_301
 app = Flask(__name__)
@@ -32,14 +33,27 @@ def build_reponse_json_string_for_make_graph_structure_req(
 
 @app.route("/node/<int:node_id>")
 def get_node(node_id):
-    data = GRAPH_CACHE.get("NODE_DATA", {}).get(node_id, {})
+    ''' Returns information about a node in the graph. '''
+    G_gt: gt.Graph = GRAPH_CACHE.get("G_GT", None)
+    if G_gt is None or node_id >= G_gt.num_vertices():
+        return jsonify({"error": "Node not found"}), 404
+
+    v = G_gt.vertex(node_id)
+
+    id_prop = G_gt.vertex_properties["id"]
+    name_prop = G_gt.vertex_properties["name"]
+    namespace_prop = G_gt.vertex_properties["namespace"]
+    def_prop = G_gt.vertex_properties["def"]
+    synonym_prop = G_gt.vertex_properties["synonym"]
+    isa_prop = G_gt.vertex_properties["is_a"]
+
     return jsonify({
-        "id": data.get("id", ""),
-        "name": data.get("name", ""),
-        "namespace": data.get("namespace", ""),
-        "def": data.get('def', '').replace('"', ""),
-        "synonym": data.get("synonym", []),
-        "is_a": data.get("is_a", []),
+        "id": id_prop[v],
+        "name": name_prop[v],
+        "namespace": namespace_prop[v],
+        "def": def_prop[v].replace('"', ""),
+        "synonym": list(synonym_prop[v]) if synonym_prop[v] else [],
+        "is_a": list(isa_prop[v]) if isa_prop[v] else [],
     })
 
 @app.route("/flask_make_graph_structure", methods=["POST"])
@@ -53,45 +67,32 @@ def flask_make_graph_structure():
     G_gt: gt.Graph | None = None
     try:
         if file.filename.split(".")[-1] == "obo":
-            G_gt, node_data, roots = build_gt_graph_from_obo(file.read().decode("utf-8"))
-            GRAPH_CACHE["NODE_DATA"] = node_data # only for obo files, should it be like this?
+            G_gt, roots = build_gt_graph_from_obo(file.read().decode("utf-8"))
             print(f"Constructed graph from obo file")
 
             root_namespace = request.form.get("root", None)
-            _, root_vertex = roots.get(root_namespace, None) # returns (id, vertex)
-
-            G_gt = filter_graph_by_root(G_gt, root_vertex)
-
+            if root_namespace is not None:
+                root_id, root_vertex = roots.get(root_namespace, None) # returns (id string:GO:XXXX, vertex gt.Vertex:vertex)
+                print(f"Root vertex is {root_id}, index {root_vertex}")
+                G_gt = filter_graph_by_root(G_gt, root_vertex)
 
         elif file.filename.split(".")[-1] == 'txt':
             G_gt = build_graph_from_txt(file.read().decode("utf-8"))
             print(f"Constructed graph from txt file")
 
         GRAPH_CACHE["G_GT"] = G_gt
+        GRAPH_CACHE["ROOT"] = root_vertex
         print(f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges")
         
     except Exception as e:
         print("Something went wrong when trying to construct the graph: ", e) 
 
-    # try:
-    #     contents = file.read().decode("utf-8")
-    #     print(f"File contents: {contents}")
-    # except Exception as e:
-    #     print("Failed when decoding")
-
     if G_gt is not None:
-        # print(len(G_gt.get_vertices()), len(G_gt.get_edges()))
-        # return jsonify({
-        #     "canvas_positions": [],
-        #     "links": []
-        # })
-
         canvas_positions = make_graph_structure(G_gt)
         print("Found canvas positions")
         transformed_canvas_positions, links = build_reponse_json_string_for_make_graph_structure_req(
             G_gt=G_gt, canvas_positions=canvas_positions
         )
-        print(roots)
         print("Built data to return to frontend")
 
         return jsonify({
@@ -99,33 +100,6 @@ def flask_make_graph_structure():
             "links": links
         })
 
-    # content = file.read().decode("utf-8")
-    # print("File content:", content)
-
-    # nodes = parse_obo_file('app/backend/data/go-basic.obo')
-    # print("Parsed nodes:", len(nodes))
-
-    # data = request.get_json()
-    # N = data.get("size", 0)
-    # E = data.get("edges", [])
-    # print("B")
-
-    # G = gt.Graph() 
-    # V = [G.add_vertex() for _ in range (0, N)]
-    # print("C")
-
-    # for u, v in E:
-        # G.add_edge(V[u], V[v])
-    # print("D")
-
-    # canvas_positions = make_graph_structure(G)
-    # print(canvas_positions)
-    # return jsonify({"canvas_positions": canvas_positions})
-
-    # return jsonify({
-    #         "canvas_positions": [80 * random.random() for _ in range(200)],
-    #         "links": [random.randint(0, 100) for _ in range(100)],
-    #     })
 
 @app.route("/analyze_graph", methods=["POST"])
 def analyze_graph():
@@ -136,6 +110,24 @@ def analyze_graph():
     hierarchy_levels = compute_hierarchy_levels(G_gt)
     return jsonify({
         "hierarchy_levels": hierarchy_levels
+    })
+
+@app.route("/cluster_graph", methods=["POST"])
+def cluster_graph_endpoint():
+    G_gt = GRAPH_CACHE.get("G_GT", None)
+    if not G_gt:
+        return jsonify({"error": "Graph not found"}), 404
+    
+    vertices = list(G_gt.vertices())
+    n_clusters = request.json.get("n_clusters", 5)
+    root_vertex = GRAPH_CACHE.get("ROOT")
+
+    print(f'Root vertex is type {type(root_vertex)}')
+
+    labels = cluster_graph(G_gt, vertices, root=root_vertex, n_clusters=n_clusters)
+    return jsonify({
+        "labels": labels,
+        "clusters": GRAPH_CACHE.get("CLUSTERS", [])
     })
     
 

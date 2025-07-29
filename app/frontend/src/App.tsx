@@ -15,7 +15,13 @@ const App: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
 
-  useGraph(graphRef, canvasRef, pointPositions!, links!, setSelectedNode);
+  const { clusterGraph } = useGraph(
+    graphRef,
+    canvasRef,
+    pointPositions,
+    links,
+    setSelectedNode
+  );
 
   const stats = useMemo(() => {
     const nodeCount = pointPositions ? pointPositions.length / 2 : 0;
@@ -36,6 +42,7 @@ const App: React.FC = () => {
           setLinks={setLinks}
           setSelectedNode={setSelectedNode} 
           setAnalysisResult={setAnalysisResult}
+          clusterGraph={clusterGraph}
         />
       </div>
       
@@ -66,7 +73,6 @@ const App: React.FC = () => {
       <Stats
         nodeCount={stats.nodeCount}
         edgeCount={stats.edgeCount}
-        pathCount={0}
       />
     </div>
   );

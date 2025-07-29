@@ -4,27 +4,45 @@ import obonet
 import io
 
 
-def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict, dict]:
+def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict]:
     G_gt = gt.Graph(directed=True)
     vertice_mapping = {}
-    node_data = {}
-    roots = {} # cc: GO:0000001, mf: GO:0000002, bp: GO:0000003
+    roots = {}  # cc: GO:0000001, mf: GO:0000002, bp: GO:0000003
+
+    id_prop = G_gt.new_vertex_property("string")
+    name_prop = G_gt.new_vertex_property("string")
+    namespace_prop = G_gt.new_vertex_property("string")
+    def_prop = G_gt.new_vertex_property("string")
+    synonym_prop = G_gt.new_vertex_property("vector<string>")
+    isa_prop = G_gt.new_vertex_property("vector<string>")
 
     for node in G_nx.nodes():
         v = G_gt.add_vertex()
-        node_data[v] = G_nx.nodes[node]
-        node_data[v]['id'] = node # e.g. GO:0000001
+        data = G_nx.nodes[node]
+        id_prop[v] = node
+        name_prop[v] = data.get("name", "")
+        namespace_prop[v] = data.get("namespace", "")
+        def_prop[v] = data.get("def", "")
+        synonym_prop[v] = data.get("synonym", [])
+        isa_prop[v] = data.get("is_a", [])
         vertice_mapping[node] = v
 
     for source, dest in G_nx.edges():
-        G_gt.add_edge(vertice_mapping[dest], vertice_mapping[source]) # obo files are in reverse direction
+        G_gt.add_edge(vertice_mapping[dest], vertice_mapping[source])
+
+    G_gt.vertex_properties["id"] = id_prop
+    G_gt.vertex_properties["name"] = name_prop
+    G_gt.vertex_properties["namespace"] = namespace_prop
+    G_gt.vertex_properties["def"] = def_prop
+    G_gt.vertex_properties["synonym"] = synonym_prop
+    G_gt.vertex_properties["is_a"] = isa_prop
 
     for node, v in vertice_mapping.items():
         if v.in_degree() == 0:
-            namespace = node_data[v].get("namespace", "").lower()
-            roots[namespace] = (node_data[v]["id"], v)
+            namespace = namespace_prop[v].lower()
+            roots[namespace] = (id_prop[v], v)
 
-    return G_gt, node_data, roots
+    return G_gt, roots
 
 
 def build_gt_graph_from_obo(obo_file_contents: str) -> gt.Graph:
@@ -49,10 +67,6 @@ def build_graph_from_txt(txt_file_contents: str) -> gt.Graph:
 
 
 def filter_graph_by_root(G_gt: gt.Graph, root_vertex: gt.Vertex) -> gt.Graph:
-
     reachable = gt.topology.label_out_component(G_gt, root_vertex)
-
     subgraph_view = gt.GraphView(G_gt, vfilt=reachable)
-    filtered_graph = gt.Graph(subgraph_view, prune=True)
-
-    return filtered_graph
+    return gt.Graph(subgraph_view, prune=True)
