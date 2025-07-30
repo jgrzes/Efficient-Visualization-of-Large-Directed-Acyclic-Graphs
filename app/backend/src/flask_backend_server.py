@@ -67,7 +67,7 @@ def flask_make_graph_structure():
     G_gt: gt.Graph | None = None
     try:
         if file.filename.split(".")[-1] == "obo":
-            G_gt, roots = build_gt_graph_from_obo(file.read().decode("utf-8"))
+            G_gt, roots, godag = build_gt_graph_from_obo(file.read().decode("utf-8"))
             print(f"Constructed graph from obo file")
 
             root_namespace = request.form.get("root", None)
@@ -81,7 +81,8 @@ def flask_make_graph_structure():
             print(f"Constructed graph from txt file")
 
         GRAPH_CACHE["G_GT"] = G_gt
-        GRAPH_CACHE["ROOT"] = root_vertex
+        GRAPH_CACHE["ROOT_ID"] = root_id
+        GRAPH_CACHE["GODAG"] = godag
         print(f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges")
         
     except Exception as e:
@@ -118,13 +119,11 @@ def cluster_graph_endpoint():
     if not G_gt:
         return jsonify({"error": "Graph not found"}), 404
     
-    vertices = list(G_gt.vertices())
     n_clusters = request.json.get("n_clusters", 5)
-    root_vertex = GRAPH_CACHE.get("ROOT")
-
-    print(f'Root vertex is type {type(root_vertex)}')
-
-    labels = cluster_graph(G_gt, vertices, root=root_vertex, n_clusters=n_clusters)
+    
+    godag = GRAPH_CACHE.get("GODAG", None)
+    labels = cluster_graph(G_gt, n_clusters, godag)
+    
     return jsonify({
         "labels": labels,
         "clusters": GRAPH_CACHE.get("CLUSTERS", [])

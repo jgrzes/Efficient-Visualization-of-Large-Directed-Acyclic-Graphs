@@ -2,7 +2,8 @@ import networkx as nx
 import graph_tool as gt
 import obonet
 import io
-
+from goatools.obo_parser import GODag
+import tempfile
 
 def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict]:
     G_gt = gt.Graph(directed=True)
@@ -47,7 +48,14 @@ def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict]:
 
 def build_gt_graph_from_obo(obo_file_contents: str) -> gt.Graph:
     obo_file_wrapper = io.StringIO(obo_file_contents)
-    return convert_to_graph_tool_graph(obonet.read_obo(obo_file_wrapper))
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".obo", mode="w") as tmp:
+        tmp.write(obo_file_contents)
+        tmp_path = tmp.name
+
+    godag = GODag(tmp_path)
+    G_gt, roots = convert_to_graph_tool_graph(obonet.read_obo(obo_file_wrapper))
+    
+    return G_gt, roots, godag
 
 
 def build_graph_from_txt(txt_file_contents: str) -> gt.Graph:

@@ -14,33 +14,21 @@ def dfs_path_lengths(G, v, max_depth, depth=0, counter=None):
     
     if depth > 0:
         counter[depth] += 1
-
     if depth == max_depth:
         return
-
     for w in v.out_neighbors():
         dfs_path_lengths(G, w, max_depth, depth + 1, counter)
 
     return counter
 
 
-def compute_path_length_distribution(G: gt.Graph, max_length, roots, node_data):
-
-    def find_vertex_by_id(G, node_id):
-        for v in G.vertices():
-            if node_data[v]['id'] == node_id:
-                return v
-        return None
-
+def compute_path_length_distribution(G: gt.Graph, max_length, roots):
     counters = {}
-    for root in roots.values():
-        root_vertex = find_vertex_by_id(G, root)
-        if root_vertex is None:
-            continue
+    for _, root_vertex in roots.values():
 
         counter = dfs_path_lengths(G, root_vertex, max_length)
-        namespace = node_data[root_vertex].get("namespace", "").lower()
-        
+        namespace = G.vp["namespace"][root_vertex].lower()
+
         if namespace not in counters:
             counters[namespace] = Counter()
         
@@ -68,7 +56,7 @@ if __name__ == "__main__":
     with open("...", "r") as f: # adjust path to your OBO file
         obo_contents = f.read()
 
-    graph, node_data, roots = build_gt_graph_from_obo(obo_contents)
-    path_length_distribution = compute_path_length_distribution(graph, MAX_PATH_LENGTH, roots, node_data)
+    graph, roots, _ = build_gt_graph_from_obo(obo_contents)
+    path_length_distribution = compute_path_length_distribution(graph, MAX_PATH_LENGTH, roots)
 
     plot_counters(path_length_distribution)
