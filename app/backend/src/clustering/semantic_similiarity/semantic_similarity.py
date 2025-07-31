@@ -5,6 +5,16 @@ import numpy as np
 import graph_tool.all as gt
 from sklearn.cluster import AgglomerativeClustering
 
+def find_representative_vertex(termcounts: TermCounts, cluster_labels: list):
+    representatives = {}
+
+    for cluster in set(cluster_labels):
+        cluster_terms = [i for i, label in enumerate(cluster_labels) if label == cluster]
+        best_term = max(cluster_terms, key=lambda term: get_info_content(term, termcounts))
+        representatives[int(cluster)] = int(best_term)
+
+    return representatives
+
 def cluster_semantic_similarity(G: gt.Graph, godag: GODag, n_clusters: int) -> list:
     ''' 
     Clusters the graph based on semantic similarity using GO terms. 
@@ -33,16 +43,6 @@ def cluster_semantic_similarity(G: gt.Graph, godag: GODag, n_clusters: int) -> l
 
     clustering = AgglomerativeClustering(n_clusters=n_clusters, metric='precomputed', linkage='average')
     labels = clustering.fit_predict(1 - sim_values)
+    representatives = find_representative_vertex(termcounts, labels)
 
-    return labels.tolist()
-
-def find_representative_vertex(termcounts: TermCounts, cluster_labels: list):
-    representatives = {} # cluster_id -> best_term
-
-    for cluster in set(cluster_labels):
-        cluster_terms = [i for i, label in enumerate(cluster_labels) if label == cluster]
-        # highest IC
-        best_term = max(cluster_terms, key=lambda term: get_info_content(term, termcounts))
-        representatives[cluster] = best_term
-
-    return representatives
+    return labels.tolist(), representatives

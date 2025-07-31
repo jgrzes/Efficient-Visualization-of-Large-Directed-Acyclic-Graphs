@@ -158,7 +158,6 @@ useEffect(() => {
   }, [pointPositions, links]);
 
   const clusterGraph = async (nClusters = 5) => {
-    const numberOfPoints = pointPositions.length / 2;
     try {
       const response = await fetch("http://localhost:30301/cluster_graph", {
         method: "POST",
@@ -168,21 +167,44 @@ useEffect(() => {
       if (!response.ok) throw new Error("Failed to fetch clusters");
 
       const data = await response.json();
-      const clusterIds = data.labels;
+      const clusterIds = data.labels; // dla wszystkich punktów
+      const clusterRepresentatives: number[] = Object.values(data.representatives).map(Number);
 
-      const pointColors = new Float32Array(numberOfPoints * 4);
-      for (let i = 0; i < numberOfPoints; i++) {
-        const clusterId = clusterIds[i] % 3;
-        pointColors.set(
-          clusterId === 0 ? [0, 0.5, 1, 1] :
-            clusterId === 1 ? [1, 0.2, 0.2, 1] :
-              [0.2, 1, 0.2, 1],
-          i * 4
-        );
+      console.log("Cluster representatives:", clusterRepresentatives);
+
+      // Position for representatives
+      const newPositions = new Float32Array(clusterRepresentatives.length * 2);
+      for (let i = 0; i < clusterRepresentatives.length; i++) {
+        const idx = clusterRepresentatives[i];
+        newPositions[2 * i] = pointPositions[2 * idx];
+        newPositions[2 * i + 1] = pointPositions[2 * idx + 1];
       }
 
-      graphInstance.current?.setPointClusters(clusterIds);
+      // 2. Colors for representatives
+      const repClusterIds = clusterRepresentatives.map(idx => clusterIds[idx]);
+
+      const uniqueClusters = [...new Set(repClusterIds)];
+      const clusterColors = new Map<number, [number, number, number, number]>();
+
+      uniqueClusters.forEach(cid => {
+        const color: [number, number, number, number] = [
+          Math.random(),  // R
+          Math.random(),  // G
+          Math.random(),  // B
+          1.0             // A
+        ];
+        clusterColors.set(cid, color);
+      });
+
+      const pointColors = new Float32Array(repClusterIds.length * 4);
+      for (let i = 0; i < repClusterIds.length; i++) {
+        const clusterId = repClusterIds[i];
+        const color = clusterColors.get(clusterId)!;
+        pointColors.set(color, i * 4);
+      }
+
       graphInstance.current?.setPointColors(pointColors);
+      graphInstance.current?.setPointPositions(newPositions);
       graphInstance.current?.render();
 
     } catch (err) {

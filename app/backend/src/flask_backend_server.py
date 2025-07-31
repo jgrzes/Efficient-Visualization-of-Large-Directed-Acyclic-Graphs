@@ -5,7 +5,7 @@ from graph_utils import build_gt_graph_from_obo, build_graph_from_txt
 from generate_graph_structure import make_graph_structure
 from graph_analysis import compute_hierarchy_levels
 from graph_utils import filter_graph_by_root
-from clustering.clustering import cluster_graph
+from clustering.semantic_similiarity.semantic_similarity import cluster_semantic_similarity
 
 PORT_NUMBER = 30_301
 app = Flask(__name__)
@@ -120,13 +120,13 @@ def cluster_graph_endpoint():
         return jsonify({"error": "Graph not found"}), 404
     
     n_clusters = request.json.get("n_clusters", 5)
-    
     godag = GRAPH_CACHE.get("GODAG", None)
-    labels = cluster_graph(G_gt, n_clusters, godag)
+
+    labels, representatives = cluster_semantic_similarity(G_gt, godag, n_clusters)
     
     return jsonify({
         "labels": labels,
-        "clusters": GRAPH_CACHE.get("CLUSTERS", [])
+        "representatives": representatives,
     })
     
 
