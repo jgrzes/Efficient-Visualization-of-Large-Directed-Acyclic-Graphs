@@ -71,6 +71,12 @@ class Graph:
         for u in range(len(self.E_reversed_adj_list)):
             if u in self.deactivated_V: continue
             if len(self.E_reversed_adj_list[u]) == 0: roots.append(u)
+            else:
+                for v in self.E_reversed_adj_list[u]:
+                    if v not in self.deactivated_V:
+                        break 
+                else:
+                    roots.append(u)    
 
         self.roots = roots    
 
