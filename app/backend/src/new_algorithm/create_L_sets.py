@@ -162,15 +162,15 @@ def greedily_divide_into_L_sets(
                 G.V[v].received_offers.append(u)
                 V_Nu.add(v)
 
-        print(k, V_Nu)
+        # print(k, V_Nu)
         for u in V_Nu:
             # print(u, G.V[u].received_offers)
             # print(u, hasattr(G.V[u], "L_set_index"))
             if hasattr(G.V[u], "L_set_index"):
                 # print("A", u)
-                if u == 39: print("!")
+                # if u == 39: print("!")
                 for w in G.N_reversed(u):
-                    if u == 39: print(u, w, k, G.V[w].level)
+                    # if u == 39: print(u, w, k, G.V[w].level)
                     if G.V[w].level < k:
                         if not hasattr(G.V[w], "received_offers") or G.V[w].last_set_received_offers < k:
                             setattr(G.V[w], "received_offers", [])
@@ -193,7 +193,7 @@ def greedily_divide_into_L_sets(
                     chosen_color = c
 
             setattr(G.V[u], "L_set_index", chosen_color)
-            print("Initially:", u, G.V[u].L_set_index, G.V[u].received_offers, G.N_reversed(u), offer_summary_map)
+            # print("Initially:", u, G.V[u].L_set_index, G.V[u].received_offers, G.N_reversed(u), offer_summary_map)
 
         V_kr = set()
         for u in V_Nu:
@@ -242,7 +242,7 @@ def greedily_divide_into_L_sets(
                 continue 
 
             mu = copy(G.V[u].merge_set)
-            print(mu)
+            # print(mu)
             G.V[u].merge_set.clear()
             C = set([G.V[v].L_set_index for v in mu])
             if len(C) == 1: 
@@ -282,7 +282,7 @@ def greedily_divide_into_L_sets(
                     best_color = c 
                 apply_coloring_based_on_map(G, base_coloring)
 
-            print(best_color, C)
+            # print(best_color, C)
             if best_color is not None:
                 for u in mu:
                     G.V[u].L_set_index = c
