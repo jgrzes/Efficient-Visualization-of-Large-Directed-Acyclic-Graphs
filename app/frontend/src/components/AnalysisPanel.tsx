@@ -17,7 +17,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result, onClose }) => {
       className="fixed bottom-4 right-4 p-4 bg-black rounded-lg shadow-lg text-gray-200 w-[300px] border"
     >
       <h2 className="text-xl font-bold mb-4">Hierarchy Levels</h2>
-  
+
       <table className="table-auto w-full border-collapse border border-gray-700">
         <thead>
           <tr className="bg-gray-700">
@@ -34,7 +34,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result, onClose }) => {
           ))}
         </tbody>
       </table>
-  
+
       <div className="mt-4 flex justify-end">
         <XMarkIcon
           onClick={onClose}
@@ -42,7 +42,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result, onClose }) => {
         />
       </div>
     </div>
-  );  
+  );
 };
 
 export default AnalysisPanel;

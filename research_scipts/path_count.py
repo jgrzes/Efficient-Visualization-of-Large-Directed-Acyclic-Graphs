@@ -1,60 +1,58 @@
-import graph_tool.all as gt
+"""
+Script to compute and plot the distribution of path lengths in a Gene Ontology
+directed acyclic graph (DAG) built from an OBO file.
+
+The script processes all three GO namespaces.
+
+Example usage:
+    python path_count.py --obo-path path/to/your.obo --max-path-length 10
+"""
+
+
+import argparse
 from collections import Counter
-import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../app/backend/src")))
-from graph_utils import build_gt_graph_from_obo
+
+import graph_tool.all as gt
 import matplotlib.pyplot as plt
 
-MAX_PATH_LENGTH = 20 
+from app.backend.src.graph_utils import build_gt_graph_from_obo
+
 
 def dfs_path_lengths(G, v, max_depth, depth=0, counter=None):
     if counter is None:
         counter = Counter()
-    
+
     if depth > 0:
         counter[depth] += 1
-
     if depth == max_depth:
         return
-
     for w in v.out_neighbors():
         dfs_path_lengths(G, w, max_depth, depth + 1, counter)
 
     return counter
 
 
-def compute_path_length_distribution(G: gt.Graph, max_length, roots, node_data):
-
-    def find_vertex_by_id(G, node_id):
-        for v in G.vertices():
-            if node_data[v]['id'] == node_id:
-                return v
-        return None
-
+def compute_path_length_distribution(G: gt.Graph, max_length, roots):
     counters = {}
-    for root in roots.values():
-        root_vertex = find_vertex_by_id(G, root)
-        if root_vertex is None:
-            continue
-
+    for _, root_vertex in roots.values():
         counter = dfs_path_lengths(G, root_vertex, max_length)
-        namespace = node_data[root_vertex].get("namespace", "").lower()
-        
+        namespace = G.vp["namespace"][root_vertex].lower()
+
         if namespace not in counters:
             counters[namespace] = Counter()
-        
+
         counters[namespace] += counter
 
     return counters
-    
-def plot_counters(counters):
+
+
+def plot_counters(counters, MAX_PATH_LENGTH):
     plt.figure(figsize=(10, 6))
 
     for namespace, counter in counters.items():
         lengths = list(counter.keys())
         counts = list(counter.values())
-        plt.plot(lengths, counts, label=namespace.replace('_', ' ').upper())
+        plt.plot(lengths, counts, label=namespace.replace("_", " ").upper())
 
     plt.xticks(range(1, MAX_PATH_LENGTH + 1))
     plt.title("Path Length Distribution")
@@ -64,11 +62,27 @@ def plot_counters(counters):
     plt.savefig("path_length_distribution.png")
     plt.show()
 
+
 if __name__ == "__main__":
-    with open("/home/jgrzes/Efficient-Visualization-of-Large-Directed-Acyclic-Graphs/app/backend/data/go-basic.obo", "r") as f: # adjust path to your OBO file
+    parser = argparse.ArgumentParser(description="Graph processing from OBO file")
+    parser.add_argument(
+        "--obo-path",
+        type=str,
+        default="app/backend/data/go-basic.obo",
+        help="Path to the OBO file",
+    )
+    parser.add_argument(
+        "--max-path-length",
+        type=int,
+        default=20,
+        help="Maximum path length to consider",
+    )
+    args = parser.parse_args()
+
+    with open(args.obo_path, "r") as f:
         obo_contents = f.read()
-
-    graph, node_data, roots = build_gt_graph_from_obo(obo_contents)
-    path_length_distribution = compute_path_length_distribution(graph, MAX_PATH_LENGTH, roots, node_data)
-
-    plot_counters(path_length_distribution)
+        graph, roots, godag = build_gt_graph_from_obo(obo_contents)
+        path_length_distribution = compute_path_length_distribution(
+            graph, args.max_path_length, roots
+        )
+        plot_counters(path_length_distribution, args.max_path_length)

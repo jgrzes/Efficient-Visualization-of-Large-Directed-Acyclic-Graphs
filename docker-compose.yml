@@ -4,25 +4,25 @@ services:
     ports:
       - "30301-30305:30301-30305"
     volumes:
-      - ./app/backend:/app  
+      - ./app/backend:/app
     stdin_open: true
-    tty: true  
+    tty: true
     networks:
-      - dag-app-network 
+      - dag-app-network
 
   frontend:
     build: ./app/frontend
     ports:
       - "30306-30310:30306-30310"
     volumes:
-      - ./app/frontend:/app 
+      - ./app/frontend:/app
       - /app/node_modules
     stdin_open: true
-    tty: true    
+    tty: true
     networks:
       - dag-app-network
     depends_on:
-      - backend 
+      - backend
 
 networks:
-  dag-app-network:                 
+  dag-app-network:

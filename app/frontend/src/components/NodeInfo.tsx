@@ -26,7 +26,7 @@ const NodeInfo: React.FC<NodeInfoProps> = ({ id, name, namespace, def, synonym, 
         <p className="text-sm"><strong>is_a:</strong> {is_a.join(', ')}</p>
       )}
     </div>
-  );  
+  );
 };
 
 export default NodeInfo;

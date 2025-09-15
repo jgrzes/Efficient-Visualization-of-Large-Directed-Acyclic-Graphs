@@ -27,22 +27,22 @@ const App: React.FC = () => {
   return (
     <div id="layout" className="bg-black text-gray-200 min-h-screen flex flex-col">
       <div id="controls-panel" className="flex-none">
-        <Controls 
-          graphRef={graphRef} 
-          canvasRef={canvasRef} 
-          pointPositions={pointPositions} 
-          links={links} 
+        <Controls
+          graphRef={graphRef}
+          canvasRef={canvasRef}
+          pointPositions={pointPositions}
+          links={links}
           setPointPositions={setPointPositions}
           setLinks={setLinks}
-          setSelectedNode={setSelectedNode} 
+          setSelectedNode={setSelectedNode}
           setAnalysisResult={setAnalysisResult}
         />
       </div>
-      
+
       <div ref={canvasRef} className="flex-grow" />
-      <div ref={graphRef} id="graph" className="flex-grow" />    
+      <div ref={graphRef} id="graph" className="flex-grow" />
       <div id="tooltip" className="absolute border rounded" />
-  
+
       {selectedNode && (
         <div className="node-info fixed top-4 right-4 p-4 rounded-lg shadow-lg">
           <NodeInfo
@@ -55,18 +55,17 @@ const App: React.FC = () => {
           />
         </div>
       )}
-  
+
       {analysisResult && (
         <AnalysisPanel
           result={analysisResult}
           onClose={() => setAnalysisResult(null)}
         />
       )}
-  
+
       <Stats
         nodeCount={stats.nodeCount}
         edgeCount={stats.edgeCount}
-        pathCount={0}
       />
     </div>
   );

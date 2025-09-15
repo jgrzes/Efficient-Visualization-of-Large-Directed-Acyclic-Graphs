@@ -14,7 +14,7 @@ interface ControlsProps {
   setAnalysisResult: Dispatch<SetStateAction<any | null>>;
 }
 
-const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPositions, setLinks, setSelectedNode, setAnalysisResult, }) => {
+const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPositions, setLinks, setSelectedNode, setAnalysisResult}) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [showOntologyOptions, setShowOntologyOptions] = React.useState<boolean>(false);
@@ -109,7 +109,6 @@ const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPosit
     }
   };
 
-
   return (
     <div
       id="controls"
@@ -181,7 +180,7 @@ const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPosit
       />
     </div>
   );
-  
+
 };
 
 export default Controls;

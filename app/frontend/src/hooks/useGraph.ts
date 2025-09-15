@@ -15,10 +15,10 @@ export function useGraph(
   canvasRef: React.RefObject<HTMLDivElement | null>,
   pointPositions: Float32Array,
   links: number[],
-  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>
+  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>,
 ) {
   const graphInstance = useRef<Graph | null>(null);
-  
+
   useEffect(() => {
     console.log("Begin\n");
     if (!graphRef.current) return;
@@ -35,7 +35,7 @@ export function useGraph(
 
       linkWidth: 0.8,
       linkColor: '#a1a1a1',
-      linkArrows: true,                
+      linkArrows: true,
       linkGreyoutOpacity: 0,
       curvedLinks: false,
 
@@ -57,7 +57,9 @@ export function useGraph(
             return;
           }
 
+
           const data = await res.json();
+
           setSelectedNode({
             id: data.id,
             name: data.name,
@@ -78,7 +80,7 @@ export function useGraph(
     onPointMouseOver: async (index, event) => {
         const tooltip = document.getElementById("tooltip");
         if (!tooltip || !event || index === undefined) return;
-        
+
         currentHoveredIndex = index;
 
         const res = await fetch(`http://localhost:30301/node/${index}`);
@@ -89,7 +91,7 @@ export function useGraph(
           <br/>
           ${data.def}
         `;
-          
+
         tooltip.style.left = `${mouseX + 10}px`;
         tooltip.style.top = `${mouseY + 10}px`;
         tooltip.style.display = "block";
