@@ -47,8 +47,8 @@ def convert_to_graph_tool_graph(
 
     for _, v in vertex_mapping.items():
         if v.in_degree() == 0:
-            ns = namespace_prop[v].lower()
-            roots.setdefault(ns, []).append((id_prop[v], v))
+            namespace = namespace_prop[v].lower()
+            roots[namespace] = (id_prop[v], v)
 
     return G_gt, roots
 

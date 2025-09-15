@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 import graph_tool as gt
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -16,7 +14,6 @@ app = Flask(__name__)
 CORS(app)
 
 
-@dataclass
 class GraphState:
     def __init__(self):
         self.G_GT: gt.Graph | None = None
@@ -48,7 +45,7 @@ def build_reponse_json_string_for_make_graph_structure_req(
 @app.route("/node/<int:node_id>")
 def get_node(node_id):
     """Returns information about a node in the graph."""
-    G_gt: gt.Graph = GRAPH_STATE.get("G_GT", None)
+    G_gt: gt.Graph = GRAPH_STATE.G_GT
     if G_gt is None or node_id >= G_gt.num_vertices():
         return jsonify({"error": "Node not found"}), 404
 
@@ -83,7 +80,11 @@ def flask_make_graph_structure():
     print(f"Received request to make graph structure for {file.filename}")
     G_gt: gt.Graph | None = None
     try:
-        if file.filename.split(".")[-1] == "obo":
+        ext = file.filename.split(".")[-1]
+        if ext not in ["obo", "txt"]:
+            return jsonify({"error": "Unsupported file type"}), 400
+
+        if ext == "obo":
             G_gt, roots, godag = build_gt_graph_from_obo(file.read().decode("utf-8"))
             print("Constructed graph from obo file")
 
@@ -95,15 +96,13 @@ def flask_make_graph_structure():
                 print(f"Root vertex is {root_id}, index {root_vertex}")
                 G_gt = filter_graph_by_root(G_gt, root_vertex)
 
-        elif file.filename.split(".")[-1] == "txt":
+        elif ext == "txt":
             G_gt = build_graph_from_txt(file.read().decode("utf-8"))
             print("Constructed graph from txt file")
 
-        GRAPH_STATE.graph = G_gt
-        GRAPH_STATE.godag = godag
-        GRAPH_STATE.root_id = root_id
-        GRAPH_STATE.roots = roots
-
+        GRAPH_STATE.G_GT = G_gt
+        GRAPH_STATE.ROOT_ID = root_id if "root_id" in locals() else None
+        GRAPH_STATE.GODAG = godag if "godag" in locals() else None
         print(
             f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges"
         )
@@ -129,7 +128,7 @@ def flask_make_graph_structure():
 
 @app.route("/analyze_graph", methods=["POST"])
 def analyze_graph():
-    G_gt = GRAPH_STATE.graph
+    G_gt = GRAPH_STATE.G_GT
     if not G_gt:
         return jsonify({"error": "Graph not found"}), 404
 
