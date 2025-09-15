@@ -1,11 +1,15 @@
-import networkx as nx
-import graph_tool as gt
-import obonet
 import io
-from goatools.obo_parser import GODag
 import tempfile
 
-def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict]:
+import graph_tool as gt
+import networkx as nx
+import obonet
+from goatools.obo_parser import GODag
+
+
+def convert_to_graph_tool_graph(
+    G_nx: nx.MultiDiGraph,
+) -> tuple[gt.Graph, dict]:
     G_gt = gt.Graph(directed=True)
     vertice_mapping = {}
     roots = {}  # cc: GO:0000001, mf: GO:0000002, bp: GO:0000003
@@ -38,7 +42,7 @@ def convert_to_graph_tool_graph(G_nx: nx.MultiDiGraph) -> tuple[gt.Graph, dict]:
     G_gt.vertex_properties["synonym"] = synonym_prop
     G_gt.vertex_properties["is_a"] = isa_prop
 
-    for node, v in vertice_mapping.items():
+    for _, v in vertice_mapping.items():
         if v.in_degree() == 0:
             namespace = namespace_prop[v].lower()
             roots[namespace] = (id_prop[v], v)
@@ -54,24 +58,25 @@ def build_gt_graph_from_obo(obo_file_contents: str) -> gt.Graph:
 
     godag = GODag(tmp_path)
     G_gt, roots = convert_to_graph_tool_graph(obonet.read_obo(obo_file_wrapper))
-    
+
     return G_gt, roots, godag
 
 
 def build_graph_from_txt(txt_file_contents: str) -> gt.Graph:
     elems = txt_file_contents.split(sep=None)
-    if len(elems) == 0: return gt.Graph(directed=True)
+    if len(elems) == 0:
+        return gt.Graph(directed=True)
     elems = [int(elem) for elem in elems]
     print(elems)
     n = elems[0]
     G_gt = gt.Graph(directed=True)
 
-    V = [G_gt.add_vertex() for _ in range (0, n)]
-    for i in range (1, len(elems), 2):
-        u, v = elems[i], elems[i+1]
+    V = [G_gt.add_vertex() for _ in range(0, n)]
+    for i in range(1, len(elems), 2):
+        u, v = elems[i], elems[i + 1]
         G_gt.add_edge(V[u], V[v])
 
-    return G_gt    
+    return G_gt
 
 
 def filter_graph_by_root(G_gt: gt.Graph, root_vertex: gt.Vertex) -> gt.Graph:

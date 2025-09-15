@@ -1,8 +1,10 @@
-import graph_tool as gt
-import graph_tool.topology as gt_top
 from collections import defaultdict
 
+import graph_tool as gt
+import graph_tool.topology as gt_top
+
 INFINITY = 2_147_483_647
+
 
 def compute_hierarchy_levels(G: gt.Graph) -> dict[int, int]:
     levels = defaultdict(int)

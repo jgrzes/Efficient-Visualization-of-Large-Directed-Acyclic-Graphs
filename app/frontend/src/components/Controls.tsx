@@ -180,7 +180,7 @@ const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPosit
       />
     </div>
   );
-  
+
 };
 
 export default Controls;

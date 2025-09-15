@@ -8,3 +8,4 @@ uvicorn
 flask
 flask_cors
 scikit-learn
+argparse
