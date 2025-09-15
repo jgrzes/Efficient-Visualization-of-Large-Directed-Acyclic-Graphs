@@ -48,7 +48,7 @@ def cluster_semantic_similarity(G: gt.Graph, godag: GODag, n_clusters: int) -> l
         for j in range(i, n):
             sim = semantic_similarity(go_terms[i], go_terms[j], godag, termcounts)
             sim_values[i][j] = sim
-            sim_values[j][i] = sim  # symetryczna
+            sim_values[j][i] = sim  # symmetric
 
     clustering = AgglomerativeClustering(
         n_clusters=n_clusters, metric="precomputed", linkage="average"
