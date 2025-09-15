@@ -11,7 +11,11 @@ def find_representative_vertex(termcounts: TermCounts, cluster_labels: list):
     for cluster in set(cluster_labels):
         cluster_terms = [i for i, label in enumerate(cluster_labels) if label == cluster]
         best_term = max(cluster_terms, key=lambda term: get_info_content(term, termcounts))
-        representatives[int(cluster)] = int(best_term)
+        representatives[int(cluster)] = {
+            "best_term": int(best_term),
+            "members": [int(term) for term in cluster_terms],
+            "cluster_size": len(cluster_terms)
+        }
 
     return representatives
 

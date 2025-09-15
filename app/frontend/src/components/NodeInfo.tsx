@@ -7,9 +7,15 @@ export interface NodeInfoProps {
   def: string;
   synonym?: string[];
   is_a?: string[];
+  clusterInfo?: {
+    clusterId: string;
+    size: number;
+    members: number[];
+  };
+  index?: number; // Optional index for potential use in NodeInfo
 }
 
-const NodeInfo: React.FC<NodeInfoProps> = ({ id, name, namespace, def, synonym, is_a }) => {
+const NodeInfo: React.FC<NodeInfoProps> = ({ id, name, namespace, def, synonym, is_a, clusterInfo }) => {
   return (
     <div
       id="info-panel"
@@ -24,6 +30,13 @@ const NodeInfo: React.FC<NodeInfoProps> = ({ id, name, namespace, def, synonym, 
       )}
       {is_a && is_a.length > 0 && (
         <p className="text-sm"><strong>is_a:</strong> {is_a.join(', ')}</p>
+      )}
+      {clusterInfo && (
+        <div style={{ marginTop: '1rem' }}>
+          <h4 className="text-xl font-semibold mb-2">Cluster Info</h4>
+          <p><strong>Cluster ID:</strong> {clusterInfo.clusterId}</p>
+          <p><strong>Size:</strong> {clusterInfo.size}</p>
+        </div>
       )}
     </div>
   );  

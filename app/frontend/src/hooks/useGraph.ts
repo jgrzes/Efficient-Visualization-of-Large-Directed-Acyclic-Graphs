@@ -15,9 +15,11 @@ export function useGraph(
   canvasRef: React.RefObject<HTMLDivElement | null>,
   pointPositions: Float32Array,
   links: number[],
-  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>
+  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>,
+  setClusterRepresentatives?: Dispatch<SetStateAction<Record<string, ClusterInfo> | null>>,
 ) {
   const graphInstance = useRef<Graph | null>(null);
+  const clusterDataRef = useRef<Record<string, ClusterInfo> | null>(null);
   
   useEffect(() => {
     console.log("Begin\n");
@@ -57,7 +59,29 @@ export function useGraph(
             return;
           }
 
+          const mappedIndices = (graphInstance.current as any).originalIndices;
+          const originalIndex = mappedIndices ? mappedIndices[index] : index;
+
+
           const data = await res.json();
+          let clusterInfo = null;
+
+          console.log("Clicked index:", index);
+          console.log("All clusters:", clusterDataRef.current);
+
+          if (clusterDataRef.current) {
+            for (const [clusterId, cluster] of Object.entries(clusterDataRef.current)) {
+              if (cluster.members.includes(originalIndex)) {
+                clusterInfo = {
+                  clusterId,
+                  size: cluster.cluster_size,
+                  members: cluster.members,
+                };
+                break;
+              }
+            }
+          }
+
           setSelectedNode({
             id: data.id,
             name: data.name,
@@ -65,6 +89,8 @@ export function useGraph(
             def: data.def,
             synonym: data.synonym,
             is_a: data.is_a,
+            clusterInfo: clusterInfo,
+            index: index,  // Pass the index for potential use in NodeInfo
           });
         } catch (err) {
           console.error("Fetch error:", err);
@@ -167,20 +193,24 @@ useEffect(() => {
       if (!response.ok) throw new Error("Failed to fetch clusters");
 
       const data = await response.json();
+      clusterDataRef.current = data.representatives;
+      setClusterRepresentatives?.(data.representatives);
       const clusterIds = data.labels; // dla wszystkich punktów
-      const clusterRepresentatives: number[] = Object.values(data.representatives).map(Number);
-
-      console.log("Cluster representatives:", clusterRepresentatives);
+      const clusterRepresentatives: number[] = Object.values(data.representatives).map(rep => rep.best_term);
 
       // Position for representatives
       const newPositions = new Float32Array(clusterRepresentatives.length * 2);
+
+      const originalIndices: number[] = [];
+
       for (let i = 0; i < clusterRepresentatives.length; i++) {
         const idx = clusterRepresentatives[i];
         newPositions[2 * i] = pointPositions[2 * idx];
         newPositions[2 * i + 1] = pointPositions[2 * idx + 1];
+        originalIndices[i] = idx; // mapuj newIndex → oldIndex
       }
 
-      // 2. Colors for representatives
+      // Colors for representatives
       const repClusterIds = clusterRepresentatives.map(idx => clusterIds[idx]);
 
       const uniqueClusters = [...new Set(repClusterIds)];
@@ -203,8 +233,13 @@ useEffect(() => {
         pointColors.set(color, i * 4);
       }
 
+      const pointSizes = new Float32Array(repClusterIds.length).fill(30); 
+
+      graphInstance.current?.setPointSizes(pointSizes);
+
       graphInstance.current?.setPointColors(pointColors);
       graphInstance.current?.setPointPositions(newPositions);
+      (graphInstance.current as any).originalIndices = originalIndices;
       graphInstance.current?.render();
 
     } catch (err) {
