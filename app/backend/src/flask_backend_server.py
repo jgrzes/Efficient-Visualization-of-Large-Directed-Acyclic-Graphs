@@ -1,7 +1,6 @@
+from dataclasses import dataclass
+
 import graph_tool as gt
-from clustering.semantic_similiarity.semantic_similarity import (
-    cluster_semantic_similarity,
-)
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from generate_graph_structure import make_graph_structure
@@ -16,7 +15,16 @@ PORT_NUMBER = 30_301
 app = Flask(__name__)
 CORS(app)
 
-GRAPH_CACHE = {}
+
+@dataclass
+class GraphState:
+    def __init__(self):
+        self.G_GT: gt.Graph | None = None
+        self.ROOT_ID: str | None = None
+        self.GODAG = None
+
+
+GRAPH_STATE = GraphState()
 
 
 def build_reponse_json_string_for_make_graph_structure_req(
@@ -40,7 +48,7 @@ def build_reponse_json_string_for_make_graph_structure_req(
 @app.route("/node/<int:node_id>")
 def get_node(node_id):
     """Returns information about a node in the graph."""
-    G_gt: gt.Graph = GRAPH_CACHE.get("G_GT", None)
+    G_gt: gt.Graph = GRAPH_STATE.get("G_GT", None)
     if G_gt is None or node_id >= G_gt.num_vertices():
         return jsonify({"error": "Node not found"}), 404
 
@@ -91,9 +99,11 @@ def flask_make_graph_structure():
             G_gt = build_graph_from_txt(file.read().decode("utf-8"))
             print("Constructed graph from txt file")
 
-        GRAPH_CACHE["G_GT"] = G_gt
-        GRAPH_CACHE["ROOT_ID"] = root_id
-        GRAPH_CACHE["GODAG"] = godag
+        GRAPH_STATE.graph = G_gt
+        GRAPH_STATE.godag = godag
+        GRAPH_STATE.root_id = root_id
+        GRAPH_STATE.roots = roots
+
         print(
             f"Loaded graph, it has: {len(G_gt.get_vertices())} vertices and {len(G_gt.get_edges())} edges"
         )
@@ -119,31 +129,12 @@ def flask_make_graph_structure():
 
 @app.route("/analyze_graph", methods=["POST"])
 def analyze_graph():
-    G_gt = GRAPH_CACHE.get("G_GT", None)
+    G_gt = GRAPH_STATE.graph
     if not G_gt:
         return jsonify({"error": "Graph not found"}), 404
 
     hierarchy_levels = compute_hierarchy_levels(G_gt)
     return jsonify({"hierarchy_levels": hierarchy_levels})
-
-
-@app.route("/cluster_graph", methods=["POST"])
-def cluster_graph_endpoint():
-    G_gt = GRAPH_CACHE.get("G_GT", None)
-    if not G_gt:
-        return jsonify({"error": "Graph not found"}), 404
-
-    n_clusters = request.json.get("n_clusters", 5)
-    godag = GRAPH_CACHE.get("GODAG", None)
-
-    labels, representatives = cluster_semantic_similarity(G_gt, godag, n_clusters)
-
-    return jsonify(
-        {
-            "labels": labels,
-            "representatives": representatives,
-        }
-    )
 
 
 if __name__ == "__main__":

@@ -1,3 +1,14 @@
+"""
+Script to compute and plot the distribution of path lengths in a Gene Ontology
+directed acyclic graph (DAG) built from an OBO file.
+
+The script processes all three GO namespaces.
+
+Example usage:
+    python path_count.py --obo-path path/to/your.obo --max-path-length 10
+"""
+
+
 import argparse
 from collections import Counter
 
@@ -74,4 +85,4 @@ if __name__ == "__main__":
         path_length_distribution = compute_path_length_distribution(
             graph, args.max_path_length, roots
         )
-        plot_counters(path_length_distribution)
+        plot_counters(path_length_distribution, args.max_path_length)

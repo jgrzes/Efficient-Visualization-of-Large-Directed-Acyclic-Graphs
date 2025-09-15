@@ -1,5 +1,6 @@
 import io
 import tempfile
+from typing import Dict, Tuple
 
 import graph_tool as gt
 import networkx as nx
@@ -9,10 +10,11 @@ from goatools.obo_parser import GODag
 
 def convert_to_graph_tool_graph(
     G_nx: nx.MultiDiGraph,
-) -> tuple[gt.Graph, dict]:
+) -> Tuple[gt.Graph, Dict[str, list[tuple[str, gt.Vertex]]]]:
+    """Convert a NetworkX MultiDiGraph (from obonet) into a graph-tool Graph."""
     G_gt = gt.Graph(directed=True)
-    vertice_mapping = {}
-    roots = {}  # cc: GO:0000001, mf: GO:0000002, bp: GO:0000003
+    vertex_mapping: dict[str, gt.Vertex] = {}
+    roots: dict[str, list[tuple[str, gt.Vertex]]] = {}
 
     id_prop = G_gt.new_vertex_property("string")
     name_prop = G_gt.new_vertex_property("string")
@@ -30,10 +32,11 @@ def convert_to_graph_tool_graph(
         def_prop[v] = data.get("def", "")
         synonym_prop[v] = data.get("synonym", [])
         isa_prop[v] = data.get("is_a", [])
-        vertice_mapping[node] = v
+        vertex_mapping[node] = v
 
     for source, dest in G_nx.edges():
-        G_gt.add_edge(vertice_mapping[dest], vertice_mapping[source])
+        # obonet edges are reversed
+        G_gt.add_edge(vertex_mapping[dest], vertex_mapping[source])
 
     G_gt.vertex_properties["id"] = id_prop
     G_gt.vertex_properties["name"] = name_prop
@@ -42,23 +45,25 @@ def convert_to_graph_tool_graph(
     G_gt.vertex_properties["synonym"] = synonym_prop
     G_gt.vertex_properties["is_a"] = isa_prop
 
-    for _, v in vertice_mapping.items():
+    for _, v in vertex_mapping.items():
         if v.in_degree() == 0:
-            namespace = namespace_prop[v].lower()
-            roots[namespace] = (id_prop[v], v)
+            ns = namespace_prop[v].lower()
+            roots.setdefault(ns, []).append((id_prop[v], v))
 
     return G_gt, roots
 
 
-def build_gt_graph_from_obo(obo_file_contents: str) -> gt.Graph:
+def build_gt_graph_from_obo(
+    obo_file_contents: str,
+) -> Tuple[gt.Graph, dict, GODag]:
+    """Build a graph-tool Graph from an OBO file's contents."""
     obo_file_wrapper = io.StringIO(obo_file_contents)
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".obo", mode="w") as tmp:
+    with tempfile.NamedTemporaryFile(suffix=".obo", mode="w") as tmp:
         tmp.write(obo_file_contents)
-        tmp_path = tmp.name
+        tmp.flush()
+        godag = GODag(tmp.name)  # useful for clustering and other analyses
 
-    godag = GODag(tmp_path)
     G_gt, roots = convert_to_graph_tool_graph(obonet.read_obo(obo_file_wrapper))
-
     return G_gt, roots, godag
 
 
@@ -80,6 +85,7 @@ def build_graph_from_txt(txt_file_contents: str) -> gt.Graph:
 
 
 def filter_graph_by_root(G_gt: gt.Graph, root_vertex: gt.Vertex) -> gt.Graph:
+    """Filter a graph to the subgraph reachable from the given root vertex."""
     reachable = gt.topology.label_out_component(G_gt, root_vertex)
     subgraph_view = gt.GraphView(G_gt, vfilt=reachable)
     return gt.Graph(subgraph_view, prune=True)

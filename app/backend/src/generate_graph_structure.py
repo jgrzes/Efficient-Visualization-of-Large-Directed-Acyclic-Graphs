@@ -105,8 +105,6 @@ def make_graph_structure(G: gt.Graph) -> list[tuple[Number, Number]]:
     ]
     number_of_children: list[int] = [0 for _ in range(0, len(min_distances))]
 
-    # print(min_distances)
-
     aux_eroding_number_of_children: list[int] = [
         0 for _ in range(0, len(min_distances))
     ]
@@ -185,14 +183,9 @@ def make_graph_structure(G: gt.Graph) -> list[tuple[Number, Number]]:
 
         r += RADIUS
 
-    # canvas_positions = np.array(canvas_positions).astype(np.float32)
-    # print(canvas_positions)
-    min_x = abs(min([x for (x, y) in canvas_positions]))
-    min_y = abs(min([y for (x, y) in canvas_positions]))
+    min_x = abs(min([x for (x, _) in canvas_positions]))
+    min_y = abs(min([y for (_, y) in canvas_positions]))
     for i in range(0, len(canvas_positions)):
         x, y = canvas_positions[i]
         canvas_positions[i] = (x + min_x, y + min_y)
-    # plt.scatter(x_pos, y_pos)
-    # plt.show()
-    # input()
     return canvas_positions
