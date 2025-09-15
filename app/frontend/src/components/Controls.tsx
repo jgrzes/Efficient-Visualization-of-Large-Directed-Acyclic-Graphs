@@ -12,10 +12,9 @@ interface ControlsProps {
   setLinks: Dispatch<SetStateAction<number[]>>;
   setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>;
   setAnalysisResult: Dispatch<SetStateAction<any | null>>;
-  clusterGraph: (nClusters?: number) => Promise<void>;
 }
 
-const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPositions, setLinks, setSelectedNode, setAnalysisResult, clusterGraph}) => {
+const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPositions, setLinks, setSelectedNode, setAnalysisResult}) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [showOntologyOptions, setShowOntologyOptions] = React.useState<boolean>(false);
@@ -110,19 +109,6 @@ const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPosit
     }
   };
 
-  const handleClusterClick = async () => {
-    console.log("Clustering graph...");
-    const confirm = window.confirm("This will cluster the graph and may take a while. Do you want to continue?");
-    if (!confirm) return;
-    const nClusters = parseInt(prompt("Enter number of clusters (default 5):", "5") || "5", 10);
-    if (isNaN(nClusters) || nClusters <= 0) {
-      alert("Invalid number of clusters. Using default value of 5.");
-      await clusterGraph(5);
-      return;
-    }
-    await clusterGraph(nClusters);
-  };
-
   return (
     <div
       id="controls"
@@ -181,12 +167,6 @@ const Controls: React.FC<ControlsProps> = ({pointPositions, links, setPointPosit
         id="analyze"
         label="Analyze"
         onClick={handleAnalyzeClick}
-        className="w-full px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
-      />
-      <ControlButton
-        id="cluster"
-        label="Cluster"
-        onClick={handleClusterClick}
         className="w-full px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
       />
 

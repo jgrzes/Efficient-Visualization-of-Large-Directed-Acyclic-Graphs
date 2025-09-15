@@ -16,10 +16,8 @@ export function useGraph(
   pointPositions: Float32Array,
   links: number[],
   setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>,
-  setClusterRepresentatives?: Dispatch<SetStateAction<Record<string, ClusterInfo> | null>>,
 ) {
   const graphInstance = useRef<Graph | null>(null);
-  const clusterDataRef = useRef<Record<string, ClusterInfo> | null>(null);
   
   useEffect(() => {
     console.log("Begin\n");
@@ -59,28 +57,8 @@ export function useGraph(
             return;
           }
 
-          const mappedIndices = (graphInstance.current as any).originalIndices;
-          const originalIndex = mappedIndices ? mappedIndices[index] : index;
-
 
           const data = await res.json();
-          let clusterInfo = null;
-
-          console.log("Clicked index:", index);
-          console.log("All clusters:", clusterDataRef.current);
-
-          if (clusterDataRef.current) {
-            for (const [clusterId, cluster] of Object.entries(clusterDataRef.current)) {
-              if (cluster.members.includes(originalIndex)) {
-                clusterInfo = {
-                  clusterId,
-                  size: cluster.cluster_size,
-                  members: cluster.members,
-                };
-                break;
-              }
-            }
-          }
 
           setSelectedNode({
             id: data.id,
@@ -89,8 +67,6 @@ export function useGraph(
             def: data.def,
             synonym: data.synonym,
             is_a: data.is_a,
-            clusterInfo: clusterInfo,
-            index: index,  // Pass the index for potential use in NodeInfo
           });
         } catch (err) {
           console.error("Fetch error:", err);
@@ -182,71 +158,4 @@ useEffect(() => {
     document.getElementById("reset")?.addEventListener("click", restartView);
 
   }, [pointPositions, links]);
-
-  const clusterGraph = async (nClusters = 5) => {
-    try {
-      const response = await fetch("http://localhost:30301/cluster_graph", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ n_clusters: nClusters })
-      });
-      if (!response.ok) throw new Error("Failed to fetch clusters");
-
-      const data = await response.json();
-      clusterDataRef.current = data.representatives;
-      setClusterRepresentatives?.(data.representatives);
-      const clusterIds = data.labels; // dla wszystkich punktów
-      const clusterRepresentatives: number[] = Object.values(data.representatives).map(rep => rep.best_term);
-
-      // Position for representatives
-      const newPositions = new Float32Array(clusterRepresentatives.length * 2);
-
-      const originalIndices: number[] = [];
-
-      for (let i = 0; i < clusterRepresentatives.length; i++) {
-        const idx = clusterRepresentatives[i];
-        newPositions[2 * i] = pointPositions[2 * idx];
-        newPositions[2 * i + 1] = pointPositions[2 * idx + 1];
-        originalIndices[i] = idx; // mapuj newIndex → oldIndex
-      }
-
-      // Colors for representatives
-      const repClusterIds = clusterRepresentatives.map(idx => clusterIds[idx]);
-
-      const uniqueClusters = [...new Set(repClusterIds)];
-      const clusterColors = new Map<number, [number, number, number, number]>();
-
-      uniqueClusters.forEach(cid => {
-        const color: [number, number, number, number] = [
-          Math.random(),  // R
-          Math.random(),  // G
-          Math.random(),  // B
-          1.0             // A
-        ];
-        clusterColors.set(cid, color);
-      });
-
-      const pointColors = new Float32Array(repClusterIds.length * 4);
-      for (let i = 0; i < repClusterIds.length; i++) {
-        const clusterId = repClusterIds[i];
-        const color = clusterColors.get(clusterId)!;
-        pointColors.set(color, i * 4);
-      }
-
-      const pointSizes = new Float32Array(repClusterIds.length).fill(30); 
-
-      graphInstance.current?.setPointSizes(pointSizes);
-
-      graphInstance.current?.setPointColors(pointColors);
-      graphInstance.current?.setPointPositions(newPositions);
-      (graphInstance.current as any).originalIndices = originalIndices;
-      graphInstance.current?.render();
-
-    } catch (err) {
-      console.error("Error fetching clusters:", err);
-      alert("Failed to fetch clusters. Please try again later.");
-    }
-  };
-
-  return { graphInstance, clusterGraph };
 }

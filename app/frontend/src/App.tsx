@@ -14,17 +14,9 @@ const App: React.FC = () => {
   const [links, setLinks] = useState<number[]>([...initialLinks]);
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
-  const [clusterRepresentatives, setClusterRepresentatives] = useState<Record<string, ClusterInfo> | null>(null);
 
-  const { clusterGraph } = useGraph(
-    graphRef,
-    canvasRef,
-    pointPositions,
-    links,
-    setSelectedNode,
-    setClusterRepresentatives
-  );
-
+  useGraph(graphRef, canvasRef, pointPositions!, links!, setSelectedNode);
+  
   const stats = useMemo(() => {
     const nodeCount = pointPositions ? pointPositions.length / 2 : 0;
     const edgeCount = links ? links.length / 2 : 0;
@@ -44,7 +36,6 @@ const App: React.FC = () => {
           setLinks={setLinks}
           setSelectedNode={setSelectedNode} 
           setAnalysisResult={setAnalysisResult}
-          clusterGraph={clusterGraph}
         />
       </div>
       
@@ -61,13 +52,9 @@ const App: React.FC = () => {
             def={selectedNode.def}
             synonym={selectedNode.synonym}
             is_a={selectedNode.is_a}
-            clusterInfo={selectedNode.clusterInfo}
-            index={selectedNode.index}  // Pass the index for potential use in NodeInfo
           />
         </div>
       )}
-
-
   
       {analysisResult && (
         <AnalysisPanel
