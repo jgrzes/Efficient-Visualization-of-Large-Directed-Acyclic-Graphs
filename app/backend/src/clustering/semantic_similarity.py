@@ -24,6 +24,23 @@ def find_representative_vertex(termcounts: TermCounts, cluster_labels: list):
     return representatives
 
 
+def compute_semantic_similarity_matrix(G: gt.Graph, godag: GODag) -> np.ndarray:
+    id_prop = G.vertex_properties["id"]
+    go_terms = [id_prop[v] for v in G.vertices()]
+    termcounts = TermCounts(godag, {})
+
+    n = len(go_terms)
+    sim_values = np.zeros((n, n))
+
+    for i in range(n):
+        for j in range(i, n):
+            sim = semantic_similarity(go_terms[i], go_terms[j], godag, termcounts)
+            sim_values[i][j] = sim
+            sim_values[j][i] = sim  # symmetric
+
+    return sim_values
+
+
 def cluster_semantic_similarity(G: gt.Graph, godag: GODag, n_clusters: int) -> list:
     """
     Clusters the graph based on semantic similarity using GO terms.
@@ -35,20 +52,8 @@ def cluster_semantic_similarity(G: gt.Graph, godag: GODag, n_clusters: int) -> l
         list: A list of cluster labels for each vertex in the graph.
     """
 
-    id_prop = G.vertex_properties["id"]
-
-    go_terms = [id_prop[v] for v in G.vertices()]
-
+    sim_values = compute_semantic_similarity_matrix(G, godag)
     termcounts = TermCounts(godag, {})
-
-    n = len(go_terms)
-    sim_values = np.zeros((n, n))
-
-    for i in range(n):
-        for j in range(i, n):
-            sim = semantic_similarity(go_terms[i], go_terms[j], godag, termcounts)
-            sim_values[i][j] = sim
-            sim_values[j][i] = sim  # symmetric
 
     clustering = AgglomerativeClustering(
         n_clusters=n_clusters, metric="precomputed", linkage="average"
