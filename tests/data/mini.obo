@@ -1,0 +1,25 @@
+format-version: 1.2
+ontology: go
+
+[Term]
+id: GO:0000001
+name: root biological process
+namespace: biological_process
+
+[Term]
+id: GO:0000002
+name: child process A
+namespace: biological_process
+is_a: GO:0000001 ! root biological process
+
+[Term]
+id: GO:0000003
+name: child process B
+namespace: biological_process
+is_a: GO:0000001 ! root biological process
+
+[Term]
+id: GO:0000004
+name: grandchild process A1
+namespace: biological_process
+is_a: GO:0000002 ! child process A
