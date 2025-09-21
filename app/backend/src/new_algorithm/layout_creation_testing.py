@@ -4,8 +4,8 @@ from preprocess_graph import preprocess_graph, assign_levels
 import matplotlib.pyplot as plt
 
 COLORS = [
-	"red", "orange", "green", "lime", "cyan", "blue", 
-	"purple", "goldenrod", "fuchsia"
+   "red", "orange", "green", "lime", "cyan", "blue", 
+   "purple", "goldenrod", "fuchsia"
 ]
 
 G = Graph(
@@ -186,34 +186,48 @@ G = Graph(
 )
 
 if __name__ == "__main__":
-	assign_levels(G)
-	L_sets = create_initial_L_sets(G)
-	for c in range(len(L_sets)):
-		c_list = L_sets[c]
-		for u_c in c_list:
-			G.V[u_c].L_set_index = c
-	P_G = create_layout(G)
-	P_G_colors = [[] for _ in range(len(L_sets))]
-	for u in range(len(P_G)):
-		u_pos = P_G[u]
-		c_u = G.V[u].L_set_index
-		if c_u >= 0:
-			P_G_colors[c_u].append(u_pos)
+   assign_levels(G)
+   L_sets = create_initial_L_sets(G)
+   for i in range(len(L_sets)):
+      print(i, L_sets[i])
+      
+   for c in range(len(L_sets)):
+      c_list = L_sets[c]
+      for u_c in c_list:
+         G.V[u_c].L_set_index = c
+   P_G = create_layout(G)
+   
+   for i in range(len(P_G)):
+      if P_G[i] is not None:
+         x_u, y_u = P_G[i]
+         P_G[i] = (x_u, -y_u)
 
-	# print(P_G)
-	for c in range (len(P_G_colors)):
-		print(P_G_colors[c])
-		x_coords, y_coords = zip(*P_G_colors[c])
-		x_coords, y_coords = list(x_coords), list(y_coords)
-		plt.scatter(x_coords, y_coords, color=COLORS[c%len(COLORS)])
+   P_G_colors = [[] for _ in range(len(L_sets))]
+   for u in range(len(P_G)):
+      u_pos = P_G[u]
+      c_u = G.V[u].L_set_index
+      if c_u >= 0:
+         P_G_colors[c_u].append(u_pos)
 
-	for u in range(len(G.V)):
-		c_u = G.V[u].L_set_index
-		x_u, y_u = P_G[u]
-		for v in G.N(u):
-				x_v, y_v = P_G[v]
-				if G.V[v].L_set_index == c_u:
-					plt.plot([x_u, x_v], [y_u, y_v], color=COLORS[c_u%len(COLORS)])
-				else:				
-					plt.plot([x_u, x_v], [y_u, y_v], color="black")
+   # print(P_G)
+   for c in range (len(P_G_colors)):
+      # print(P_G_colors[c])
+      x_coords = [P_G_colors[c][i][0] for i in range (len(P_G_colors[c]))]
+      y_coords = [P_G_colors[c][i][1] for i in range (len(P_G_colors[c]))]
+      # x_coords, y_coords = list(x_coords), list(y_coords)
+      plt.scatter(x_coords, y_coords, color=COLORS[c%len(COLORS)])
+
+   for u in range(len(G.V)):
+      c_u = G.V[u].L_set_index
+      if P_G[u] is None:
+         continue
+      x_u, y_u = P_G[u]
+      for v in G.N(u):
+            x_v, y_v = P_G[v]
+            if G.V[v].L_set_index == c_u:
+               plt.plot([x_u, x_v], [y_u, y_v], color=COLORS[c_u%len(COLORS)])
+            # else:				
+            #    plt.plot([x_u, x_v], [y_u, y_v], color="black")
+               
+   plt.show()            
 
