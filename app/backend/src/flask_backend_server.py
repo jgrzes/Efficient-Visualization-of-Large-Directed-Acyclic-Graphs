@@ -135,6 +135,71 @@ def analyze_graph():
     hierarchy_levels = compute_hierarchy_levels(G_gt)
     return jsonify({"hierarchy_levels": hierarchy_levels})
 
+@app.route("/search_node", methods=["POST"])
+def search_node():
+    """Search nodes by field (id, name, namespace, def, synonym, is_a, or all) and query string."""
+    G_gt: gt.Graph = GRAPH_STATE.G_GT
+    if G_gt is None:
+        return jsonify({"error": "Graph not loaded"}), 500
+
+    data = request.get_json()
+    field = data.get("field")
+    query = data.get("query")
+    print(field)
+    if not field or not query:
+        return jsonify({"error": "Missing parameters: field and query are required"}), 400
+
+    prop_map = {
+        "id": G_gt.vertex_properties["id"],
+        "name": G_gt.vertex_properties["name"],
+        "namespace": G_gt.vertex_properties["namespace"],
+        "def": G_gt.vertex_properties["def"],
+        "synonym": G_gt.vertex_properties["synonym"],
+        "is_a": G_gt.vertex_properties["is_a"],
+    }
+
+    results = []
+    for v in G_gt.vertices():
+        match = False
+
+        if field == "all":
+            for prop_name, prop in prop_map.items():
+                value = prop[v]
+                if isinstance(value, (list, tuple)):
+                    if any(query.lower() in str(item).lower() for item in value):
+                        match = True
+                        break
+                else:
+                    if query.lower() in str(value).lower():
+                        match = True
+                        break
+        else:
+            if field not in prop_map:
+                return jsonify({"error": f"Invalid field: {field}"}), 400
+
+            value = prop_map[field][v]
+            if isinstance(value, (list, tuple)):
+                match = any(query.lower() in str(item).lower() for item in value)
+            else:
+                match = query.lower() in str(value).lower()
+
+        if match:
+            results.append(
+                {
+                    "node_index": int(v),
+                    "id": G_gt.vertex_properties["id"][v],
+                    "name": G_gt.vertex_properties["name"][v],
+                    "namespace": G_gt.vertex_properties["namespace"][v],
+                    "def": G_gt.vertex_properties["def"][v].replace('"', ""),
+                    "synonym": list(G_gt.vertex_properties["synonym"][v]) if G_gt.vertex_properties["synonym"][v] else [],
+                    "is_a": list(G_gt.vertex_properties["is_a"][v]) if G_gt.vertex_properties["is_a"][v] else [],
+                }
+            )
+
+    if not results:
+        return jsonify({"message": "No matching nodes found"}), 404
+
+    return jsonify(results)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT_NUMBER)

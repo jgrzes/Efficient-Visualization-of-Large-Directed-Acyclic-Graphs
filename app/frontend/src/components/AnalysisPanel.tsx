@@ -18,18 +18,18 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result, onClose }) => {
     >
       <h2 className="text-xl font-bold mb-4">Hierarchy Levels</h2>
 
-      <table className="table-auto w-full border-collapse border border-gray-700">
+      <table className="table-auto w-full border-collapse border border-gray-100">
         <thead>
           <tr className="bg-gray-700">
-            <th className="border border-gray-600 px-4 py-2">Level</th>
-            <th className="border border-gray-600 px-4 py-2">Node Count</th>
+            <th className="border border-gray-100 px-4 py-2">Level</th>
+            <th className="border border-gray-100 px-4 py-2">Node Count</th>
           </tr>
         </thead>
         <tbody>
           {Object.entries(hierarchy).map(([level, count]) => (
             <tr key={level} className="hover:bg-gray-600">
-              <td className="border border-gray-600 px-4 py-2">{level}</td>
-              <td className="border border-gray-600 px-4 py-2">{count}</td>
+              <td className="border border-gray-100 px-4 py-2">{level}</td>
+              <td className="border border-gray-100 px-4 py-2">{count}</td>
             </tr>
           ))}
         </tbody>

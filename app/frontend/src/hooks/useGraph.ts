@@ -19,6 +19,15 @@ export function useGraph(
 ) {
   const graphInstance = useRef<Graph | null>(null);
 
+  const fitView = () => {
+      graphInstance.current?.fitView();
+      // graphInstance.current?.fitViewByPointIndices();
+    };
+
+  const resetView = () => {
+    graphInstance.current?.restart();
+  };
+
   useEffect(() => {
     console.log("Begin\n");
     if (!graphRef.current) return;
@@ -39,6 +48,8 @@ export function useGraph(
       linkGreyoutOpacity: 0,
       curvedLinks: false,
 
+      // scalePointsOnZoom: false,
+      // pointSizeScale: 10,
       renderHoveredPointRing: false,     // bez pierścieni
       enableDrag: true,
 
@@ -57,7 +68,6 @@ export function useGraph(
             return;
           }
 
-
           const data = await res.json();
 
           setSelectedNode({
@@ -68,6 +78,10 @@ export function useGraph(
             synonym: data.synonym,
             is_a: data.is_a,
           });
+          
+          const colors = new Float32Array([255, 0, 0, 1, 0, 255, 0, 1]); // 2 punkty: czerwony i niebieski
+          graphInstance.current?.setPointColors(colors);
+
         } catch (err) {
           console.error("Fetch error:", err);
         }
@@ -75,7 +89,6 @@ export function useGraph(
         setSelectedNode(null); // klik poza nodem -> ukryj info
       }
     },
-
 
     onPointMouseOver: async (index, event) => {
         const tooltip = document.getElementById("tooltip");
@@ -121,7 +134,7 @@ export function useGraph(
     graphInstance.current = new Graph(graphRef.current, config);
 
     console.log("After building config\n");
-
+    
     return () => {
       if (graphInstance.current) {
         graphInstance.current.destroy?.();
@@ -133,6 +146,7 @@ export function useGraph(
 
 useEffect(() => {
   if (!graphInstance.current) return;
+
   if (!pointPositions || !links) return;
 
     console.log(pointPositions);
@@ -141,21 +155,10 @@ useEffect(() => {
     graphInstance.current.setLinks(new Float32Array(links));
     graphInstance.current.render();
 
-    function fitView() {
-      graphInstance.current?.fitView();
-    }
-
-    function restartView() {
-      graphInstance.current?.restart();
-    }
-
-    graphInstance.current.fitView();
-
-    console.log("fit-view button:", document.getElementById("fit-view"));
-    console.log("reset button:", document.getElementById("reset"));
-
-    document.getElementById("fit-view")?.addEventListener("click", fitView);
-    document.getElementById("reset")?.addEventListener("click", restartView);
-
   }, [pointPositions, links]);
+
+  return {
+    fitView,
+    resetView,
+  };
 }
