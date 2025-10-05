@@ -7,3 +7,6 @@ plotly
 uvicorn
 flask
 flask_cors
+protobuf
+grpcio
+grpcio-tools
