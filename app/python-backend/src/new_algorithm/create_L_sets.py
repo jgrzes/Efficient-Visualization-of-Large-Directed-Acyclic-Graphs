@@ -251,7 +251,8 @@ def greedily_divide_into_L_sets(
             # V_mu_candidates = set()
             V_mu = set()
             for v in mu:
-                for w in G.N(w):
+                # for w in G.N(w):
+                for w in G.N(v):
                     if w not in V_Nu: 
                         continue
                     V_mu.add(w)
