@@ -22,49 +22,46 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         expanded ? "w-80" : "w-16"
       }`}
     >
-      {expanded && (
-        <div className="flex items-center gap-2 p-3 border-b border-gray-100 w-full">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="p-2 rounded-md hover:bg-gray-800 cursor-pointer"
-          >
-            <Search size={20} />
-          </button>
-
-          <div className="flex-grow">
-            <SearchBar onSearch={onSearch} />
+      {expanded ? (
+        <>
+          <div className="flex items-center gap-2 p-3 border-b border-gray-100 w-full">
+            <button
+              onClick={() => setExpanded(false)}
+              className="p-2 rounded-md hover:bg-gray-800 cursor-pointer"
+            >
+              <Search size={20} />
+            </button>
+            <div className="flex-grow">
+              <SearchBar onSearch={onSearch} />
+            </div>
           </div>
-        </div>
-      )}
 
-      {expanded && (
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {results.length > 0 && (
-            <p className="text-gray-400 text-sm mb-2">
-                Found {results.length} result{results.length > 1 ? 's' : ''}
-            </p>
+              <p className="text-gray-400 text-sm mb-2">
+                Found {results.length} result{results.length > 1 ? "s" : ""}
+              </p>
             )}
 
             {results.length === 0 ? (
-            <p className="text-gray-500 text-center mt-4">No results</p>
+              <p className="text-gray-500 text-center mt-4">No results</p>
             ) : (
-            <ul className="space-y-2">
+              <ul className="space-y-2">
                 {results.map((node, idx) => (
-                <li
+                  <li
                     key={idx}
                     onClick={() => onSelectNode(node)}
                     className="hover:bg-gray-800 rounded-lg p-3 shadow-sm cursor-pointer border border-gray-100 transition-all duration-200"
-                >
+                  >
                     <p className="font-semibold text-gray-100 truncate">{node.name}</p>
                     <p className="text-sm text-gray-400 truncate">{node.id}</p>
-                </li>
+                  </li>
                 ))}
-            </ul>
+              </ul>
             )}
-        </div>
-      )}
-
-      {!expanded && (
+          </div>
+        </>
+      ) : (
         <button
           className="m-2 p-2 rounded-md hover:bg-gray-700 self-center cursor-pointer"
           onClick={() => setExpanded(true)}

@@ -69,6 +69,21 @@ def get_node(node_id):
         }
     )
 
+@app.route("/node_index/<string:node_id>")
+def get_node_index(node_id):
+    """Returns the index of a node in the graph based on its ID."""
+    G_gt: gt.Graph = GRAPH_STATE.G_GT
+    if G_gt is None:
+        return jsonify({"error": "Graph not loaded"}), 500
+
+    id_prop = G_gt.vertex_properties["id"]
+
+    for v in G_gt.vertices():
+        print(id_prop[v])
+        if id_prop[v] == node_id:
+            return jsonify({"index": int(v)})
+
+    return jsonify({"error": "Node with given ID not found"}), 404
 
 @app.route("/flask_make_graph_structure", methods=["POST"])
 def flask_make_graph_structure():
