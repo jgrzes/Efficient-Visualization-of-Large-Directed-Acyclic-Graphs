@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <deque>
 #include <tuple>
+#include <iostream>
 
 namespace graph_preprocessing {
 
@@ -30,7 +31,7 @@ void assignLevelsInGraph(GraphInterface& graph) {
         uint32_t u;
         int uLevel;
         if (!q.empty()) _extractFront(q, u, uLevel);
-        else _extractFront(q, u, uLevel);
+        else _extractFront(qPrim, u, uLevel);
 
         if (shouldInspect[u]) {
             shouldInspect[u] = false;
@@ -45,6 +46,8 @@ void assignLevelsInGraph(GraphInterface& graph) {
             
         }
     }
+
+    #undef _extractFront
 }
 
 }

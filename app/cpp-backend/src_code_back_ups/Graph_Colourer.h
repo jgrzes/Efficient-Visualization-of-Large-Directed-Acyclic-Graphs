@@ -14,7 +14,7 @@
 #define _findDisputableEdgesPerLevel(_graph) (graph_preprocessing::findDisputableEdgesPerLevel(_graph))
 #define _findVerticesPerLevel(_graph) (graph_preprocessing::findVerticesPerLevels(_graph))
 #define _differentColours(_cv, _cu) (_cv != 0 && _cv != _cu)
-#define _underlyingValueNotNullptr(_optionalPtr) (_optionalPtr.has_value() && _optionalPtr.value() != nullptr)
+#define _underlyingValueNotNullptr(_optionalPtr) ((_optionalPtr.has_value() && _optionalPtr.value() != nullptr) || !_optionalPtr.has_value())
 
 namespace algorithms {
 
@@ -37,8 +37,6 @@ class GraphColourer {
 
 public:
 
-    using ColourAcquireFunctionT = std::function<uint32_t(uint32_t)>;
-
     // Hyperparams which influence the behaviour of the algorithm
     struct AlgorithmParams {
 
@@ -46,12 +44,6 @@ public:
         using StartingLevelFunctionT = std::function<bool(uint32_t, uint64_t, uint32_t)>;
         // level, common vertices count -> bool
         using ShouldMergeFunctionT = std::function<bool(uint32_t, uint32_t)>;
-
-        AlgorithmParams(
-            StartingLevelFunctionT&& startingLevelFunction, 
-            ShouldMergeFunctionT&& shouldMergeFunction
-        ) : startingLevelFunction{std::forward<StartingLevelFunctionT>(startingLevelFunction)}, 
-            shouldMergeFunction{std::forward<ShouldMergeFunctionT>(shouldMergeFunction)} {}
 
         // Level, cum. disputable edges, cum. vertices per level -> bool
         StartingLevelFunctionT startingLevelFunction;
@@ -72,13 +64,7 @@ public:
         void addChild(uint32_t childColour) {children.emplace_back(childColour, this);}
     };
 
-    GraphColourer(const AlgorithmParams& algorithmParams) : 
-        m_algorithmParams{algorithmParams}, 
-        m_disputableEdgesPerLevel{nullptr},
-        m_verticesPerLevel{nullptr}, 
-        m_maxCurrentColourIndex{0} {}
-
-    void resetForNewRun(); 
+    GraphColourer(const AlgorithmParams& algorithmParams) : m_algorithmParams{algorithmParams} {}
     
     std::pair<ColouredGraph, ColourHierarchyNode> assignColoursToGraph(
         const GraphInterface& graph, bool recursiveColouring = true, bool forceRecomputation = false
@@ -101,7 +87,6 @@ private:
         ColouringStageMailbox() : receivedOfferPackets{}, lastPing{-1} {}
 
         void resetForPing(uint32_t ping) {
-            // std::cout << "Resetting ping\n";
             if (lastPing == ping) return;
             receivedOfferPackets.clear();
             receivedOfferPackets.shrink_to_fit(); // TODO: decide if this line should remain
@@ -110,56 +95,37 @@ private:
     };
 
     // Returns `{false, _}` if no valid starting level was found, otherwise returns `{true, starting_level}`.
-    static std::pair<bool, uint32_t> determineTheStartingLevel(
-        const AlgorithmParams& algorithmParams, 
-        ArrayOfArraysInterface<uint32_t>& verticesPerLevel, 
-        ArrayOfArraysInterface<Edge>& disputableEdgesPerLevel
-    );
+    std::pair<bool, uint32_t> determineTheStartingLevel() const;
     
     // Disables all vertices on levels `1`, `2`, ..., `l-1`.
-    static PartiallyDisabledGraph createPartiallyDisabledGraphCutOffAtL(
-        GraphInterface& graph, const ArrayOfArraysInterface<uint32_t>& verticesPerLevel, int32_t l
-    );
+    PartiallyDisabledGraph createPartiallyDisabledGraphCutOffAtL(uint32_t l);
 
-    // Returs min colour and max colour respectively introduced in the call
-    static std::pair<uint32_t, uint32_t> applyInitialGreedyColouring(
-        GraphInterface& graph, 
-        const AlgorithmParams& algorithmParams, 
-        ArrayOfArraysInterface<uint32_t>& verticesPerLevel, 
-        // ArrayOfArraysInterface<Edge>& disputableEdgesPerLevel,
+    // Returns newly introduced colour list
+    std::vector<uint32_t> applyInitialGreedyColouring(
         uint32_t startingLevel, 
-        std::vector<uint32_t>& vertexColours,
-        ColourAcquireFunctionT&& colourAcquirerFunction
+        std::vector<uint32_t>& vertexColours
+        // uint32_t colourOffset = 0
     );
 
-    static void instantlyRerouteOfferPacketsToPreds(
-        GraphInterface& graph, 
-        uint32_t vIndex, uint32_t offeringVertexIndex, size_t k, 
-        std::vector<ColouringStageMailbox>& vertexMailboxes, 
-        const std::vector<uint32_t>& vertexColours, 
-        std::vector<uint32_t>& Vkr
-    );
-
-    static void buildColourHierarchyRecursivelyRootedAtColour(
-        GraphInterface& graph,
-        const AlgorithmParams& algorithmParams, 
-        ArrayOfArraysInterface<uint32_t>& verticesPerLevel, 
-        ArrayOfArraysInterface<Edge>& disputableEdgesPerLevel,
+    void buildColourHierarchyRecursivelyRootedAtColour(
         ColourHierarchyNode& colourHierarchyRoot, 
-        std::vector<uint32_t>& vertexColours,
-        ColourAcquireFunctionT&& colourAcquireFunction
+        std::vector<uint32_t>& vertexColours 
+        // uint32_t colourOffset
     );
 
     template <typename T>
-    static std::enable_if_t<utils::is_iterable_and_stores_int_type_v<T>, uint64_t> 
-    calculateSimpleScoreForColouring(
-        GraphInterface& graph, T* vertexSubsetPtr, const std::vector<uint32_t> vertexColours
-    ) {
-        
+    std::enable_if_t<utils::is_iterable_and_stores_int_type_v<T>, uint64_t> 
+    calculateSimpleScoreForColouring(T* vertexSubsetPtr, const std::vector<uint32_t> vertexColours) const {
         uint64_t interColourEdgesCount = 0;
+        // using value_type = typename T::value_type;
+        auto& graph = *m_graph;
         bool deleteVertexSubset = false;
         if (vertexSubsetPtr == nullptr) {
             return 0;
+            // size_t n = vertexColours.size();
+            // vertexSubsetPtr = new T();
+            // vertexSubsetPtr->reserve(n);
+            // for (auto i=0; i<n; ++i) vertexSubsetPtr->emplace(vertexSubsetPtr->end(), i);
         }
         auto& vertexSubset = *vertexSubsetPtr;
         for (const auto uIndex : vertexSubset) {
@@ -180,14 +146,12 @@ private:
     }
 
     template <typename T>
-    static std::enable_if_t<utils::is_iterable_and_stores_int_type_v<T>, void>
-    applyBestColouring(
-        GraphInterface& graph, uint32_t c, const T& vertexSubset, std::vector<uint32_t>& vertexColours
-    ) {
-    
+    std::enable_if_t<utils::is_iterable_and_stores_int_type_v<T>, void>
+    applyBestColouring(uint32_t c, const T& vertexSubset, std::vector<uint32_t>& vertexColours) const {
         uint32_t ownColour;
         uint32_t ownColourCount;
         uint32_t cCount;
+        auto& graph = *m_graph;
         for (const auto uIndex : vertexSubset) {
             ownColour = vertexColours[uIndex];
             if (ownColour == c) continue;
@@ -203,10 +167,16 @@ private:
         }
     }
 
+    void instantlyRerouteOfferPacketsToPreds(
+        uint32_t vIndex, uint32_t offeringVertexIndex, size_t k, 
+        std::vector<ColouringStageMailbox>& vertexMailboxes, 
+        const std::vector<uint32_t>& vertexColours, 
+        std::vector<uint32_t>& Vkr
+    );
+
     inline void computeDisputableEdgesPerLevel(bool forceRecomputation) {
         // if (!forceRecomputation && m_disputableEdgesPerLevel.value_or(nullptr) != nullptr) return;
         if (!forceRecomputation && _underlyingValueNotNullptr(m_disputableEdgesPerLevel)) return;
-        std::cout << "A\n";
         m_disputableEdgesPerLevel.value().reset(
             new ArrayOfArrays<Edge>(std::move(_findDisputableEdgesPerLevel(*m_graph)))
         );
@@ -223,7 +193,6 @@ private:
     inline void computeVerticesPerLevel(bool forceRecomputation) {
         // if (!forceRecomputation && m_verticesPerLevel.value_or(nullptr) != nullptr) return;
         if (!forceRecomputation && _underlyingValueNotNullptr(m_verticesPerLevel)) return;
-        std::cout << "B\n";
         m_verticesPerLevel.value().reset(
             new ArrayOfArrays<uint32_t>(std::move(_findVerticesPerLevel(*m_graph)))
         );
@@ -245,7 +214,6 @@ private:
     // std::optional<std::vector<size_t>> m_cumDisputableEdgesPerLevelCounts;
     std::optional<std::unique_ptr<ArrayOfArraysInterface<uint32_t>>> m_verticesPerLevel; 
     // std::optional<std::vector<size_t>> m_cumVerticesPerLevelCounts;
-    uint32_t m_maxCurrentColourIndex;
 
 };
 

@@ -30,9 +30,9 @@ public:
     
     ArrayOfArrays(const ArrayOfArrays<T>& otherArrayOfArrays) : ArrayOfArraysInterface<T>{} {
 
-        m_arraysOfTsSizes = new std::vector<size_t>(otherArrayOfArrays.m_arraysOfTsSizes);
-        m_memoryOffsets = new std::vector<size_t>(otherArrayOfArrays.m_memoryOffsets);
-        m_maxSizesStorage = new MaxSizesStorage(otherArrayOfArrays.m_maxSizesStorage);    
+        m_arraysOfTsSizes = new std::vector<size_t>(*otherArrayOfArrays.m_arraysOfTsSizes);
+        m_memoryOffsets = new std::vector<size_t>(*otherArrayOfArrays.m_memoryOffsets);
+        m_maxSizesStorage = new MaxSizesStorage(*otherArrayOfArrays.m_maxSizesStorage);    
 
         size_t requiredSize = 0;
         auto& arraysOfTsSizesRef = *m_arraysOfTsSizes;
@@ -113,7 +113,7 @@ public:
 
         auto& arraysOfTsSizesRef = *m_arraysOfTsSizes;
         auto& maxSizesStorageRef = *m_maxSizesStorage;
-        if (arraysOfTsSizesRef.size() != maxSizesStorageRef.size()) {
+        if (arraysOfTsSizesRef.size() != maxSizes.size()) {
             throw std::runtime_error{
                 "Arrays Of Arrays error: size mismatch between arrays passed to constructor"
             };
@@ -173,6 +173,8 @@ public:
 private:
 
     void resetAndFreeMemory() {
+        // std::cout << "Reset and free memory call on " << this << "\n";
+        // std::cout << m_linearizedMemory << " " << m_arraysOfTsSizes << " " << m_memoryOffsets << " " << m_maxSizesStorage << "\n";
         free(m_linearizedMemory);
         delete m_arraysOfTsSizes;
         delete m_memoryOffsets;
@@ -194,9 +196,10 @@ private:
         m_memoryOffsets = new std::vector<size_t>(n, 0);
         auto& memoryOffsetsRef = *m_memoryOffsets;
         for (size_t arrIndex=1; arrIndex<n; ++arrIndex) {
-            memoryOffsetsRef[arrIndex] = memoryOffsetsRef[arrIndex-1] + (addSizesAllowed
-                ? m_maxSizesStorage->checkMaxSizeForArray[arrIndex]
-                : arraysOfTsSizesRef[arrIndex]
+            const size_t previousArrIndex = arrIndex-1;
+            memoryOffsetsRef[arrIndex] = memoryOffsetsRef[previousArrIndex] + (addSizesAllowed
+                ? m_maxSizesStorage->checkMaxSizeForArray(previousArrIndex)
+                : arraysOfTsSizesRef[previousArrIndex]
             );
         }
     }

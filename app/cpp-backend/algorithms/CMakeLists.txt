@@ -1,0 +1,12 @@
+target_sources(
+    EGVB PRIVATE 
+    Graph_Colourer.cpp Graph_Colourer.h
+)
+
+target_include_directories(
+    EGVB PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/../data-structures
+    ${CMAKE_CURRENT_SOURCE_DIR}/../graph-preprocessing
+)

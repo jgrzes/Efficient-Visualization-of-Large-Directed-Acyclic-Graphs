@@ -15,6 +15,10 @@ public:
 
     class ColouredGraphNeighbourhoodView : public BaseNeighbourhoodView {
 
+    public:
+
+        friend ColouredGraph;
+
     protected:
 
         bool shouldIgnoreAndJumpForward(const NeighbourhoodIterator& it) const;
@@ -54,6 +58,18 @@ public:
     Neighbourhood NR(uint32_t vIndex) override;
     const Neighbourhood NR(const Vertex& v) const override;
     Neighbourhood NR(const Vertex& v) override {return std::move(NR(v.index));}
+
+    bool shouldSkipVertex(uint32_t vIndex) const override {
+        if (PartiallyDisabledGraph::shouldSkipVertex(vIndex)) return true;
+        return (m_singleColourHighlight.anyColourHighlighted
+                && m_singleColourHighlight.highlightedColour != m_vertexColours[vIndex]);
+    }
+
+    bool shouldSkipVertex(const Vertex& v) const override {
+        if (PartiallyDisabledGraph::shouldSkipVertex(v)) return true;
+        return (m_singleColourHighlight.anyColourHighlighted
+                && m_singleColourHighlight.highlightedColour != m_vertexColours[v.index]);
+    }
     
     inline uint32_t getVertexColour(uint32_t vIndex) const {return m_vertexColours[vIndex];}
     inline uint32_t getVertexColour(uint32_t vIndex) {return m_vertexColours[vIndex];} 

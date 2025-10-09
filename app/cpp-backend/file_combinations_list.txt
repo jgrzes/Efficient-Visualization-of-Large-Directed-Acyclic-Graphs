@@ -3,4 +3,4 @@ Graph_Interface : data-structures/Graph_Interface.cpp
 Graph : data-structures/Graph.cpp data-structures/Graph_Interface.cpp 
 Partially_Disabled_Graph : data-structures/Partially_Disabled_Graph.cpp data-structures/Graph.cpp data-structures/Graph_Interface.cpp
 assign_levels : graph-preprocessing/assign_levels.cpp data-structures/Graph.cpp data-structures/Graph_Interface.cpp 
-edge_processing_functions : graph-preprocessing/edge_processing_functions.cpp data-structures/Partially_Disabled_Graph.cpp data-structures/Graph.cpp data-structures/Graph_Interface.cpp data-structures/Array_of_Arrays_View.cpp data-structures/Array_of_Arrays_Interface.cpp
+edge_and_vertex_processing_functions : graph-preprocessing/edge_and_vertex_processing_functions.cpp data-structures/Partially_Disabled_Graph.cpp data-structures/Graph.cpp data-structures/Graph_Interface.cpp data-structures/Array_of_Arrays_View.cpp data-structures/Array_of_Arrays_Interface.cpp
