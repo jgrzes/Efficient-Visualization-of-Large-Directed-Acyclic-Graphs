@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <numeric>
 #include <cstring>
+#include <iostream>
 
 namespace data_structures {
  
@@ -48,13 +49,22 @@ public:
     
         friend ArrayOfArraysInterface;
         NestedArrayView() = delete;
+        // NestedArrayView(const NestedArrayView& otherNestedArrayView) :
+        //     m_owner{otherNestedArrayView.m_owner}, 
+        //     m_nestedArrIndex{otherNestedArrayView.m_nestedArrIndex}, 
+        //     m_arrInMemory{otherNestedArrayView.m_arrInMemory}, 
+        //     m_size{otherNestedArrayView.m_size}, 
+        //     m_maxSize{otherNestedArrayView.m_maxSize} {}
+
+        // NestedArrayView& operator=(const NestedArrayView& otherNestedArrayView) {
+        // }
 
         const T& operator[](size_t i) const {
             return const_cast<NestedArrayView*>(this)->operator[](i);
         }
 
         T& operator[](size_t i) {
-            if (i >= m_size) {
+            if (i >= *m_sizePtr) {
                 throw std::runtime_error{
                     "Nested Array View error: index larger than size"
                 };
@@ -63,35 +73,38 @@ public:
         }
 
         void push_back(const T& t) {
-            if (m_size == m_maxSize) {
+            size_t size = *m_sizePtr;
+            if (size == m_maxSize) {
                 throw std::runtime_error{
                     "Nested Array View error: attempting to push back at max capacity"
                 };
             }
-            m_arrInMemory[m_size] = t;
-            m_owner->resize(m_nestedArrIndex, m_size+1);
+            m_arrInMemory[size] = t;
+            m_owner->resize(m_nestedArrIndex, size+1);
         }
 
         void push_back(T&& t) {
-            if (m_size == m_maxSize) {
+            size_t size = *m_sizePtr;
+            if (size == m_maxSize) {
                 throw std::runtime_error{
                     "Nested Array View error: attempting to push back at max capacity"
                 };
             }
-            m_arrInMemory[m_size] = std::move(t);
-            m_owner->resize(m_nestedArrIndex, m_size+1);
+            m_arrInMemory[size] = std::move(t);
+            m_owner->resize(m_nestedArrIndex, size+1);
         }
 
         template <typename... Args>
         T& emplace_back(Args&&... args) {
-            if (m_size == m_maxSize) {
+            size_t size = *m_sizePtr;
+            if (size == m_maxSize) {
                 throw std::runtime_error{
                     "Nested Array View error: attempting to push back at max capacity"
                 };
             } 
-            m_arrInMemory[m_size] = T(std::forward<Args>(args)...);
-            m_owner->resize(m_nestedArrIndex, m_size+1);
-            return m_arrInMemory[m_size];
+            m_arrInMemory[size] = T(std::forward<Args>(args)...);
+            m_owner->resize(m_nestedArrIndex, size+1);
+            return m_arrInMemory[size];
         }
 
         T& operator=(const std::vector<T>& vec) {
@@ -106,11 +119,11 @@ public:
 
         // Do note that `m_size` elements will be copied.
         T& operator=(T* arr) {
-            templatedMemcpy<T>(m_arrInMemory, arr, m_size);
+            templatedMemcpy<T>(m_arrInMemory, arr, *m_sizePtr);
             return *this;
         }
 
-        inline size_t size() const {return m_size;}
+        inline size_t size() const {return *m_sizePtr;}
         inline size_t max_size() const {return m_maxSize;}
         inline void resize(size_t newSize) {
             if (newSize >= max_size()) { // for now, as the class currently does not support dynamic resizing
@@ -124,38 +137,41 @@ public:
 
         // If this method throws an error it should be treated as fatal.
         void erase(size_t index) {
-            if (index >= m_size) {
+            size_t size = *m_sizePtr;
+            if (index >= size) {
                 throw std::runtime_error{
                     "Nested Array View error: attempting to erase at index " +
-                    std::to_string(index) + ", while the size is " + std::to_string(m_size)
+                    std::to_string(index) + ", while the size is " + std::to_string(size)
                 };
             }
             // if (index == --m_size) return; // if the index is at last element just decrease the size
-            if (index != m_size-1) {
-                templatedMemcpy<T>(m_arrInMemory + index, m_arrInMemory + index + 1, m_size - 1 - index);
+            if (index != size-1) {
+                templatedMemcpy<T>(m_arrInMemory + index, m_arrInMemory + index + 1, size - 1 - index);
             }
-            m_owner->resize(m_nestedArrIndex, m_size-1);
+            m_owner->resize(m_nestedArrIndex, size-1);
         }
 
         // A good method of efficient erasing if the order of elements is unimportant.
         // Swaps elements at `index` and `m_size-1` and then erases the last element.
         void eraseBySwappingWithLast(size_t index) {
-            if (index >= m_size) {
+            size_t size = *m_sizePtr;
+            if (index >= size) {
                 throw std::runtime_error{
                     "Nested Array View error: attempting to erase at index " +
-                    std::to_string(index) + ", while the size is " + std::to_string(m_size)
+                    std::to_string(index) + ", while the size is " + std::to_string(size)
                 };
             }
             // if (index == --m_size) return;
-            std::swap(m_arrInMemory[index], m_arraysOfTsSizes[m_size-1]);
-            m_owner->resize(m_nestedArrIndex, m_size-1);
+            // auto& arrInMemoryValue = *m_arrInMemory;
+            std::swap(m_arrInMemory[index], m_arrInMemory[size-1]);
+            m_owner->resize(m_nestedArrIndex, size-1);
         }
 
     private:    
 
         // This constructor should only ever be called by the ArrayOfArraysInterface class methods.
         NestedArrayView(ArrayOfArraysInterface* owner, size_t nestedArrIndex, T* arrInMemory, size_t& size, size_t maxSize) :
-            m_owner{owner}, m_nestedArrIndex{nestedArrIndex}, m_arrInMemory{arrInMemory}, m_size{size} {
+            m_owner{owner}, m_nestedArrIndex{nestedArrIndex}, m_arrInMemory{arrInMemory}, m_sizePtr{&size}, m_maxSize{maxSize} {
 
             if (m_arrInMemory == nullptr) {
                 throw std::runtime_error{
@@ -165,13 +181,17 @@ public:
                 throw std::runtime_error{
                     "Nested Array View error: passed owner is nullptr"
                 };
+            } else if (m_sizePtr == nullptr) {
+                throw std::runtime_error{
+                    "Nested Array View error: passed size ptr is nullptr"
+                };
             }
         }
     
         ArrayOfArraysInterface* m_owner;
         size_t m_nestedArrIndex;
         T* m_arrInMemory;
-        size_t& m_size;
+        size_t* m_sizePtr;
         size_t m_maxSize;
     };
 
@@ -207,7 +227,7 @@ public:
             };
         }
         auto& maxSizesStorageRef = *m_maxSizesStorage;
-        if (maxSizesStorageRef.allowsAddSizes()) return arraysOfTsSizesRef[arrIndex];
+        if (!maxSizesStorageRef.allowsAddSizes()) return arraysOfTsSizesRef[arrIndex];
         return maxSizesStorageRef.checkMaxSizeForArray(arrIndex);
     }
 
@@ -219,6 +239,7 @@ public:
                 std::to_string(arrIndex) + " is too large"
             };
         }
+        // std::cout << "Arr index: " << arrIndex << " " << &arraysOfTsSizesRef[arrIndex] << "\n";
         return NestedArrayView(this, arrIndex, m_linearizedMemory + (*m_memoryOffsets)[arrIndex], arraysOfTsSizesRef[arrIndex], getMaxSizeOfArr(arrIndex));
     }
 
@@ -226,7 +247,7 @@ public:
         assertMaxSizeNotExceeded(arrIndex, arrNewSize);
         if (!m_maxSizesStorage->allowsAddSizes()) {
             delete m_maxSizesStorage;
-            m_maxSizesStorage = new MaxSizesStorage(m_arraysOfTsSizes);
+            m_maxSizesStorage = new MaxSizesStorage(*m_arraysOfTsSizes);
         }
         (*m_arraysOfTsSizes)[arrIndex] = arrNewSize;
     }
@@ -302,7 +323,7 @@ protected:
 
     // Initialzied with an object of type `nullptr_t` stores information that no addditional space has been allocated.
     struct MaxSizesStorage : public std::variant<nullptr_t, size_t, std::vector<size_t>> {
-        using BaseClass = std::variant<void, size_t, std::vector<size_t>>;
+        using BaseClass = std::variant<nullptr_t, size_t, std::vector<size_t>>;
 
         MaxSizesStorage() = delete;
         MaxSizesStorage(nullptr_t) : BaseClass{nullptr} {}
@@ -316,9 +337,9 @@ protected:
         // Always check if the object stores `nullptr_t` with `allowsAddSizes` method beforehand.
         inline size_t checkMaxSizeForArray(size_t arrIndex) const {
             void* vp = nullptr;
-            if ((vp = (void*) std::get_if<size_t>(*this)) != nullptr) {
+            if ((vp = (void*) std::get_if<size_t>(this)) != nullptr) {
                 return *((size_t*) vp);
-            } else if ((vp = (void*) std::get_if<std::vector<size_t>>(*this)) != nullptr) {
+            } else if ((vp = (void*) std::get_if<std::vector<size_t>>(this)) != nullptr) {
                 return ((std::vector<size_t>*) vp)->operator[](arrIndex);
             }
             throw std::runtime_error{

@@ -1,6 +1,7 @@
 #include "Graph_Interface.h"
 
 #include "Graph.h"
+#include "Coloured_Graph.h"
 
 namespace data_structures {
 
@@ -95,12 +96,17 @@ const GraphInterface::Neighbourhood GraphInterface::NR(const Vertex& v) const {
 std::ostream& operator<<(std::ostream& os, const GraphInterface& graph) {
     os << "{\n";
     for (size_t u=0; u<graph.getVertexCount(); ++u) {
-        os << " {" << u << " {";
+        if (shouldSkipVertex(graph, u)) {
+            std::cout << " {" << u << " disabled}\n";
+            continue;
+        }
+        auto uLevel = graph.getVertex(u).level;
+        os << " {" << u << ": level(u) = " << uLevel << ", N(u) = {";
         const auto Nu = graph.N(u);
         for (auto it=Nu.begin(); it!=Nu.end(); ) {
             os << *it << ((++it == Nu.end()) ? "" : ", "); 
         }
-        os << "}\n";
+        os << "}}\n";
     }
     os << "}";
     return os;

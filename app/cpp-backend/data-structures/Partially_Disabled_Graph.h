@@ -72,6 +72,9 @@ public:
     const std::vector<uint32_t>& getRootList() const override {recomputeRootsIfNeeded(); return m_graphView->getRootList();}
     const std::vector<uint32_t>& getLeavesList() const override {return m_graphView->getLeavesList();}
 
+    bool shouldSkipVertex(uint32_t vIndex) const override {return m_disabledFlags[vIndex];}
+    bool shouldSkipVertex(const Vertex& v) const override {return m_disabledFlags[v.index];}
+
     void setLevelForVertex(uint32_t vIndex, int level) override {return m_graphView->setLevelForVertex(vIndex, level);}
 
     GraphStoringPolicy getGraphStroingPolicy() const {return m_storingPolicy;}
@@ -95,6 +98,16 @@ public:
     void disableVertices(const std::vector<uint32_t>& verticesToDisable);
     void enableVertices(const std::vector<uint32_t>& verticesToEnable);
     void changeStateOfVertices(const std::vector<std::pair<uint32_t, bool>>& newVerticesStates);
+
+    void disableAllVertices() {
+        size_t n = m_disabledFlags.size();
+        for (size_t i=0; i<n; ++i) m_disabledFlags[i] = true;
+    }
+
+    void enableAllVertices() {
+        size_t n = m_disabledFlags.size();
+        for (size_t i=0; i<n; ++i) m_disabledFlags[i] = false;
+    }
 
     virtual ~PartiallyDisabledGraph();
 
@@ -120,19 +133,6 @@ protected:
     std::vector<bool> m_disabledFlags;
 
 };
-
-// The function that checks if a vertice should be skipped due (e.g. due to being disabled).
-inline bool shouldSkipVertex(const GraphInterface& graph, uint32_t vIndex) {
-    if (auto castedGraph = dynamic_cast<const PartiallyDisabledGraph*>(&graph);
-        castedGraph != nullptr) {
-
-        return castedGraph->isVertexDisabled(vIndex);
-    } else return false;
-}    
-
-inline bool shouldSkipVertex(const GraphInterface* graph, const GraphInterface::Vertex& v) {
-    return shouldSkipVertex(graph, v.index);
-}
 
 }
 

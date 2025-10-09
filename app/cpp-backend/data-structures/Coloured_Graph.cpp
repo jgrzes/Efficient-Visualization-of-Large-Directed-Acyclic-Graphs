@@ -7,6 +7,7 @@ namespace data_structures {
 bool ColouredGraph::ColouredGraphNeighbourhoodView::shouldIgnoreAndJumpForward(
     const NeighbourhoodIterator& it
 ) const {
+    if (reachedEnd(it)) return false;
     const ColouredGraph* castedOwner = static_cast<const ColouredGraph*>(m_owner);
     const auto [anyColourHighlighted, highlightedColour] = castedOwner->m_singleColourHighlight;
     return (castedOwner->m_disabledFlags[*it] 
@@ -39,6 +40,48 @@ ColouredGraph::ColouredGraph(GraphInterface& graph, GraphImplCopyingMode graphIm
         return;
     }
     m_vertexColours = std::vector<uint32_t>(getVertexCount(), 0);
+}
+
+
+const ColouredGraph::Neighbourhood ColouredGraph::N(uint32_t vIndex) const {
+    return ColouredGraph::Neighbourhood(
+        new ColouredGraphNeighbourhoodView(this, NAsVertexAdjSet(vIndex))
+    );
+}
+
+
+ColouredGraph::Neighbourhood ColouredGraph::N(uint32_t vIndex) {
+    return ColouredGraph::Neighbourhood(
+        new ColouredGraphNeighbourhoodView(this, NAsVertexAdjSet(vIndex))
+    );
+}
+
+
+const ColouredGraph::Neighbourhood ColouredGraph::N(const Vertex& v) const {
+    return ColouredGraph::Neighbourhood(
+        new ColouredGraphNeighbourhoodView(this, NRAsVertexAdjSet(v.index))
+    );
+}
+
+
+const ColouredGraph::Neighbourhood ColouredGraph::NR(uint32_t vIndex) const {
+    return ColouredGraph::Neighbourhood(
+        new ColouredGraphNeighbourhoodView(this, NAsVertexAdjSet(vIndex))
+    );
+}
+
+
+ColouredGraph::Neighbourhood ColouredGraph::NR(uint32_t vIndex) {
+    return ColouredGraph::Neighbourhood(
+        new ColouredGraphNeighbourhoodView(this, NRAsVertexAdjSet(vIndex))
+    );
+}
+
+
+const ColouredGraph::Neighbourhood ColouredGraph::NR(const Vertex& v) const {
+    return ColouredGraph::Neighbourhood(
+        new ColouredGraphNeighbourhoodView(this, NRAsVertexAdjSet(v.index))
+    );
 }
 
 }

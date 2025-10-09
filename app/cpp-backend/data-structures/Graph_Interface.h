@@ -27,7 +27,7 @@ public:
 
     struct Vertex {
 
-        constexpr Vertex(uint32_t vIndex) : index{index}, level{-1} {}
+        constexpr Vertex(uint32_t vIndex) : index{vIndex}, level{-1} {}
 
         uint32_t index;
         int64_t level;
@@ -85,6 +85,7 @@ public:
         BaseNeighbourhoodView(const GraphInterface* owner, VertexAdjSet& N) : m_owner{owner}, m_N{N} {}
         BaseNeighbourhoodView(const GraphInterface* owner, const VertexAdjSet& N) : BaseNeighbourhoodView(owner, const_cast<VertexAdjSet&>(N)) {}
 
+        bool reachedEnd(const NeighbourhoodIterator& it) const {return it.m_it == m_N.end();}
         virtual bool shouldIgnoreAndJumpForward(const NeighbourhoodIterator& it) const {return false;}
 
         const GraphInterface* const m_owner;
@@ -137,6 +138,9 @@ public:
 
     virtual void setLevelForVertex(uint32_t vIndex, int level) = 0;
 
+    virtual bool shouldSkipVertex(uint32_t vIndex) const {return false;}
+    virtual bool shouldSkipVertex(const Vertex& v) const {return false;}
+
     friend std::ostream& operator<<(std::ostream& os, const GraphInterface& graph);
 
     virtual ~GraphInterface() = default;
@@ -152,6 +156,15 @@ protected:
 };
 
 std::ostream& operator<<(std::ostream& os, const GraphInterface& graph);
+
+// The function that checks if a vertice should be skipped due (e.g. due to being disabled).
+inline bool shouldSkipVertex(const GraphInterface& graph, uint32_t vIndex) {
+    return graph.shouldSkipVertex(vIndex);
+} 
+
+inline bool shouldSkipVertex(const GraphInterface& graph, const GraphInterface::Vertex& v) {
+    return graph.shouldSkipVertex(v);
+}
 
 }
 

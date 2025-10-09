@@ -27,7 +27,7 @@ bool PartiallyDisabledGraph::PartiallyDisabledNeighbourhoodView::shouldIgnoreAnd
     //         "Partially Disabled Neighbourhood View error: owner is not of type PartiallyDisabledGraph"
     //     };
     // }
-
+    if (reachedEnd(it)) return false;
     return static_cast<const PartiallyDisabledGraph*>(m_owner)->m_disabledFlags[*it];
 }
 
@@ -58,6 +58,7 @@ PartiallyDisabledGraph::PartiallyDisabledGraph(
 ) : PartiallyDisabledGraph{graphPtr, storingPolicy} {
     for (const auto v : verticesToDisable) {
         m_disabledFlags[v] = true;
+        // std::cout << "v: " << v << "\n"; 
     }
 }
 
@@ -105,7 +106,9 @@ const Graph& PartiallyDisabledGraph::getUnderlyingGraphImpl() const {
 
 
 Graph& PartiallyDisabledGraph::getUnderlyingGraphImpl() {
-    return const_cast<PartiallyDisabledGraph*>(this)->getUnderlyingGraphImpl();
+    return const_cast<Graph&>(
+        const_cast<const PartiallyDisabledGraph*>(this)->getUnderlyingGraphImpl()
+    );
 }
 
 
