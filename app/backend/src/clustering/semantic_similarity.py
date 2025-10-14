@@ -1,24 +1,56 @@
 import graph_tool.all as gt
 import numpy as np
 from goatools.obo_parser import GODag
-from goatools.semantic import TermCounts, get_info_content, semantic_similarity
+from goatools.semantic import TermCounts, semantic_similarity
 from sklearn.cluster import AgglomerativeClustering
 
 
-def find_representative_vertex(termcounts: TermCounts, cluster_labels: list):
+def find_representative_vertex(
+    G: gt.Graph,
+    labels: list,
+    termcounts: TermCounts,
+    sim_matrix: np.ndarray,
+    k_top: int = 1,
+):
+    id_prop = G.vertex_properties["id"]
     representatives = {}
 
-    for cluster in set(cluster_labels):
-        cluster_terms = [
-            i for i, label in enumerate(cluster_labels) if label == cluster
-        ]
-        best_term = max(
-            cluster_terms, key=lambda term: get_info_content(term, termcounts)
-        )
-        representatives[int(cluster)] = {
-            "best_term": int(best_term),
-            "members": [int(term) for term in cluster_terms],
-            "cluster_size": len(cluster_terms),
+    labels = np.asarray(labels)
+    n = G.num_vertices()
+    vert_index = np.arange(n)
+
+    for c in np.unique(labels):
+        members = vert_index[labels == c]
+        if len(members) == 0:
+            continue
+        if len(members) == 1:
+            v = int(members[0])
+            term = id_prop[G.vertex(v)]
+            representatives[int(c)] = {
+                "centroid_terms": [int(term)],
+                "centroid_vertices": [v],
+                "centroid_scores": [1.0],
+                "members": [int(m) for m in members],
+                "cluster_size": len(members),
+            }
+            continue
+
+        S = sim_matrix[np.ix_(members, members)]
+
+        scores = S.mean(axis=1)
+
+        order = np.argsort(scores)[::-1]
+        top_idx_local = order[:k_top]
+        top_vertices = [int(members[i]) for i in top_idx_local]
+        top_terms = [id_prop[G.vertex(v)] for v in top_vertices]
+        top_scores = [float(scores[i]) for i in top_idx_local]
+
+        representatives[int(c)] = {
+            "centroid_terms": [int(t) for t in top_terms],
+            "centroid_vertices": top_vertices,
+            "centroid_scores": top_scores,
+            "members": [int(m) for m in members],
+            "cluster_size": len(members),
         }
 
     return representatives
