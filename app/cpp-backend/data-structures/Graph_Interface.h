@@ -107,6 +107,8 @@ public:
         NeighbourhoodIterator end() const {return get()->end();}
         NeighbourhoodIterator end() {return get()->end();}
         size_t size() const {return get()->size();}
+        bool contains(uint32_t vIndex) const {return get()->m_N.find(vIndex) != get()->m_N.end();}
+        bool contains(const Vertex& v) const {return get()->m_N.find(v.index) != get()->m_N.end();}
 
     };
 
@@ -137,6 +139,10 @@ public:
     virtual const std::vector<uint32_t>& getLeavesList() const = 0;
 
     virtual void setLevelForVertex(uint32_t vIndex, int level) = 0;
+
+    virtual void addNewEdge(uint32_t uIndex, uint32_t vIndex) = 0;
+    virtual void addNewEdge(const Vertex& u, const Vertex& v) = 0;
+    virtual void addNewVertex() = 0;
 
     virtual bool shouldSkipVertex(uint32_t vIndex) const {return false;}
     virtual bool shouldSkipVertex(const Vertex& v) const {return false;}

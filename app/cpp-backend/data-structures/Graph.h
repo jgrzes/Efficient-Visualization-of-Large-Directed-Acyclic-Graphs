@@ -12,6 +12,14 @@ using ArgAdjList = std::vector<std::unordered_set<uint32_t>>;
 
 class PartiallyDisabledGraph;
 
+// TODO: Change the implementation to adhere to what is written below.
+// For now everything is just added to the `m_V`, `m_E` and `m_ER`. 
+//
+// Graph stores vertices in two different modes - vertices created in constructor
+// are kept in `m_V` (and their neighbourhoods in `m_E` and `m_ER`).
+// Vertices added to the graph after it has been constructed are stored in `m_VAdd`
+// (and their neighbourhoods are kept in `m_EAdd` and `m_ERAdd`).
+// Such a solution is employed mainly to avoid memory moving for vertices in created at construction time.
 class Graph : public GraphInterface {
 
 public:
@@ -40,6 +48,10 @@ public:
 
     void setLevelForVertex(uint32_t vIndex, int level) override {m_V[vIndex].level = level;}
 
+    void addNewEdge(uint32_t uIndex, uint32_t vIndex) override {m_E[uIndex].emplace(vIndex); m_ER[vIndex].emplace(uIndex);}
+    void addNewEdge(const Vertex& u, const Vertex& v) override {addNewEdge(u.index, v.index);}
+    void addNewVertex() override;
+
 protected:
 
     void createRootsList();
@@ -57,6 +69,11 @@ protected:
     bool m_isDirected;
     mutable std::vector<uint32_t> m_rootList;
     mutable std::vector<uint32_t> m_leavesList;
+
+    // Fields for additional vertices 
+    std::vector<Vertex> m_VAdd;
+    AdjList m_EAdd;
+    AdjList m_ERAdd;
 
 }; 
 

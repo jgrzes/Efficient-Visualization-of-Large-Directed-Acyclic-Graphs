@@ -77,6 +77,10 @@ public:
 
     void setLevelForVertex(uint32_t vIndex, int level) override {return m_graphView->setLevelForVertex(vIndex, level);}
 
+    void addNewEdge(uint32_t uIndex, uint32_t vIndex) override {m_graphView->addNewEdge(uIndex, vIndex);}
+    void addNewEdge(const Vertex& u, const Vertex& v) override {m_graphView->addNewEdge(u, v);};
+    void addNewVertex() override {m_graphView->addNewVertex();}
+
     GraphStoringPolicy getGraphStroingPolicy() const {return m_storingPolicy;}
     void forgetUnderlyingGraphImpl() {
         m_storingPolicy = GraphStoringPolicy::RAW_POINTER_NON_OWNING;

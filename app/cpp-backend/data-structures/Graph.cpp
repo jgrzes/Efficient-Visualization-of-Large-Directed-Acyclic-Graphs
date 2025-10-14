@@ -68,6 +68,13 @@ Graph::Graph(uint32_t numberOfVertex, const ArgAdjList& adjList, bool isDirected
 }
 
 
+void Graph::addNewVertex() {
+    m_V.emplace_back(m_V.size());
+    m_E.emplace_back();
+    m_ER.emplace_back();
+}
+
+
 void Graph::createRootsList() {
     m_rootList.clear();
     size_t rootCount = 0;

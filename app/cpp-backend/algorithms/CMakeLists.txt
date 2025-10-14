@@ -1,6 +1,7 @@
 target_sources(
     EGVB PRIVATE 
     Graph_Colourer.cpp Graph_Colourer.h
+    Layout_Drawer.cpp Layout_Drawer.h
 )
 
 target_include_directories(

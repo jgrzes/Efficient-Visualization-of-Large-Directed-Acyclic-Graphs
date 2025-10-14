@@ -33,6 +33,7 @@ using Edge = std::pair<uint32_t, uint32_t>;
 
 // TODO: Add skipping non-seperable subgraphs when recursively assigning colours.
 // TODO: Add concurrency.
+// TODO: Find smarter and more efficient way of reenabling vertices.
 class GraphColourer {
 
 public:
@@ -64,10 +65,13 @@ public:
         uint32_t colour;
         const ColourHierarchyNode* const parent;
         std::vector<ColourHierarchyNode> children;
+        std::vector<uint32_t> verticesOfColour;
+        uint32_t depth;
 
         ColourHierarchyNode() : ColourHierarchyNode{0} {}
-        ColourHierarchyNode(uint32_t colour) : colour{colour}, parent{nullptr} {}
-        ColourHierarchyNode(uint32_t colour, const ColourHierarchyNode* parent) : colour{colour}, parent{parent} {}
+        explicit ColourHierarchyNode(uint32_t colour) : colour{colour}, parent{nullptr}, depth{0} {}
+        ColourHierarchyNode(uint32_t colour, const ColourHierarchyNode* parent) : 
+            colour{colour}, parent{parent}, depth{(parent != nullptr) ? parent->depth+1 : 0} {}
 
         void addChild(uint32_t childColour) {children.emplace_back(childColour, this);}
     };
@@ -80,8 +84,12 @@ public:
 
     void resetForNewRun(); 
     
+    // Needed: `maxReucursion` >= 1.
     std::pair<ColouredGraph, ColourHierarchyNode> assignColoursToGraph(
-        const GraphInterface& graph, bool recursiveColouring = true, bool forceRecomputation = false
+        const GraphInterface& graph, 
+        bool recursiveColouring = true, 
+        uint32_t maxRecursion = 1,
+        bool forceRecomputation = false
     );
 
     void presetDisputableEdgesPerLevel(const ArrayOfArraysInterface<Edge>& disputableEdgesPerLevel);
@@ -122,7 +130,7 @@ private:
     );
 
     // Returs min colour and max colour respectively introduced in the call
-    static std::pair<uint32_t, uint32_t> applyInitialGreedyColouring(
+    static std::pair<uint32_t, uint32_t> applyGreedyColouring(
         GraphInterface& graph, 
         const AlgorithmParams& algorithmParams, 
         ArrayOfArraysInterface<uint32_t>& verticesPerLevel, 
@@ -132,14 +140,6 @@ private:
         ColourAcquireFunctionT&& colourAcquirerFunction
     );
 
-    static void instantlyRerouteOfferPacketsToPreds(
-        GraphInterface& graph, 
-        uint32_t vIndex, uint32_t offeringVertexIndex, size_t k, 
-        std::vector<ColouringStageMailbox>& vertexMailboxes, 
-        const std::vector<uint32_t>& vertexColours, 
-        std::vector<uint32_t>& Vkr
-    );
-
     static void buildColourHierarchyRecursivelyRootedAtColour(
         GraphInterface& graph,
         const AlgorithmParams& algorithmParams, 
@@ -147,7 +147,16 @@ private:
         ArrayOfArraysInterface<Edge>& disputableEdgesPerLevel,
         ColourHierarchyNode& colourHierarchyRoot, 
         std::vector<uint32_t>& vertexColours,
+        uint32_t leftRecursionLevels, 
         ColourAcquireFunctionT&& colourAcquireFunction
+    );
+
+    static void instantlyRerouteOfferPacketsToPreds(
+        GraphInterface& graph, 
+        uint32_t vIndex, uint32_t offeringVertexIndex, size_t k, 
+        std::vector<ColouringStageMailbox>& vertexMailboxes, 
+        const std::vector<uint32_t>& vertexColours, 
+        std::vector<uint32_t>& Vkr
     );
 
     template <typename T>
@@ -191,9 +200,9 @@ private:
         for (const auto uIndex : vertexSubset) {
             ownColour = vertexColours[uIndex];
             if (ownColour == c) continue;
-            ownColour = 0;
+            ownColourCount = 0;
             cCount = 0;
-            for (const auto vIndex : graph.N(uIndex)) {
+            for (const auto vIndex : graph.NR(uIndex)) {
                 const uint32_t vColour = vertexColours[vIndex];
                 if (vColour == ownColour) ++ownColourCount;
                 else if (vColour == c) ++cCount;
@@ -202,6 +211,11 @@ private:
             if (cCount >= ownColourCount) vertexColours[uIndex] = c;
         }
     }
+
+    static void fillColourHierarchyNodesVector(
+        ColourHierarchyNode& colourNode, 
+        std::vector<std::reference_wrapper<ColourHierarchyNode>>& colourHierarchyNodes
+    );
 
     inline void computeDisputableEdgesPerLevel(bool forceRecomputation) {
         // if (!forceRecomputation && m_disputableEdgesPerLevel.value_or(nullptr) != nullptr) return;

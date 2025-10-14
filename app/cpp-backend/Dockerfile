@@ -17,6 +17,14 @@ RUN apt install protobuf-compiler-grpc -y \
 
 WORKDIR /app
 
+RUN ls /app/net | grep net-compiled || mkdir /app/net/net-compiled
+
+RUN protoc -I=. --cpp_out=/app/net/net-compiled/ /app/proto/cpp_to_py_backend.proto 
+
+RUN chmod +x "$(which grpc_cpp_plugin)"
+
+RUN protoc -I=. --grpc_out=/app/net/net-compiled/ --plugin=protoc-gen-grpc="$(which grpc_cpp_plugin)" /app/proto/cpp_to_py_backend.proto 
+
 COPY . . 
 
 EXPOSE 30311

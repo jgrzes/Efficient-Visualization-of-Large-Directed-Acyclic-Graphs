@@ -104,7 +104,7 @@ public:
             } 
             m_arrInMemory[size] = T(std::forward<Args>(args)...);
             m_owner->resize(m_nestedArrIndex, size+1);
-            return m_arrInMemory[size];
+            return m_arrInMemory[size-1];
         }
 
         T& operator=(const std::vector<T>& vec) {

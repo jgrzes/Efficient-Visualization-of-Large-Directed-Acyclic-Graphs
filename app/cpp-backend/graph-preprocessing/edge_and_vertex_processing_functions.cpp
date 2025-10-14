@@ -255,4 +255,70 @@ ArrayOfArrays<uint32_t> findEnabledVerticesFromErodingContainer(
     return enabledVerticesPerLevel;
 }
 
+
+std::vector<size_t> findVerticesPerLevelsCounts(
+    const std::vector<uint32_t>& verticesPerLevelVector, 
+    const GraphInterface& graph
+) {
+
+    size_t n = verticesPerLevelVector.size();
+    uint32_t numberOfLevels = 0;
+    for (uint32_t i=0; i<n; ++i) {
+        uint32_t vIndex = verticesPerLevelVector[i];
+        if (data_structures::shouldSkipVertex(graph, vIndex)) continue;
+        numberOfLevels = std::max(
+            numberOfLevels, 
+            static_cast<uint32_t>(graph.getVertex(vIndex).level+1)
+        );
+    }
+
+    std::vector<size_t> verticesPerLevelCounts(numberOfLevels, 0);
+    for (uint32_t vIndex : verticesPerLevelVector) {
+        if (data_structures::shouldSkipVertex(graph, vIndex)) continue;
+        ++verticesPerLevelCounts[graph.getVertex(vIndex).level];
+    }
+
+    return verticesPerLevelCounts;
+}
+
+
+ArrayOfArrays<uint32_t> findVerticesPerLevels(
+    const std::vector<uint32_t>& verticesPerLevelVector, 
+    const GraphInterface& graph, 
+    bool trimFrontLevelsWithNoVertices 
+) {
+    auto verticesPerLevelCounts = findVerticesPerLevelsCounts(verticesPerLevelVector, graph);
+    size_t numberOfLevels = verticesPerLevelCounts.size();
+
+    int levelOffset = 0;
+    if (trimFrontLevelsWithNoVertices) {
+        size_t startingLevelAfterTrimming = 0;
+        while (startingLevelAfterTrimming < numberOfLevels) {
+            if (verticesPerLevelCounts[startingLevelAfterTrimming] != 0) break;
+            ++startingLevelAfterTrimming;
+        }
+        levelOffset = startingLevelAfterTrimming;
+
+        verticesPerLevelCounts.erase(
+            verticesPerLevelCounts.begin(), 
+            std::next(verticesPerLevelCounts.begin(), startingLevelAfterTrimming)
+        );
+    }
+
+    numberOfLevels = verticesPerLevelCounts.size();
+    ArrayOfArrays<uint32_t> verticesPerLevel(std::vector<size_t>(numberOfLevels, 0), verticesPerLevelCounts);
+    std::vector<ArrayOfArrays<uint32_t>::NestedArrayView> levelArrayViews;
+    levelArrayViews.reserve(numberOfLevels);
+    for (size_t level=0; level<numberOfLevels; ++level) {
+        levelArrayViews.emplace_back(verticesPerLevel.getNestedArrayView(level));
+    }
+    
+    for (uint32_t vIndex : verticesPerLevelVector) {
+        if (data_structures::shouldSkipVertex(graph, vIndex)) continue;
+        levelArrayViews[graph.getVertex(vIndex).level].push_back(vIndex);
+    }
+
+    return verticesPerLevel;
+}
+
 }
