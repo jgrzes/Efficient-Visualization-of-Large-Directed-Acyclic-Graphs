@@ -10,3 +10,4 @@ flask_cors
 protobuf
 grpcio
 grpcio-tools
+gurobipy

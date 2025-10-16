@@ -191,7 +191,8 @@ def find_cum_F_interspring(G: Graph, v: int) -> Tuple[float, float]:
                 cum_F_interspring[1] + F_interspring_u[1]
             )
 
-    for u in G.N(v): # employ checking if the vertice is not doubly calculated in graphs with some undirected edges
+    # Changed: was N(v), pretty sure it should have been NR(v)
+    for u in G.NR(v): # employ checking if the vertice is not doubly calculated in graphs with some undirected edges
         if G.V[u].L_set_index != colour_v:
             F_interspring_u = F_interspring(G.V[v], G.V[u])
             cum_F_interspring = (
@@ -561,7 +562,8 @@ def find_initial_layout_for_subgraph(
             
             parents_v = [u for u in G.N_reversed(v) if G.V[u].L_set_index == G.V[v].L_set_index]
             parent_y_coords = [G.V[p].position[1] for p in parents_v]
-            lowest_parent_y = min(parent_y_coords) if len(parent_y_coords) != 0 else predicted_y_coords[k-1]
+            # lowest_parent_y = min(parent_y_coords) if len(parent_y_coords) != 0 else predicted_y_coords[k-1]
+            lowest_parent_y = max(parent_y_coords) if len(parent_y_coords) != 0 else predicted_y_coords[k-1]
             d = 1 + PULL_UP_COEFF * (len(parents_v)-1)
             weight_v = VERTICE_WEIGHT + ADD_CHILDREN_WEIGHT_COEFF*len([
                 u for u in G.N(v) if G.V[v].L_set_index == G.V[u].L_set_index    

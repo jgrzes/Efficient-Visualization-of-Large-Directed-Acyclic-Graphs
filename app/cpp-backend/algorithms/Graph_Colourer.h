@@ -152,7 +152,7 @@ private:
     );
 
     static void instantlyRerouteOfferPacketsToPreds(
-        GraphInterface& graph, 
+        GraphInterface& graph, uint32_t minValidColour, uint32_t maxValidColour,
         uint32_t vIndex, uint32_t offeringVertexIndex, size_t k, 
         std::vector<ColouringStageMailbox>& vertexMailboxes, 
         const std::vector<uint32_t>& vertexColours, 

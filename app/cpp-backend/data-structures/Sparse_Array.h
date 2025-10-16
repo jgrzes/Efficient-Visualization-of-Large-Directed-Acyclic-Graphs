@@ -87,6 +87,11 @@ public:
         return std::move(t);
     }
 
+    T dataAtOrDefault(size_t i) const {
+        if (hasDataAt(i)) return operator[](i);
+        return m_defaultValue;
+    }
+
     void optimize() {
         if (std::holds_alternative<std::vector<std::optional<T>>>(static_cast<BaseClass&>(*this))) {
             return;

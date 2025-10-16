@@ -357,7 +357,6 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
 ) {
     
     // TODO: Determine if we should allow a colour to have vertices lower than its child colours
-    // #define _colourValid(_c, _minC, _maxC) (_c >= _minC && _c <= _maxC) 
     NestedArrayView<uint32_t> verticesAtKIndices = verticesPerLevel.getNestedArrayView(startingLevel);
     size_t n = verticesAtKIndices.size();
     std::vector<uint32_t> newlyIntroducedColours;
@@ -403,7 +402,7 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
                     vertexMailboxes[vIndex].resetForPing(k);
                 }
                 instantlyRerouteOfferPacketsToPreds(
-                    graph, vIndex, uIndex, k, 
+                    graph, minC, maxC, vIndex, uIndex, k, 
                     vertexMailboxes, vertexColours, Vkr
                 );
             }
@@ -419,7 +418,7 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
             uint32_t chosenColour = 0;
             uint64_t bestOfferCount = 0;
             for (const auto& [c, cCount] : vertexOfferSummaryMap) {
-                if (vIndex == 30) std::cout << "30: " << c << " " << cCount << "\n";
+                // if (vIndex == 30) std::cout << "30: " << c << " " << cCount << "\n";
                 if (cCount > bestOfferCount) {
                     chosenColour = c;
                     bestOfferCount = cCount;
@@ -628,28 +627,34 @@ void GraphColourer::buildColourHierarchyRecursivelyRootedAtColour(
 
 
 void GraphColourer::instantlyRerouteOfferPacketsToPreds(
-    GraphInterface& graph, 
+    GraphInterface& graph, uint32_t minValidColour, uint32_t maxValidColour,
     uint32_t vIndex, uint32_t offeringVertexIndex, size_t k, 
     std::vector<ColouringStageMailbox>& vertexMailboxes, 
     const std::vector<uint32_t>& vertexColours, 
     std::vector<uint32_t>& Vkr
 ) {
 
+    #define _colourValid(_c, _minC, _maxC) (_c >= _minC && _c <= _maxC)
     vertexMailboxes[vIndex].receivedOfferPackets.emplace_back(offeringVertexIndex);
     for (const uint32_t uIndex : graph.NR(vIndex)) {
-        if (vertexColours[uIndex] != 0 && graph.getVertex(uIndex).level <= k) {
+        // if (vertexColours[uIndex] != 0 && graph.getVertex(uIndex).level <= k) {
+        if (_colourValid(vertexColours[uIndex], minValidColour, maxValidColour) 
+            && graph.getVertex(uIndex).level <= k) {
+
             if (uIndex == offeringVertexIndex) continue;
             if (vertexMailboxes[uIndex].lastPing != k) {
                 vertexMailboxes[uIndex].resetForPing(k);
                 Vkr.emplace_back(uIndex);
                 instantlyRerouteOfferPacketsToPreds(
-                    graph, vIndex, uIndex, k, 
+                    graph, minValidColour, maxValidColour, 
+                    vIndex, uIndex, k, 
                     vertexMailboxes, vertexColours, Vkr
                 );
             }
             vertexMailboxes[uIndex].receivedOfferPackets.emplace_back(offeringVertexIndex);
         }
     }
+    #undef _colourValid
 }
 
 

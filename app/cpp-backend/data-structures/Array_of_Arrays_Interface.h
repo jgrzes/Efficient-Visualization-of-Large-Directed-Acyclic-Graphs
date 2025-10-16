@@ -167,6 +167,14 @@ public:
             m_owner->resize(m_nestedArrIndex, size-1);
         }
 
+        T* begin() {return m_arrInMemory;}
+
+        const T* cbegin() const {return const_cast<const T*>(m_arrInMemory);}
+
+        T* end() {return m_arrInMemory + (*m_sizePtr);}
+
+        const T* cend() const {return const_cast<const T*>(m_arrInMemory + (*m_sizePtr));}
+
     private:    
 
         // This constructor should only ever be called by the ArrayOfArraysInterface class methods.

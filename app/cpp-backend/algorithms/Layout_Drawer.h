@@ -6,6 +6,7 @@
 #include <functional>
 #include <optional>
 #include <type_traits>
+#include <array>
 
 #include "../data-structures/Coloured_Graph.h"
 #include "Graph_Colourer.h"
@@ -73,7 +74,9 @@ template <typename T>
 using SparseArray = data_structures::SparseArray<T, true>;
 template <typename T>
 using ArrayOfArraysInterface = data_structures::ArrayOfArraysInterface<T>;
+using Vertex = data_structures::GraphInterface::Vertex;
 
+// TODO: Adapt the class to work with recursive colours
 class LayoutDrawer {
 
 public:
@@ -90,10 +93,33 @@ public:
         FInterspringCalculatorT FInterspringCalculator;
         FInterspringPushUpwardsValueCalculatorT FInterspringPushUpwardsValueCalculator;
         EpsilonForColourRootCalculatorT epsilonForColourRootCalculator;
+
         double firstLevelChildPadding;
+        double gAcceleration;
+        double baseVerexWeight;
+        double addWeightFromChildrenCoeff;
+        double kInitialLayoutCoeff;
+        
+        double sCoeff;
+        double defaultAlphaP;
+        double defaultBetaP;
+        double marginPadding;
+        double pullUpCoeff;
+
+        double minBoxWidthForUncoloured;
+
+        double yDistanceBetweenUncolouredLevels;
     }; 
 
-    LayoutDrawer() : m_graph{nullptr}, m_rootColourNode{nullptr}, m_cumFInterspring{1} {}
+    LayoutDrawer(const AlgorithmParams& algorithmParams) : 
+        m_algorithmParams{algorithmParams},
+        m_graph{nullptr}, m_rootColourNode{nullptr}, 
+        m_cumFInterspring{1}, m_epsilonsForVertices{0} {}
+
+    LayoutDrawer(AlgorithmParams&& algorithmParams) : 
+        m_algorithmParams{std::move(algorithmParams)},
+        m_graph{nullptr}, m_rootColourNode{nullptr}, 
+        m_cumFInterspring{1}, m_epsilonsForVertices{0} {}
 
     std::vector<CartesianCoords> findLayoutForGraph(
         ColouredGraph& graph, ColourHierarchyNode& rootColourNode,
@@ -103,6 +129,69 @@ public:
 private:
 
     using EqualColourDepthColourFinderT = std::function<std::pair<uint32_t, uint32_t>(uint32_t, uint32_t)>;
+
+    struct F {
+        
+        using PotentialMinimaListT = std::variant<const std::array<double, 1>, const std::array<double, 3>>;
+
+        F(const Vertex& v, const double& xp) : v{v}, xp{xp} {} 
+        virtual double operator()(double x, uint32_t k) const = 0;
+        virtual PotentialMinimaListT getPotentialMinima() const = 0;
+
+        const Vertex& v;
+        const double& xp;
+    };
+
+    struct Fp : public F {
+
+        Fp(const Vertex& v, const double& xp, double alphaP, double betaP, double gP) :
+            F{v, xp}, alphaP{alphaP}, betaP{betaP}, gP{gP} {}
+
+        double operator()(double x, uint32_t k) const override {
+            if (x - (xp + gP) >= 0) {
+                return alphaP * (x - xp - gP);
+            } else if (xp + gP >= x && x >= xp) {
+                return betaP * (-x + xp + gP);
+            } else {
+                return operator()(2*xp - x, k);
+            }
+        }
+
+        PotentialMinimaListT getPotentialMinima() const override {
+            return std::array<double, 3>{xp, xp + gP, xp - gP};
+        }
+
+        double alphaP;
+        double betaP;
+        double gP;
+    };
+
+    struct Fcs : public F {
+
+        Fcs(const Vertex& v, const double& xp, double alphaP) :
+            F{v, xp}, alphaP{alphaP} {}
+
+        double operator()(double x, uint32_t k) const override {
+            if (k != v.level) {
+                throw std::runtime_error{
+                    "Fcs error: attempted to call the function with a disallowed k value ("
+                    + std::string("k must be equal to " + v.level) + ")"
+                }; 
+            }
+            if (x - xp >= 0) {
+                return alphaP * (x - xp);
+            } else {
+                return operator()(2*xp - x, k);
+            }
+        }
+
+        PotentialMinimaListT getPotentialMinima() const override {
+            return std::array<double, 1>{xp};
+        }
+
+        double alphaP;    
+
+    };
 
     void findVerticesWithCustomEpsilonsAndFixColourRoots(
         std::vector<uint32_t>& verticesWithCustomEpsilons,
@@ -134,7 +223,55 @@ private:
     // Only call this after base cumFInterspring has been built.
     void transferFInterspringUpwards(const ArrayOfArraysInterface<uint32_t>& verticesPerLevel);
 
-    double findEpsilonForColourRoot(uint32_t colourRootIndex);
+    uint32_t findMaxWidthForColourSubgraphNotNested(uint32_t colourRootIndex);
+
+    void findEpsilonsForColourRoots(
+        // SparseArray<double>& epsilonsForVertices, 
+        std::optional<std::reference_wrapper<ColourHierarchyNode>> optColourNode = std::nullopt
+    );
+
+    void findLayoutForColouredSubgraph(
+        const ArrayOfArraysInterface<uint32_t>& verticesPerLevelForColour, 
+        const std::pair<double, double>& startingPositionForColourRoot, 
+        const std::pair<double, double>& boxBounds
+    );
+
+    void findInitialLayoutForColouredSubgraph(
+        ArrayOfArraysInterface<uint32_t>& verticesPerLevelForColour, 
+        const std::pair<double, double>& startingPositionForColourRoot, 
+        const std::pair<double, double>& boxBounds
+    );
+
+    std::vector<std::unique_ptr<F>> buildFCollectionForVertex(
+        uint32_t vIndex, const std::unordered_set<uint32_t>& alreadyDrawnVerticesSet, double wPrim
+    );
+
+    std::unique_ptr<F> buildF(
+        uint32_t vIndex, uint32_t k, double s
+        // double alphaP, double betaP
+    ) const;
+
+    double findPositionXThatMinimizesFCollection(
+        const std::vector<std::unique_ptr<F>>& FCollection, uint32_t k
+    ) const;
+
+    void createGapsAlongXAxisBetweenVertices(
+        std::vector<std::pair<uint32_t, double>>& VkVerticesXPositions,
+        const std::pair<double, double>& boxBounds
+    );
+
+    void createGapForTwoConsecutiveVertices(
+        std::vector<std::pair<uint32_t, double>>& VkVerticesXPositions, 
+        size_t i, std::optional<double>& gamma, 
+        const std::pair<double, double>& boxBounds
+    );
+
+    // TODO: Come up with a better way of drawing uncoloured vertices
+    void drawUncolouredPartOfGraph(
+        const ArrayOfArraysInterface<uint32_t>& verticesPerLevel, 
+        uint32_t kl, 
+        const std::pair<double, double>& boxBounds
+    );
 
     const AlgorithmParams m_algorithmParams;
 
@@ -146,6 +283,9 @@ private:
     std::vector<uint32_t> m_pinkIndices;
     std::vector<uint32_t> m_blueIndices;
     SparseArray<std::pair<double, double>> m_cumFInterspring;
+    SparseArray<double> m_epsilonsForVertices;
+
+    std::vector<std::pair<double, double>> m_layoutPositions;
 
 };
 
