@@ -62,18 +62,19 @@ public:
     };
 
     struct ColourHierarchyNode {
+
+        ColourHierarchyNode() : ColourHierarchyNode{0} {}
+        explicit ColourHierarchyNode(uint32_t colour) : colour{colour}, parent{nullptr}, depth{0} {}
+        ColourHierarchyNode(uint32_t colour, const ColourHierarchyNode* parent) : 
+            colour{colour}, parent{parent}, depth{(parent != nullptr) ? (parent->depth)+1 : 0} {}
+
+        void addChild(uint32_t childColour) {children.emplace_back(childColour, this);}
+
         uint32_t colour;
         const ColourHierarchyNode* const parent;
         std::vector<ColourHierarchyNode> children;
         std::vector<uint32_t> verticesOfColour;
         uint32_t depth;
-
-        ColourHierarchyNode() : ColourHierarchyNode{0} {}
-        explicit ColourHierarchyNode(uint32_t colour) : colour{colour}, parent{nullptr}, depth{0} {}
-        ColourHierarchyNode(uint32_t colour, const ColourHierarchyNode* parent) : 
-            colour{colour}, parent{parent}, depth{(parent != nullptr) ? parent->depth+1 : 0} {}
-
-        void addChild(uint32_t childColour) {children.emplace_back(childColour, this);}
     };
 
     GraphColourer(const AlgorithmParams& algorithmParams) : 
@@ -214,7 +215,7 @@ private:
 
     static void fillColourHierarchyNodesVector(
         ColourHierarchyNode& colourNode, 
-        std::vector<std::reference_wrapper<ColourHierarchyNode>>& colourHierarchyNodes
+        std::vector<ColourHierarchyNode*>& colourHierarchyNodes
     );
 
     inline void computeDisputableEdgesPerLevel(bool forceRecomputation) {

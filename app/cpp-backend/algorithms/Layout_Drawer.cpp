@@ -22,12 +22,15 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
     m_graph = &graph;
     m_rootColourNode = &rootColourNode;
 
+    std::cout << "Colour node: " << rootColourNode.colour << "\n";
+
     std::vector<uint32_t> verticesWithCustomEpsilons;
     uint32_t vertexCountBeforeColourRootFixing = graph.getVertexCount();
     findVerticesWithCustomEpsilonsAndFixColourRoots(verticesWithCustomEpsilons);
 
-    size_t n;
-    if (vertexCountBeforeColourRootFixing != (n = graph.getVertexCount())) {
+    size_t n = graph.getVertexCount();
+    if (vertexCountBeforeColourRootFixing != n) {
+        std::cout << "Reassigning vertice levels\n";
         assignLevelsInGraph(graph);
     }
 
@@ -44,10 +47,12 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
     auto equalColourDepthColourFinder = [this](uint32_t uColour, uint32_t vColour) -> std::pair<uint32_t, uint32_t> {
         uint32_t uDepth = (this->m_colourNodesPtrs)[uColour]->depth;
         uint32_t vDepth = (this->m_colourNodesPtrs)[vColour]->depth;
+        std::cout << "Colours: " << uColour << " " << vColour << "depts: " << uDepth << " " << vDepth << "\n";
         if (uDepth == vDepth) return {uColour, vColour};
         else if (uDepth > vDepth) {
             ColourHierarchyNode* nu = (this->m_colourNodesPtrs)[uColour];
             while (nu->depth != vDepth) {
+                std::cout << "u: " << nu->colour << " " << nu->depth << " " << nu->parent << " " << nu->parent->colour << "\n";
                 nu = const_cast<ColourHierarchyNode*>(nu->parent);
             }
 
@@ -55,10 +60,11 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
         } else {
             ColourHierarchyNode* nv = (this->m_colourNodesPtrs)[vColour];
             while (nv->depth != uDepth) {
+                std::cout << "v: " << nv->colour << " " << nv->depth << " " << nv->parent << " " << nv->parent->colour << "\n";
                 nv = const_cast<ColourHierarchyNode*>(nv->parent);
             }
 
-            return {uColour, nv->depth};
+            return {uColour, nv->colour};
         }
     };
 
@@ -147,16 +153,19 @@ void LayoutDrawer::findVerticesWithCustomEpsilonsAndFixColourRoots(
     if (n >= 2) {
         auto& graph = *m_graph;
         uint32_t newColourRootIndex = graph.getVertexCount();
+        std::cout << "New colour root added: " << newColourRootIndex << "\n";
         graph.addNewVertex();
         graph.setVertexColour(newColourRootIndex, colourNode.colour);
         
         for (uint32_t rcIndex : colourRoots) {
-            graph.addNewEdge(newColourRootIndex, rcIndex);
             for (uint32_t vIndex : graph.NR(rcIndex)) {
                 // TODO: Decide if should include:
                 // graph.removeEdge(vIndex, rcIndex);
+                std::cout << "Adding new edge: " << vIndex << " -> " << newColourRootIndex << "\n";
                 graph.addNewEdge(vIndex, newColourRootIndex);
             }
+            std::cout << "Adding new edge: " << newColourRootIndex << " -> " << rcIndex << "\n";
+            graph.addNewEdge(newColourRootIndex, rcIndex);
         }
 
         verticesWithCustomEpsilons.emplace_back(newColourRootIndex);
@@ -267,6 +276,7 @@ void LayoutDrawer::performEmplacingColourNodesInArrayForColourSubtree(
         ? optColourNode.value().get()
         : *m_rootColourNode;
 
+    std::cout << m_colourNodesPtrs.size() << " " << colourNode.colour << "\n";
     m_colourNodesPtrs[colourNode.colour] = &colourNode;    
     for (auto& colourNodeChild : colourNode.children) {
         performEmplacingColourNodesInArrayForColourSubtree(std::ref(colourNodeChild));
@@ -275,7 +285,7 @@ void LayoutDrawer::performEmplacingColourNodesInArrayForColourSubtree(
 
 
 void LayoutDrawer::emplaceColourNodesInArray() {
-    m_colourNodesPtrs.resize(m_maxColour);
+    m_colourNodesPtrs.resize(m_maxColour+1);
     performEmplacingColourNodesInArrayForColourSubtree();
 }
 
@@ -289,6 +299,7 @@ void LayoutDrawer::buildBaseCumFInterspring(EqualColourDepthColourFinderT&& equa
         if (data_structures::shouldSkipVertex(graph, uIndex)) continue;
         uint32_t uLevel = graph.getVertex(uIndex).level;
         uint32_t uColour = graph.getVertexColour(uIndex);
+        if (uColour == 0) continue;
 
         uint32_t uPinkIndex = m_pinkIndices[uColour];
         uint32_t uBlueIndex = m_blueIndices[uColour];
@@ -296,7 +307,8 @@ void LayoutDrawer::buildBaseCumFInterspring(EqualColourDepthColourFinderT&& equa
         const auto Nu = graph.N(uIndex);
         for (uint32_t vIndex : Nu) {
             uint32_t vColour = graph.getVertexColour(vIndex);
-            if (!(m_pinkIndices[vColour] > uPinkIndex || m_blueIndices[vColour] > uBlueIndex)) continue;
+            if (vColour == 0) continue;
+            else if (!(m_pinkIndices[vColour] > uPinkIndex || m_blueIndices[vColour] > uBlueIndex)) continue;
             
             uint32_t uColourFixed, vColourFixed;
             std::tie(uColourFixed, vColourFixed) = equalColourDepthColourFinder(uColour, vColour);
@@ -386,6 +398,7 @@ void LayoutDrawer::findEpsilonsForColourRoots(
         ? optColourNode.value().get()
         : *m_rootColourNode;
     
+    std::cout << "Colour node: " << colourNode.colour << "\n";
     for (auto& colourNodeChild : colourNode.children) {
         findEpsilonsForColourRoots(colourNodeChild);
     }
@@ -617,7 +630,9 @@ std::unique_ptr<LayoutDrawer::F> LayoutDrawer::buildF(
     const auto& v = graph.getVertex(vIndex);
     if (v.level == k) {
 
-        return std::make_unique<Fcs>(v, m_layoutPositions[vIndex].first);
+        return std::make_unique<Fcs>(
+            v, m_layoutPositions[vIndex].first, m_algorithmParams.defaultAlphaP
+        );
     }
 
     const auto Nv = graph.N(vIndex);
@@ -876,7 +891,6 @@ void LayoutDrawer::drawUncolouredPartOfGraph(
         --k;
     }
 }
-
 
 #undef EPS_FOR_SIGNUM
 #undef _signum

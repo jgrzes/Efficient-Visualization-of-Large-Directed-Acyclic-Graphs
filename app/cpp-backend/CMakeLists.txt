@@ -27,8 +27,8 @@ target_include_directories(
 )
 
 # Uncomment these two options if you want to check for double frees, memory corruptions etc.
-target_compile_options(EGVB PRIVATE -Wall -fsanitize=address,undefined -fno-omit-frame-pointer -g)
-target_link_options(EGVB PRIVATE -fsanitize=address,undefined)
+# target_compile_options(EGVB PRIVATE -Wall -fsanitize=address,undefined -fno-omit-frame-pointer -g)
+# target_link_options(EGVB PRIVATE -fsanitize=address,undefined)
 
 # Otherwise use this 
-# target_compile_options(EGVB PRIVATE -Wall -g)
+target_compile_options(EGVB PRIVATE -Wall -g)

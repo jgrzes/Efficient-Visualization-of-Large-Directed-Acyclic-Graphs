@@ -74,83 +74,78 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
         colourHierarchyRoot.addChild(c++);
     }
 
-    if (!recursiveColouring) {
-        return {
-            std::move(colouredGraph), 
-            colourHierarchyRoot
-        };
-    } else if (--maxRecursion == 0) {
-        return {
-            std::move(colouredGraph), 
-            colourHierarchyRoot
-        };
+    bool skipRecursiveColouring = false;
+    if (!recursiveColouring || --maxRecursion == 0) {
+        skipRecursiveColouring = true;
     }
 
-    // Warning: Here the algorithm will 'break' vertices per levels and disputable edges per level. This 'distruction' will later be reverted.
-    std::unique_ptr<ArrayOfArraysInterface<uint32_t>> verticesPerLevel = std::move(m_verticesPerLevel.value());
-    std::unique_ptr<ArrayOfArraysInterface<Edge>> disputableEdgesPerLevel = std::move(m_disputableEdgesPerLevel.value());
-    // m_graph = &colouredGraph;
+    if (!skipRecursiveColouring) {
+        // Warning: Here the algorithm will 'break' vertices per levels and disputable edges per level. This 'distruction' will later be reverted.
+        std::unique_ptr<ArrayOfArraysInterface<uint32_t>> verticesPerLevel = std::move(m_verticesPerLevel.value());
+        std::unique_ptr<ArrayOfArraysInterface<Edge>> disputableEdgesPerLevel = std::move(m_disputableEdgesPerLevel.value());
+        // m_graph = &colouredGraph;
 
-    std::vector<size_t> verticesPerLevelArrSizes;
-    std::vector<size_t> disputableEdgesPerLevelArrSizes;
+        std::vector<size_t> verticesPerLevelArrSizes;
+        std::vector<size_t> disputableEdgesPerLevelArrSizes;
 
-    n = verticesPerLevel->getNumberOfNestedArrays();
-    verticesPerLevelArrSizes.reserve(n);
-    for (size_t i=0; i<n; ++i) {
-        verticesPerLevelArrSizes.emplace_back(verticesPerLevel->getSizeOfArr(i));
-    }
-
-    n = disputableEdgesPerLevel->getNumberOfNestedArrays();
-    disputableEdgesPerLevelArrSizes.reserve(n);
-    for (size_t i=0; i<n; ++i) {
-        disputableEdgesPerLevelArrSizes.emplace_back(disputableEdgesPerLevel->getSizeOfArr(i));
-    }
-
-    c = minC;
-    for (uint32_t i=0; i<=numberOfColoursM1; ++i) {
-        colouredGraph.highlightColour(c);
-        ArrayOfArrays<uint32_t> verticesPerLevelInC = _findEnabledVerticesFromErodingContainer(
-            *verticesPerLevel, colouredGraph
-        );
-        ArrayOfArrays<Edge> disputableEdgesPerLevelInC = _findEnabledDEdgesFromErodingContainer(
-            *disputableEdgesPerLevel, colouredGraph
-        );
-
-        buildColourHierarchyRecursivelyRootedAtColour(
-            colouredGraph, m_algorithmParams, 
-            verticesPerLevelInC, 
-            disputableEdgesPerLevelInC,
-            colourHierarchyRoot.children[i], 
-            vertexColours, 
-            maxRecursion,
-            std::forward<ColourAcquireFunctionT>(colourAcquireFunction)
-        );
-        ++c;
-
-        // Nested function calls will disable some of these vertices, so we need to manually reenable them
-        if (i == numberOfColoursM1) continue;
+        n = verticesPerLevel->getNumberOfNestedArrays();
+        verticesPerLevelArrSizes.reserve(n);
         for (size_t i=0; i<n; ++i) {
-            auto arrayAtI = verticesPerLevel->getNestedArrayView(i);
-            size_t m = arrayAtI.size();
-            for (size_t j=0; j<m; ++j) {
-                colouredGraph.enableVertex(arrayAtI[j]);
+            verticesPerLevelArrSizes.emplace_back(verticesPerLevel->getSizeOfArr(i));
+        }
+
+        n = disputableEdgesPerLevel->getNumberOfNestedArrays();
+        disputableEdgesPerLevelArrSizes.reserve(n);
+        for (size_t i=0; i<n; ++i) {
+            disputableEdgesPerLevelArrSizes.emplace_back(disputableEdgesPerLevel->getSizeOfArr(i));
+        }
+
+        c = minC;
+        for (uint32_t i=0; i<=numberOfColoursM1; ++i) {
+            colouredGraph.highlightColour(c);
+            ArrayOfArrays<uint32_t> verticesPerLevelInC = _findEnabledVerticesFromErodingContainer(
+                *verticesPerLevel, colouredGraph
+            );
+            ArrayOfArrays<Edge> disputableEdgesPerLevelInC = _findEnabledDEdgesFromErodingContainer(
+                *disputableEdgesPerLevel, colouredGraph
+            );
+
+            buildColourHierarchyRecursivelyRootedAtColour(
+                colouredGraph, m_algorithmParams, 
+                verticesPerLevelInC, 
+                disputableEdgesPerLevelInC,
+                colourHierarchyRoot.children[i], 
+                vertexColours, 
+                maxRecursion,
+                std::forward<ColourAcquireFunctionT>(colourAcquireFunction)
+            );
+            ++c;
+
+            // Nested function calls will disable some of these vertices, so we need to manually reenable them
+            if (i == numberOfColoursM1) continue;
+            for (size_t i=0; i<n; ++i) {
+                auto arrayAtI = verticesPerLevel->getNestedArrayView(i);
+                size_t m = arrayAtI.size();
+                for (size_t j=0; j<m; ++j) {
+                    colouredGraph.enableVertex(arrayAtI[j]);
+                }
             }
+        }
+
+        // Fixing `m_verticesPerLevel` and `m_disputableEdgesPerLevel`
+        n = verticesPerLevelArrSizes.size();
+        for (size_t i=0; i<n; ++i) {
+            verticesPerLevel->resize(i, verticesPerLevelArrSizes[i]);
+        }
+
+        n = disputableEdgesPerLevelArrSizes.size();
+        for (size_t i=0; i<n; ++i) {
+            disputableEdgesPerLevel->resize(i, disputableEdgesPerLevelArrSizes[i]);
         }
     }
 
-    // Fixing `m_verticesPerLevel` and `m_disputableEdgesPerLevel`
-    n = verticesPerLevelArrSizes.size();
-    for (size_t i=0; i<n; ++i) {
-        verticesPerLevel->resize(i, verticesPerLevelArrSizes[i]);
-    }
-
-    n = disputableEdgesPerLevelArrSizes.size();
-    for (size_t i=0; i<n; ++i) {
-        disputableEdgesPerLevel->resize(i, disputableEdgesPerLevelArrSizes[i]);
-    }
-
-    std::vector<std::reference_wrapper<ColourHierarchyNode>> colourHierarchyNodes;
-    colourHierarchyNodes.reserve(m_maxCurrentColourIndex);
+    std::vector<ColourHierarchyNode*> colourHierarchyNodes(m_maxCurrentColourIndex+1);
+    // colourHierarchyNodes.reserve(m_maxCurrentColourIndex+1);
     fillColourHierarchyNodesVector(
         colourHierarchyRoot, 
         colourHierarchyNodes
@@ -160,7 +155,7 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
     for (uint32_t uIndex=0; uIndex<n; ++uIndex) {
         // Do not know if should skip them or assign them 0, i.e. no colour.
         if (data_structures::shouldSkipVertex(colouredGraph, uIndex)) continue; 
-        colourHierarchyNodes[colouredGraph.getVertexColour(uIndex)].get().verticesOfColour.emplace_back(uIndex);
+        colourHierarchyNodes[colouredGraph.getVertexColour(uIndex)]->verticesOfColour.emplace_back(uIndex);
     }
 
     return {colouredGraph, colourHierarchyRoot};
@@ -660,11 +655,12 @@ void GraphColourer::instantlyRerouteOfferPacketsToPreds(
 
 void GraphColourer::fillColourHierarchyNodesVector(
     ColourHierarchyNode& colourNode, 
-    std::vector<std::reference_wrapper<ColourHierarchyNode>>& colourHierarchyNodes
+    std::vector<ColourHierarchyNode*>& colourHierarchyNodes
 ) {
 
-    colourHierarchyNodes[colourNode.colour] = std::ref(colourNode);
-    for (auto& childColourNode : colourHierarchyNodes) {
+    std::cout << colourNode.colour << "\n";
+    colourHierarchyNodes[colourNode.colour] = &colourNode;
+    for (auto& childColourNode : colourNode.children) {
         fillColourHierarchyNodesVector(childColourNode, colourHierarchyNodes);
     }
 }

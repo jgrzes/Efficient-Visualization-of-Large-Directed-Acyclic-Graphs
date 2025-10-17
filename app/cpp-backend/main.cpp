@@ -1,11 +1,16 @@
 #include <iostream>
+#include <cmath>
 
 #include "data-structures/Graph.h"
 #include "data-structures/Coloured_Graph.h"
 #include "graph-preprocessing/assign_levels.h"
 #include "graph-preprocessing/edge_and_vertex_processing_functions.h"
 #include "algorithms/Graph_Colourer.h"
+#include "algorithms/Layout_Drawer.h"
 #include "utils/input_generation_for_qap.h"
+
+#define EPS_FOR_SIGNUM 1e-6
+#define _signum(_x) ((std::abs(_x) < EPS_FOR_SIGNUM ? 0 : (_x < 0 ? -1 : 1)))
 
 using namespace data_structures;
 using namespace graph_preprocessing;
@@ -674,7 +679,7 @@ int main(int argc, char** argv) {
   //   CG4.setVertexColour(vIndex, vColour);
   // }
 
-  using CHN = GraphColourer::ColourHierarchyNode;
+  // using CHN = GraphColourer::ColourHierarchyNode;
   // CHN colour0(0, nullptr);
   // colour0.addChild(1);
   // colour0.addChild(2);
@@ -730,71 +735,71 @@ int main(int argc, char** argv) {
   //   std::cout << "(" << c << ", " << cPrim << "): (" << pc.first << ", " << pc.second << ")\n";
   // }
 
-  ColouredGraph CG5 = ColouredGraph(G5, GraphInterface::GraphImplCopyingMode::SHALLOW_COPY);
-  for (const auto [vIndex, vColour] : predeterminedVertexColoursG5) {
-    CG5.setVertexColour(vIndex, vColour);
-  }
+  // ColouredGraph CG5 = ColouredGraph(G5, GraphInterface::GraphImplCopyingMode::SHALLOW_COPY);
+  // for (const auto [vIndex, vColour] : predeterminedVertexColoursG5) {
+  //   CG5.setVertexColour(vIndex, vColour);
+  // }
 
-  CHN colour0(0);
-  colour0.addChild(1);
-  colour0.addChild(2);
-  auto& colour1 = colour0.children[0];
-  auto& colour2 = colour0.children[1];
-  colour1.addChild(3);
-  colour1.addChild(4);
-  colour1.addChild(5);
-  auto& colour3 = colour1.children[0];
-  auto& colour4 = colour1.children[1];
-  auto& colour5 = colour1.children[2];
-  colour3.addChild(6);
-  colour3.addChild(7);
-  auto& colour6 = colour3.children[0];
-  auto& colour7 = colour3.children[1];
-  colour6.addChild(8);
-  colour7.addChild(9);
-  colour4.addChild(10);
-  colour4.addChild(11);
-  auto& colour10 = colour4.children[0];
-  colour10.addChild(12);
-  colour10.addChild(13);
-  colour2.addChild(14);
-  colour2.addChild(15);
-  auto& colour14 = colour2.children[0];
-  colour14.addChild(16);
-  colour14.addChild(17);
-  auto& colour16 = colour14.children[0];
-  colour16.addChild(18);
-  auto& colour17 = colour14.children[1];
-  colour17.addChild(19);
-  colour17.addChild(20);
+  // CHN colour0(0);
+  // colour0.addChild(1);
+  // colour0.addChild(2);
+  // auto& colour1 = colour0.children[0];
+  // auto& colour2 = colour0.children[1];
+  // colour1.addChild(3);
+  // colour1.addChild(4);
+  // colour1.addChild(5);
+  // auto& colour3 = colour1.children[0];
+  // auto& colour4 = colour1.children[1];
+  // auto& colour5 = colour1.children[2];
+  // colour3.addChild(6);
+  // colour3.addChild(7);
+  // auto& colour6 = colour3.children[0];
+  // auto& colour7 = colour3.children[1];
+  // colour6.addChild(8);
+  // colour7.addChild(9);
+  // colour4.addChild(10);
+  // colour4.addChild(11);
+  // auto& colour10 = colour4.children[0];
+  // colour10.addChild(12);
+  // colour10.addChild(13);
+  // colour2.addChild(14);
+  // colour2.addChild(15);
+  // auto& colour14 = colour2.children[0];
+  // colour14.addChild(16);
+  // colour14.addChild(17);
+  // auto& colour16 = colour14.children[0];
+  // colour16.addChild(18);
+  // auto& colour17 = colour14.children[1];
+  // colour17.addChild(19);
+  // colour17.addChild(20);
 
-  std::vector<std::reference_wrapper<CHN>> colourNodes = {
-    std::ref(colour0),
-    std::ref(colour1),
-    std::ref(colour2),
-    std::ref(colour3),
-    std::ref(colour4),
-    std::ref(colour5),
-    std::ref(colour6),
-    std::ref(colour7),
-    std::ref(colour6.children[0]),
-    std::ref(colour7.children[0]),
-    std::ref(colour10),
-    std::ref(colour4.children[1]),
-    std::ref(colour10.children[0]),
-    std::ref(colour10.children[1]),
-    std::ref(colour14),
-    std::ref(colour2.children[1]),
-    std::ref(colour16),
-    std::ref(colour17),
-    std::ref(colour16.children[0]),
-    std::ref(colour17.children[0]),
-    std::ref(colour17.children[1])
-  };
+  // std::vector<std::reference_wrapper<CHN>> colourNodes = {
+  //   std::ref(colour0),
+  //   std::ref(colour1),
+  //   std::ref(colour2),
+  //   std::ref(colour3),
+  //   std::ref(colour4),
+  //   std::ref(colour5),
+  //   std::ref(colour6),
+  //   std::ref(colour7),
+  //   std::ref(colour6.children[0]),
+  //   std::ref(colour7.children[0]),
+  //   std::ref(colour10),
+  //   std::ref(colour4.children[1]),
+  //   std::ref(colour10.children[0]),
+  //   std::ref(colour10.children[1]),
+  //   std::ref(colour14),
+  //   std::ref(colour2.children[1]),
+  //   std::ref(colour16),
+  //   std::ref(colour17),
+  //   std::ref(colour16.children[0]),
+  //   std::ref(colour17.children[0]),
+  //   std::ref(colour17.children[1])
+  // };
 
-  for (uint32_t uIndex=0; uIndex<CG5.getVertexCount(); ++uIndex) {
-    colourNodes[CG5.getVertexColour(uIndex)].get().verticesOfColour.emplace_back(uIndex);
-  }
+  // for (uint32_t uIndex=0; uIndex<CG5.getVertexCount(); ++uIndex) {
+  //   colourNodes[CG5.getVertexColour(uIndex)].get().verticesOfColour.emplace_back(uIndex);
+  // }
 
   // for (std::reference_wrapper<CHN>& colourNode : colourNodes) {
   //   if (colourNode.get().parent != nullptr) {
@@ -802,9 +807,9 @@ int main(int argc, char** argv) {
   //   }
   // }
 
-  const auto&& FG5 = utils::createFMatricesForColoursQAP(
-    colour0, CG5
-  );
+  // const auto&& FG5 = utils::createFMatricesForColoursQAP(
+  //   colour0, CG5
+  // );
 
   // std::vector<std::pair<uint32_t, uint32_t>> interestingPairs = {
     
@@ -815,6 +820,70 @@ int main(int argc, char** argv) {
   //   std::cout << "(" << c << ", " << cPrim << "): (" << pc.first << ", " << pc.second << ")\n";
   // }
 
-  return 0;
+  // Testng if layout creation works 
+  assignLevelsInGraph(G3);
+  auto graphColourerAlgorithm = GraphColourer(
+    GraphColourer::AlgorithmParams(
+      [](uint32_t level, uint32_t cumDisputableEdgesAtLevel, uint32_t cumVerticesAtLevel) -> bool {
+        return level >= 2;
+      }, 
+      [](uint32_t level, uint32_t commonVerticesCount) -> bool {
+        return commonVerticesCount >= 3;
+      }
+    )
+  );
+  auto&& [colouredGraph, colourHierarchyRoot] = graphColourerAlgorithm.assignColoursToGraph(G3, true, 1);
+  std::cout << "Uncoloured vertices: ";
+  for (uint32_t vIndex : colourHierarchyRoot.verticesOfColour) std::cout << vIndex << " ";
+  std::cout << "\n";
+  for (auto& colourNodeChild : colourHierarchyRoot.children) {
+    std::cout << "Colour " << colourNodeChild.colour << ": ";
+    for (uint32_t vIndex : colourNodeChild.verticesOfColour) std::cout << vIndex << " ";
+    std::cout << "\n";
+  }
 
+  auto layoutAlgorithmParams = LayoutDrawer::AlgorithmParams();
+  {
+    layoutAlgorithmParams.FInterspringCalculator = [
+      w1XInterspring = 1, w2XInterspring = 1, w1YInterspring = 1, w2YInterspring = 1, w3YInterspring = 1, w4YInterspring = 1
+    ](uint32_t uColour, uint32_t uLevel, uint32_t vColour, uint32_t vLevel) -> std::pair<double, double> {
+      int64_t a = static_cast<int64_t>(uColour) - static_cast<int64_t>(vColour);
+      uint32_t b = std::abs(a);
+      uint32_t c = std::abs(static_cast<int64_t>(uLevel) - static_cast<int64_t>(vLevel));
+      return {
+        w1XInterspring * static_cast<double>(std::pow(b, w2XInterspring)) * _signum(a), 
+        -(w1YInterspring * static_cast<double>(std::pow(b, w2YInterspring))) * (w3YInterspring * static_cast<double>(std::pow(c, w4YInterspring)))
+      };
+    };
+
+    layoutAlgorithmParams.FInterspringPushUpwardsValueCalculator = [](auto p) -> std::pair<double, double> {
+      return {p.first * 0.75, 0};
+    };
+
+    layoutAlgorithmParams.epsilonForColourRootCalculator = [boxWidthCoeff = 3.5](uint32_t maxWidth) -> double {
+      return static_cast<double>(maxWidth) * boxWidthCoeff;
+    };
+
+    layoutAlgorithmParams.firstLevelChildPadding = 2.5;
+    layoutAlgorithmParams.gAcceleration = 9.81;
+    layoutAlgorithmParams.baseVerexWeight = 1.2;
+    layoutAlgorithmParams.addWeightFromChildrenCoeff = 0.15;
+    layoutAlgorithmParams.kInitialLayoutCoeff = 2;
+
+    layoutAlgorithmParams.sCoeff = 1.15;
+    layoutAlgorithmParams.defaultAlphaP = 0.5;
+    layoutAlgorithmParams.defaultBetaP = 1.5;
+    layoutAlgorithmParams.marginPadding = 0.1;
+    layoutAlgorithmParams.pullUpCoeff = 0.2;
+    layoutAlgorithmParams.minBoxWidthForUncoloured = 40; // TODO: Find a better way of findinf this
+    layoutAlgorithmParams.yDistanceBetweenUncolouredLevels = 4;
+  }
+
+  auto layoutDrawer = LayoutDrawer(layoutAlgorithmParams);
+  auto layoutPositions = layoutDrawer.findLayoutForGraph(colouredGraph, colourHierarchyRoot, 1.0);
+
+  return 0;
 }
+
+#undef EPS_FOR_SIGNUM
+#undef _signum

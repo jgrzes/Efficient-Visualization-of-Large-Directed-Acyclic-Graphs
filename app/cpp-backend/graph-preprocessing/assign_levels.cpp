@@ -10,12 +10,14 @@ namespace graph_preprocessing {
 void assignLevelsInGraph(GraphInterface& graph) {
     auto rootPointerList = graph.getRootList();
     if (rootPointerList.empty()) {
-        std::runtime_error{"Assign levels error: graph must have at least one root"};
+        throw std::runtime_error{"Assign levels error: graph must have at least one root"};
     }
 
     std::deque<std::pair<uint32_t, int>> q;
     std::deque<std::pair<uint32_t, int>> qPrim;
+    std::cout << "Number of roots: " << rootPointerList.size() << "\n";
     for (const auto root : rootPointerList) {
+        std::cout << "Root: " << root << "\n";
         q.push_back({root, 0});
     }
 
@@ -37,6 +39,7 @@ void assignLevelsInGraph(GraphInterface& graph) {
             shouldInspect[u] = false;
             graph.setLevelForVertex(u, uLevel);
             for (const auto v : graph.N(u)) {
+                std::cout << u << " -> " << v << "\n";
                 if (--liveIvCollection[v] == 0) {
                     q.push_back({v, uLevel+1});
                 } else {

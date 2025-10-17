@@ -14,7 +14,7 @@ namespace data_structures {
 using size_t = std::size_t;
 
 template <typename T>
-using CountinAllocator = utils::CountingAllocator<T>;
+using CountingAllocator = utils::CountingAllocator<T>;
 template <typename T>
 using MemCountingMap = std::unordered_map<size_t, T, std::hash<size_t>, std::equal_to<size_t>, utils::CountingAllocator<std::pair<size_t, T>>>;
 
