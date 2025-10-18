@@ -536,7 +536,7 @@ void GraphColourer::buildColourHierarchyRecursivelyRootedAtColour(
 ) {
 
     uint32_t rootColour = colourHierarchyRoot.colour;
-    std::cout << "Root colour: " << rootColour << "\n";
+    // std::cout << "Root colour: " << rootColour << "\n";
     auto [startingLevelValid, startingLevel] = determineTheStartingLevel(
         algorithmParams, verticesPerLevel, disputableEdgesPerLevel
     );

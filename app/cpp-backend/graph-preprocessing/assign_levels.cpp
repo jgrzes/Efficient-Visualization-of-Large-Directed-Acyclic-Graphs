@@ -15,9 +15,9 @@ void assignLevelsInGraph(GraphInterface& graph) {
 
     std::deque<std::pair<uint32_t, int>> q;
     std::deque<std::pair<uint32_t, int>> qPrim;
-    std::cout << "Number of roots: " << rootPointerList.size() << "\n";
+    // std::cout << "Number of roots: " << rootPointerList.size() << "\n";
     for (const auto root : rootPointerList) {
-        std::cout << "Root: " << root << "\n";
+        // std::cout << "Root: " << root << "\n";
         q.push_back({root, 0});
     }
 
@@ -39,7 +39,7 @@ void assignLevelsInGraph(GraphInterface& graph) {
             shouldInspect[u] = false;
             graph.setLevelForVertex(u, uLevel);
             for (const auto v : graph.N(u)) {
-                std::cout << u << " -> " << v << "\n";
+                // std::cout << u << " -> " << v << "\n";
                 if (--liveIvCollection[v] == 0) {
                     q.push_back({v, uLevel+1});
                 } else {

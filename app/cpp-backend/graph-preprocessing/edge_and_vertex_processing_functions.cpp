@@ -315,7 +315,7 @@ ArrayOfArrays<uint32_t> findVerticesPerLevels(
     
     for (uint32_t vIndex : verticesPerLevelVector) {
         if (data_structures::shouldSkipVertex(graph, vIndex)) continue;
-        levelArrayViews[graph.getVertex(vIndex).level].push_back(vIndex);
+        levelArrayViews[graph.getVertex(vIndex).level - levelOffset].push_back(vIndex);
     }
 
     return verticesPerLevel;

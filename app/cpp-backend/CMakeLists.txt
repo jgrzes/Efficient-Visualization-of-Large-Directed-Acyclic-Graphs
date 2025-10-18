@@ -18,13 +18,13 @@ add_subdirectory(graph-preprocessing)
 add_subdirectory(algorithms)
 
 # Adding QAP Solver as a library
-add_subdirectory(qap-solver)
-target_link_libraries(EGVB PRIVATE QAP_SOLVER)
-target_include_directories(
-    EGVB PRIVATE 
-    ${CMAKE_BINARY_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/qap-solver/Codes
-)
+# add_subdirectory(qap-solver)
+# target_link_libraries(EGVB PRIVATE QAP_SOLVER)
+# target_include_directories(
+#     EGVB PRIVATE 
+#     ${CMAKE_BINARY_DIR}
+#     ${CMAKE_CURRENT_SOURCE_DIR}/qap-solver/Codes
+# )
 
 # Uncomment these two options if you want to check for double frees, memory corruptions etc.
 # target_compile_options(EGVB PRIVATE -Wall -fsanitize=address,undefined -fno-omit-frame-pointer -g)

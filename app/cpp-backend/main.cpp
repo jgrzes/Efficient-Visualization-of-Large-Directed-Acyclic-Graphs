@@ -613,8 +613,8 @@ void readMaxColour(const GraphColourer::ColourHierarchyNode& node, uint32_t& max
 
 
 void printColourHierarchy(const GraphColourer::ColourHierarchyNode& node, uint32_t depth = 0) {
-  for (size_t j=0; j<depth; ++j) std::cout << "-";
-  std::cout << " " << node.colour << "\n";
+  // for (size_t j=0; j<depth; ++j) std::cout << "-";
+  // std::cout << " " << node.colour << "\n";
   for (const auto& childColourNode : node.children) {
     printColourHierarchy(childColourNode, depth+1);
   } 

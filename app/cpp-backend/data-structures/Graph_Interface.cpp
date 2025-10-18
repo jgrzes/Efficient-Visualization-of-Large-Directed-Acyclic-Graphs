@@ -124,11 +124,23 @@ GraphInterface::VertexAdjSet& GraphInterface::NAsVertexAdjSet(uint32_t vIndex) {
 
 
 const GraphInterface::VertexAdjSet& GraphInterface::NRAsVertexAdjSet(uint32_t vIndex) const {
+    auto nrvIndex = getUnderlyingGraphImpl().NRAsVertexAdjSet(vIndex);
+    // std::cout << "v = " << vIndex << ":\n";
+    // for (auto aIndex : nrvIndex) {
+        // std::cout << aIndex << " ";
+    // }
+    // std::cout << "\n";
     return getUnderlyingGraphImpl().NRAsVertexAdjSet(vIndex);
 }
 
 
 GraphInterface::VertexAdjSet& GraphInterface::NRAsVertexAdjSet(uint32_t vIndex) {
+    auto nrvIndex = getUnderlyingGraphImpl().NRAsVertexAdjSet(vIndex);
+    // std::cout << "v = " << vIndex << ":\n";
+    // for (auto aIndex : nrvIndex) {
+    //     std::cout << aIndex << " ";
+    // }
+    // std::cout << "\n";
     return getUnderlyingGraphImpl().NRAsVertexAdjSet(vIndex);
 }
 

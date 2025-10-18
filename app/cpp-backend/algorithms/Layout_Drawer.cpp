@@ -22,7 +22,7 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
     m_graph = &graph;
     m_rootColourNode = &rootColourNode;
 
-    std::cout << "Colour node: " << rootColourNode.colour << "\n";
+    // std::cout << "Colour node: " << rootColourNode.colour << "\n";
 
     std::vector<uint32_t> verticesWithCustomEpsilons;
     uint32_t vertexCountBeforeColourRootFixing = graph.getVertexCount();
@@ -30,7 +30,7 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
 
     size_t n = graph.getVertexCount();
     if (vertexCountBeforeColourRootFixing != n) {
-        std::cout << "Reassigning vertice levels\n";
+        // std::cout << "Reassigning vertice levels\n";
         assignLevelsInGraph(graph);
     }
 
@@ -47,12 +47,12 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
     auto equalColourDepthColourFinder = [this](uint32_t uColour, uint32_t vColour) -> std::pair<uint32_t, uint32_t> {
         uint32_t uDepth = (this->m_colourNodesPtrs)[uColour]->depth;
         uint32_t vDepth = (this->m_colourNodesPtrs)[vColour]->depth;
-        std::cout << "Colours: " << uColour << " " << vColour << "depts: " << uDepth << " " << vDepth << "\n";
+        // std::cout << "Colours: " << uColour << " " << vColour << "depts: " << uDepth << " " << vDepth << "\n";
         if (uDepth == vDepth) return {uColour, vColour};
         else if (uDepth > vDepth) {
             ColourHierarchyNode* nu = (this->m_colourNodesPtrs)[uColour];
             while (nu->depth != vDepth) {
-                std::cout << "u: " << nu->colour << " " << nu->depth << " " << nu->parent << " " << nu->parent->colour << "\n";
+                // std::cout << "u: " << nu->colour << " " << nu->depth << " " << nu->parent << " " << nu->parent->colour << "\n";
                 nu = const_cast<ColourHierarchyNode*>(nu->parent);
             }
 
@@ -60,7 +60,7 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
         } else {
             ColourHierarchyNode* nv = (this->m_colourNodesPtrs)[vColour];
             while (nv->depth != uDepth) {
-                std::cout << "v: " << nv->colour << " " << nv->depth << " " << nv->parent << " " << nv->parent->colour << "\n";
+                // std::cout << "v: " << nv->colour << " " << nv->depth << " " << nv->parent << " " << nv->parent->colour << "\n";
                 nv = const_cast<ColourHierarchyNode*>(nv->parent);
             }
 
@@ -89,6 +89,8 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
     double rightBoxBoundForUncoloured = 0;
     double offsetFromZero = 0;
     for (const auto& firstLevelColourNode : rootColourNode.children) {
+        // std::cout << "First level colour: " << firstLevelColourNode.colour << "\n";
+        if (firstLevelColourNode.verticesOfColour.empty()) continue;
         ArrayOfArrays<uint32_t> verticesPerLevelForColour = graph_preprocessing::findVerticesPerLevels(
             firstLevelColourNode.verticesOfColour, graph, true
         );
@@ -398,12 +400,12 @@ void LayoutDrawer::findEpsilonsForColourRoots(
         ? optColourNode.value().get()
         : *m_rootColourNode;
     
-    std::cout << "Colour node: " << colourNode.colour << "\n";
+    // std::cout << "Colour node: " << colourNode.colour << "\n";
     for (auto& colourNodeChild : colourNode.children) {
         findEpsilonsForColourRoots(colourNodeChild);
     }
 
-    if (colourNode.parent != nullptr) {
+    if (colourNode.parent != nullptr && !colourNode.children.empty()) {
         uint32_t colourRootIndex = _getColourRoot(colourNode);
         double epsilon = m_algorithmParams.epsilonForColourRootCalculator(
             findMaxWidthForColourSubgraphNotNested(colourRootIndex)
@@ -668,9 +670,9 @@ double LayoutDrawer::findPositionXThatMinimizesFCollection(
             xValuesToCheck.emplace_back(castedToArray1->operator[](0));
         } else {
             const auto& castedToArray3 = std::get<const std::array<double, 3>>(potentialMinimaForFi);
-            xValuesToCheck.emplace_back(castedToArray1->operator[](0));
-            xValuesToCheck.emplace_back(castedToArray1->operator[](1));
-            xValuesToCheck.emplace_back(castedToArray1->operator[](2));
+            xValuesToCheck.emplace_back(castedToArray3[0]);
+            xValuesToCheck.emplace_back(castedToArray3[1]);
+            xValuesToCheck.emplace_back(castedToArray3[2]);
         }
     }
 

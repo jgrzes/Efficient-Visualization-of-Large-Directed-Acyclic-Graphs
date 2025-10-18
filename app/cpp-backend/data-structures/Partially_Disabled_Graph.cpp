@@ -193,19 +193,29 @@ PartiallyDisabledGraph::~PartiallyDisabledGraph() {
 
 void PartiallyDisabledGraph::recomputeRootsIfNeeded() const {
     #define _extractFront(_v, _q) (_v = _q.front(), _q.pop_front())
+    // std::cout << "Recomputing roots...\n";
     std::deque<uint32_t> Q;
     std::unordered_set<uint32_t> vertexIndicesInQ;
     std::unordered_set<uint32_t> verticesToIgnoreIndices;
     auto& underlyingGraphImpl = const_cast<Graph&>(getUnderlyingGraphImpl());
     auto& rootList = underlyingGraphImpl.m_rootList;
+    // std::cout << "Roots: \n";
+    // for (uint32_t rIndex : rootList) std::cout << rIndex << " ";
+    // std::cout << "\n";
     std::vector<uint32_t> enabledPredsOfVertex;
+
+    // std::cout << "Interaring over initial root list...\n";
     for (auto it=rootList.begin(); it!=rootList.end(); ) {
         uint32_t rIndex = *it;
         bool rDisabled = m_disabledFlags[rIndex];
+        auto Nrr = NR(rIndex);
         enabledPredsOfVertex.clear();
-        for (const auto pIndex : NR(rIndex)) {
+        // std::cout << rIndex << (rDisabled ? " disabled" : " enabled") << "\n"; 
+        for (const auto pIndex : Nrr) {
+            // std::cout << pIndex << " ";
             enabledPredsOfVertex.emplace_back(pIndex);
         }
+        // std::cout << "\n";
         if (!rDisabled && enabledPredsOfVertex.empty()) {
             ++it;
             verticesToIgnoreIndices.emplace(rIndex);

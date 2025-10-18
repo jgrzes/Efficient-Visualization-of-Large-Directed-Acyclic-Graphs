@@ -59,14 +59,14 @@ ColouredGraph::Neighbourhood ColouredGraph::N(uint32_t vIndex) {
 
 const ColouredGraph::Neighbourhood ColouredGraph::N(const Vertex& v) const {
     return ColouredGraph::Neighbourhood(
-        new ColouredGraphNeighbourhoodView(this, NRAsVertexAdjSet(v.index))
+        new ColouredGraphNeighbourhoodView(this, NAsVertexAdjSet(v.index))
     );
 }
 
 
 const ColouredGraph::Neighbourhood ColouredGraph::NR(uint32_t vIndex) const {
     return ColouredGraph::Neighbourhood(
-        new ColouredGraphNeighbourhoodView(this, NAsVertexAdjSet(vIndex))
+        new ColouredGraphNeighbourhoodView(this, NRAsVertexAdjSet(vIndex))
     );
 }
 

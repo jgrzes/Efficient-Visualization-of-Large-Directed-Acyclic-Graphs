@@ -221,7 +221,6 @@ private:
     inline void computeDisputableEdgesPerLevel(bool forceRecomputation) {
         // if (!forceRecomputation && m_disputableEdgesPerLevel.value_or(nullptr) != nullptr) return;
         if (!forceRecomputation && _underlyingValueNotNullptr(m_disputableEdgesPerLevel)) return;
-        std::cout << "A\n";
         m_disputableEdgesPerLevel.value().reset(
             new ArrayOfArrays<Edge>(std::move(_findDisputableEdgesPerLevel(*m_graph)))
         );
@@ -238,7 +237,6 @@ private:
     inline void computeVerticesPerLevel(bool forceRecomputation) {
         // if (!forceRecomputation && m_verticesPerLevel.value_or(nullptr) != nullptr) return;
         if (!forceRecomputation && _underlyingValueNotNullptr(m_verticesPerLevel)) return;
-        std::cout << "B\n";
         m_verticesPerLevel.value().reset(
             new ArrayOfArrays<uint32_t>(std::move(_findVerticesPerLevel(*m_graph)))
         );
