@@ -1,5 +1,5 @@
 from graph import Graph, Vertex
-from typing import List, Tuple, Set, Optional
+from typing import Dict, List, Tuple, Set, Optional, Callable
 from copy import copy
 from abc import ABC, abstractmethod
 
@@ -75,8 +75,6 @@ class Fp(F):
         g_p = self.g_p
         if x - (x_p + g_p) >= 0:
             return self.alpha_p * (x - x_p - g_p)
-        # elif x_p <= x <= x_p + g_p:
-        # elif x - x_p >= 0 and x_p + g_p - x >= 0:
         elif x_p + g_p >= x >= x_p:
             return self.beta_p * (-x + x_p + g_p)
         else:
@@ -127,10 +125,6 @@ def find_minimum_for_F_collection(F_collection: List[F], k: int) -> float:
     ] + [
         f.x_p - f.g_p for f in F_collection if (isinstance(f, Fp) and f.g_p > 0)
     ]
-    # print(F_collection)
-    # print(points_to_check)
-    # for f in F_collection:
-    #     print(f.v.index, f.v.position)
     points_to_check.sort()
     min_val = float("inf")
     x_argmin = None 
@@ -142,18 +136,12 @@ def find_minimum_for_F_collection(F_collection: List[F], k: int) -> float:
         if val_for_point < min_val:
             min_val = val_for_point
             x_argmin = point 
-
-    # if x_argmin is None: 
-    #     print(f"Points to check: {points_to_check}")
     return x_argmin            
 
 
 def check_if_levels_and_L_sets_computed(G: Graph):
     for v in G.V:
         if not hasattr(v, "L_set_index"):
-            # raise Exception(
-            #     f"At least one vertice ({v.index}) has not been assigned colour"
-            # )
             v.L_set_index = float("-inf")
         if not v.level_computed:
             raise Exception(
@@ -165,7 +153,7 @@ def signum(x):
     if abs(x) < SIGNUM_EPS:
         return 0
     elif x > 0: return 1
-    else: return 0
+    else: return -1
 
 
 # calculates F interspring that affects u
@@ -206,7 +194,6 @@ def find_max_colour_index(G: Graph) -> int:
     max_colour_index = -1
     for v in G.V:
         max_colour_index = max(max_colour_index, v.L_set_index)
-
     return max_colour_index
 
 
@@ -215,13 +202,10 @@ def produce_E_v_entry_for_subgraph(
     E_v: Set[int], 
     deactivated_Vs_WPI: ArrayWithPersistentIterator
 ) -> Set[int]:
-    # print(v, deactivated_Vs_WPI.current_element, deactivated_Vs_WPI.array)
     if deactivated_Vs_WPI.current_element is None or deactivated_Vs_WPI.current_element != v:
-        # return set()
         return copy(E_v)
     else:
         deactivated_Vs_WPI.it += 1
-        # return copy(E_v)
         return set()
 
 
@@ -229,7 +213,6 @@ def build_colour_subgraphs(G: Graph) -> List[Graph]:
     max_colour_index = find_max_colour_index(G)
     Gs_by_colour: List[Graph] = [None for _ in range (max_colour_index+1)]
     for colour in range (0, max_colour_index+1): 
-        # print(colour)
         deactivated_Vs_for_colour_list = [
             v.index for v in G.V 
             if not hasattr(v, "L_set_index") or v.L_set_index != colour
@@ -250,10 +233,6 @@ def build_colour_subgraphs(G: Graph) -> List[Graph]:
         Gs_by_colour[colour].deactivated_V = deactivated_Vs_for_colour_set
         Gs_by_colour[colour].V = G.V
         Gs_by_colour[colour].find_roots()
-        # if colour == 2:
-        #     print(Gs_by_colour)
-
-    # print(Gs_by_colour)
     return Gs_by_colour
 
 
@@ -267,10 +246,8 @@ def get_roots_initial_x_positions(
         (r, F_interspring_collection[r][0]) for r in roots
     ], key=lambda x: x[1])
 
-    # print(W)
-    step = (len(roots) + 1) / W
+    step = W / (len(roots) + 1)
     for i in range (0, len(roots_sorted_by_interspring)):
-        # roots_sorted_by_interspring[i][1] = - 0.5*W + step*i
         roots_sorted_by_interspring[i] = (
             roots_sorted_by_interspring[i][0],
             - 0.5*W + step*i
@@ -312,8 +289,6 @@ def build_F_interspring_collection(G: Graph, Vs_per_levels: List[List[int]]):
                     F_interspring_collection[u][0] + L_INTERSPRING_TRANSFER * F_interspring_collection[v][0], 
                     F_interspring_collection[u][1]
                 )                
-                # F_interspring_collection[u][0] += L_INTERSPRING_TRANSFER * F_interspring_collection[v][0] 
-
     return F_interspring_collection
 
 
@@ -338,7 +313,6 @@ def move_from_left_to_right_and_create_gaps(V: List[Tuple[int, float]], W: float
                 p_u += gamma 
                 gamma = None 
                 continue 
-            # print(gamma)
             m_v = - p_v + (b if i == n-1 else (V[i+2][1] - eps))
             m_v = max(m_v, 0)
             p_v += m_v 
@@ -356,7 +330,6 @@ def move_from_left_to_right_and_create_gaps(V: List[Tuple[int, float]], W: float
                 gamma += p_v - p_u 
                 if abs(gamma) < SIGNUM_EPS:
                     gamma = None  
-
         V[i] = (V[i][0], p_u)
         V[i+1] = (V[i+1][0], p_v)              
 
@@ -366,7 +339,6 @@ def move_from_right_to_left_and_create_gaps(V: List[Tuple[int, float]], W: float
     a, b = -W*0.5, W*0.5
     gamma = None
     for i in range (n-1, -1, -1):
-        # i = j-1
         (_, p_u), (_, p_v) = V[i], V[i+1]
         eps_uv = p_v - p_u
         if gamma is None and eps_uv < eps:
@@ -400,7 +372,6 @@ def move_from_right_to_left_and_create_gaps(V: List[Tuple[int, float]], W: float
                 gamma += p_v - p_u   
                 if abs(gamma) < SIGNUM_EPS:
                     gamma = None  
-
         V[i] = (V[i][0], p_u)
         V[i+1] = (V[i+1][0], p_v)            
 
@@ -408,72 +379,12 @@ def move_from_right_to_left_and_create_gaps(V: List[Tuple[int, float]], W: float
 # eps - min. required gap
 # the function assumes that V_positions is already sorted at the time of passing
 def create_gaps_between_vertices_in_layout(V: List[Tuple[int, float]], W: float, eps: float):
-    gamma = eps
-    left_border, right_border = -W/2, W/2 
-    n = len(V) - 1
     move_from_left_to_right_and_create_gaps(V, W, eps)
     move_from_right_to_left_and_create_gaps(V, W, eps)
-    # for i in range (n):
-    #     (_, pos_u), (_, pos_v) = V[i], V[i+1]
-    #     # if pos_u - pos_v > SIGNUM_EPS:
-    #         # raise Exception("Something is wrong with the V passed to the create gaps function")
-    #     if (eps_uv := abs(pos_v - pos_u)) < gamma:
-    #         # available space to the left of u and to the right of v respeively
-    #         av_u = pos_u - (left_border if i == 0 else (V[i-1][1] + eps))
-    #         av_v = - pos_v + (right_border if i == n-1 else (V[i+2][1] - eps))
-    #         if eps_uv + av_u + av_v >= gamma:
-    #             m_u = max(0, av_u)
-    #             pos_u -= m_u 
-    #             m_v = gamma - eps_uv - m_u
-    #             # pos_v += gamma - m_v
-    #             pos_v += m_v
-    #             gamma = eps 
-    #             print("A0", i, n, V[i][0], V[i+1][0], pos_u, pos_v, gamma)
-    #         else:
-    #             m_u = max(0, av_u)
-    #             m_v = max(0, av_v)
-    #             pos_u -= m_u 
-    #             pos_v += m_v 
-    #             gamma = eps + gamma - eps_uv - m_u - m_v 
-    #             print("A", i, n, V[i][0], V[i+1][0], pos_u, pos_v, gamma)
-
-    #     V[i] = (V[i][0], pos_u) 
-    #     V[i+1] = (V[i+1][0], pos_v)   
-
-    # repeat the same loop but from the last index to the first, i.e.
-    # for i in range (len(V)-1, 0, -1)
-
-    # for i in range (len(V)-1, 0, -1):
-    #     (_, pos_u), (_, pos_v) = V[i-1], V[i]
-    #     # if pos_u - pos_v > SIGNUM_EPS:
-    #         # raise Exception("Something is wrong with the V passed to the create gaps function")
-    #     if (eps_uv := abs(pos_v - pos_u)) < gamma:
-    #         # available space to the left of u and to the right of v respeively
-    #         av_u = pos_u - (left_border if i == 1 else (V[i-1][1] + eps))
-    #         av_v = - pos_v + (right_border if i == n else (V[i][1] - eps))
-    #         if eps_uv + av_u + av_v >= gamma:
-    #             m_u = max(0, av_u)
-    #             pos_u -= m_u 
-    #             m_v = gamma - eps_uv - m_u
-    #             # pos_v += gamma - m_v
-    #             pos_v += m_v
-    #             gamma = eps 
-    #             print("B0", i, n, V[i-1][0], V[i][0], pos_u, pos_v, gamma)
-    #         else:
-    #             m_u = max(0, av_u)
-    #             m_v = max(0, av_v)
-    #             pos_u -= m_u 
-    #             pos_v += m_v 
-    #             gamma = eps + gamma - eps_uv - m_u - m_v 
-    #             print("B", i, n, V[i-1][0], V[i][0], pos_u, pos_v, gamma)
-
-    #     V[i-1] = (V[i-1][0], pos_u) 
-    #     V[i] = (V[i][0], pos_v)  
-    
+    n = len(V) - 1
+    left_border, right_border = -W/2, W/2 
     for i in range (n):
-        # print(i, V[i+1][1] - V[i][1], eps, abs(V[i+1][1] - V[i][1]) < eps)
         if abs(V[i+1][1] - V[i][1]) < eps:
-            # raise Exception("Something went wrong when trying to space the vertices")                                     
             print(V, left_border, right_border, eps)
             print("Something went wrong when trying to space the vertices") 
             break                                    
@@ -486,8 +397,6 @@ def build_F_collection_v(G: Graph, v: int, V_k_already_drawn: Set[int], w: float
         build_F(G, u, k_v, w * S_COEFF, ALPHA_P, BETA_P)
         for u in G.N_reversed(v) if G.V[u].L_set_index == c
     ]
-    # print(F_collection_v)
-    
     for u in G.N(v):
         for w in G.N_reversed(u):
             if w == v or G.V[w].L_set_index != c: 
@@ -496,9 +405,6 @@ def build_F_collection_v(G: Graph, v: int, V_k_already_drawn: Set[int], w: float
                 F_collection_v.append(build_F(
                     G, w, k_v, w * S_COEFF, ALPHA_P, BETA_P
                 ))
-                # print(F_collection_v)
-
-    # print(F_collection_v)
     return F_collection_v            
                     
 
@@ -509,20 +415,10 @@ def find_initial_layout_for_subgraph(
 ):
     for v in G.V:
         setattr(v, "position", (None, None))
-    # transfer_interspring_forces_upwards(G)
     roots = G.roots 
-    # print(Vs_per_levels[0])
-    # print(G)
-    # print(roots)
-    # if not (sorted(Vs_per_levels[0]) == sorted(roots)):
-    #     print(Vs_per_levels[0], roots)
-    #     raise Exception("Something went wrong when passing args to layout drawing function")
-
     roots_x_positions = get_roots_initial_x_positions(
-        # W, roots, F_interspring_collection 
         W, Vs_per_levels[0], F_interspring_collection
     )
-
     for root, pos_x_root in roots_x_positions:
         G.V[root].position = (pos_x_root, 0)
 
@@ -531,7 +427,6 @@ def find_initial_layout_for_subgraph(
     for k in range (1, len(Vs_per_levels)):
         predicted_y_coords[k] = predicted_y_coords[k-1] + (G_ACC * (VERTICE_WEIGHT + ADD_CHILDREN_WEIGHT_COEFF)) / K_INIT_LAYOUT_COEFF
 
-    # print(Vs_per_levels)
     for k in range (1, len(Vs_per_levels)):
         V_k = Vs_per_levels[k]
         V_k.sort(
@@ -541,17 +436,7 @@ def find_initial_layout_for_subgraph(
         V_k_already_drawn: Set[int] = set()
         for v in V_k:
             k_v = G.V[v].level
-            # F_collection_v = [
-            #     build_F(G, u, k_v, W / (len(V_k)*S_COEFF), ALPHA_P, BETA_P)
-            #     for u in G.N_reversed(v) if G.V[u].L_set_index == G.V[v].L_set_index
-            # ]
             F_collection_v = build_F_collection_v(G, v, V_k_already_drawn, W / (len(V_k)*S_COEFF))
-            # print(v, F_interspring_collection[v])
-            # print(V_k)
-            # print(
-            #     v, G.V[v].level, G.V[v].L_set_index, 
-            #     [(f.v.index, f.v.level, f.v.L_set_index) for f in F_collection_v]
-            # )
             if len(F_collection_v) != 0:
                 position_v_x = find_minimum_for_F_collection(F_collection_v, k_v) + F_interspring_collection[v][0]
                 position_v_x = max(-W*0.5, position_v_x)
@@ -561,8 +446,8 @@ def find_initial_layout_for_subgraph(
             
             parents_v = [u for u in G.N_reversed(v) if G.V[u].L_set_index == G.V[v].L_set_index]
             parent_y_coords = [G.V[p].position[1] for p in parents_v]
-            lowest_parent_y = min(parent_y_coords) if len(parent_y_coords) != 0 else predicted_y_coords[k-1]
-            d = 1 + PULL_UP_COEFF * (len(parents_v)-1)
+            lowest_parent_y = max(parent_y_coords) if len(parent_y_coords) != 0 else predicted_y_coords[k-1]
+            d = 1 + PULL_UP_COEFF * max((len(parents_v)-1), 0)
             weight_v = VERTICE_WEIGHT + ADD_CHILDREN_WEIGHT_COEFF*len([
                 u for u in G.N(v) if G.V[v].L_set_index == G.V[u].L_set_index    
             ])
@@ -594,7 +479,6 @@ def find_layout_for_subgraph(
     for v in G.V:
         if v.L_set_index == c:
             P.append((v.index, v.position))
-
     return P        
 
 
@@ -607,11 +491,8 @@ def remove_element_in_unorganized_array(arr: List, index: int):
 def extract_Vs_per_levels_for_subgraph(
     G: Graph, colour: int, eroding_global_Vs_per_levels: List[List[int]] 
 ) -> List[List[int]]:
-    # print(len(eroding_global_Vs_per_levels))
     Vs_per_levels = [[] for _ in eroding_global_Vs_per_levels]
-    # print(Vs_per_levels, len(Vs_per_levels))
     for k in range(len(Vs_per_levels)):
-        # print(k)
         n_k = len(eroding_global_Vs_per_levels[k])
         i = 0
         while i < n_k:
@@ -639,51 +520,214 @@ def extract_Vs_per_levels_for_subgraph(
 
     if start_level > end_level:
         return []
-    # print(Vs_per_levels)
     return Vs_per_levels[start_level:end_level+1]            
 
 
 def determine_box_width_for_subgraph(Vs_per_levels: List[List[int]]) -> float:
     W = BOX_WIDTH_COEFF * max([len(V_k) for V_k in Vs_per_levels])
-    # print("W:", W, type(W))
     return W
 
 
+class LayoutCreator:
+
+    def __init__(
+        self,
+        padding: float = PADDING,
+        box_width_coeff: float = BOX_WIDTH_COEFF,
+        margin_padding_coeff: float = MARGIN_PADDING_COEFF,
+        alpha_p: float = ALPHA_P,
+        beta_p: float = BETA_P,
+        s_coeff: float = S_COEFF,
+        w1_x_interspring: float = W_1_X_INTERSPRING,
+        w2_x_interspring: float = W_2_X_INTERSPRING,
+        w1_y_interspring: float = W_1_Y_INTERSPRING,
+        w2_y_interspring: float = W_2_Y_INTERSPRING,
+        w3_y_interspring: float = W_3_Y_INTERSPRING,
+        w4_y_interspring: float = W_4_Y_INTERSPRING,
+        l_interspring_transfer: float = L_INTERSPRING_TRANSFER,
+        vertice_weight: float = VERTICE_WEIGHT,
+        add_children_weight_coeff: float = ADD_CHILDREN_WEIGHT_COEFF,
+        g_acc: float = G_ACC,
+        k_init_layout_coeff: float = 1.0,
+        pull_up_coeff: float = 1.0,
+        signum_eps: float = 1.0,
+        w1_x_acs: float = 1.0,
+        w2_x_acs: float = 1.0,
+        roots_initial_positions_max_iter: int = 100,
+        max_req_movement: float = 10.0,
+        y_distance_between_uncoloured_levels: float = 60.0,
+        box_width_fn: Optional[Callable[[List[List[int]]], float]] = None,
+    ):
+        self.padding = padding
+        self.box_width_coeff = box_width_coeff
+        self.margin_padding_coeff = margin_padding_coeff
+        self.alpha_p = alpha_p
+        self.beta_p = beta_p
+        self.s_coeff = s_coeff
+        self.w1_x_interspring = w1_x_interspring
+        self.w2_x_interspring = w2_x_interspring
+        self.w1_y_interspring = w1_y_interspring
+        self.w2_y_interspring = w2_y_interspring
+        self.w3_y_interspring = w3_y_interspring
+        self.w4_y_interspring = w4_y_interspring
+        self.l_interspring_transfer = l_interspring_transfer
+        self.vertice_weight = vertice_weight
+        self.add_children_weight_coeff = add_children_weight_coeff
+        self.g_acc = g_acc
+        self.k_init_layout_coeff = k_init_layout_coeff
+        self.pull_up_coeff = pull_up_coeff
+        self.signum_eps = signum_eps
+        self.w1_x_acs = w1_x_acs
+        self.w2_x_acs = w2_x_acs
+        self.roots_initial_positions_max_iter = roots_initial_positions_max_iter
+        self.max_req_movement = max_req_movement
+        self.y_distance_between_uncoloured_levels = y_distance_between_uncoloured_levels
+
+        if box_width_fn is None:
+            def _default_box_width(Vs_per_levels: List[List[int]]) -> float:
+                return self.box_width_coeff * max(len(Vk) for Vk in Vs_per_levels)
+            self.box_width_fn = _default_box_width
+        else:
+            self.box_width_fn = box_width_fn
+
+        # for now globals, to avoid passing too many parameters around, but should be fixed later
+        g = globals()
+        g["PADDING"] = padding
+        g["BOX_WIDTH_COEFF"] = box_width_coeff
+        g["MARGIN_PADDING_COEFF"] = margin_padding_coeff
+        g["ALPHA_P"] = alpha_p
+        g["BETA_P"] = beta_p
+        g["S_COEFF"] = s_coeff
+        g["W_1_X_INTERSPRING"] = w1_x_interspring
+        g["W_2_X_INTERSPRING"] = w2_x_interspring
+        g["W_1_Y_INTERSPRING"] = w1_y_interspring
+        g["W_2_Y_INTERSPRING"] = w2_y_interspring
+        g["W_3_Y_INTERSPRING"] = w3_y_interspring
+        g["W_4_Y_INTERSPRING"] = w4_y_interspring
+        g["L_INTERSPRING_TRANSFER"] = l_interspring_transfer
+        g["VERTICE_WEIGHT"] = vertice_weight
+        g["ADD_CHILDREN_WEIGHT_COEFF"] = add_children_weight_coeff
+        g["G_ACC"] = g_acc
+        g["K_INIT_LAYOUT_COEFF"] = k_init_layout_coeff
+        g["PULL_UP_COEFF"] = pull_up_coeff
+        g["SIGNUM_EPS"] = signum_eps
+        g["W_1_X_ACS"] = w1_x_acs
+        g["W_2_X_ACS"] = w2_x_acs
+        g["ROOTS_INITIAL_POSITIONS_MAX_ITER"] = roots_initial_positions_max_iter
+        g["MAX_REQ_MOVEMENT"] = max_req_movement
+
+    def create(self, G: Graph) -> List[Tuple[float, float]]:
+        check_if_levels_and_L_sets_computed(G)
+        global_Vs_per_levels = build_Vs_per_levels_collection(G)
+        F_interspring_collection = build_F_interspring_collection(G, global_Vs_per_levels)
+        Gs_by_colour = build_colour_subgraphs(G)
+
+        eroding_global_Vs_per_levels = copy(global_Vs_per_levels)
+        P: List[Optional[Tuple[float, float]]] = [None for _ in range(len(G.V))]
+        offset = 0.0
+
+        for c in range(len(Gs_by_colour)):
+            G_c = Gs_by_colour[c]
+            Vs_per_levels_for_G_c = extract_Vs_per_levels_for_subgraph(
+                G, c, eroding_global_Vs_per_levels
+            )
+            if len(Vs_per_levels_for_G_c) == 0:
+                continue
+
+            W_c = self.box_width_fn(Vs_per_levels_for_G_c)
+
+            G_c_positions = find_layout_for_subgraph(
+                G_c, c, W_c,
+                F_interspring_collection,
+                Vs_per_levels_for_G_c
+            )
+            for v, (vx, vy) in G_c_positions:
+                if P[v] is not None:
+                    print("Double calculated v!")
+                P[v] = (vx + offset, vy)
+
+            offset += W_c + self.padding
+
+        return P
+
+    def draw_uncoloured_part_of_graph(
+        self,
+        G,
+        vertices_per_level: List[List[int]],
+        kl: int,
+        box_bounds: Tuple[float, float],
+        *,
+        match_cpp_off_by_one: bool = False,
+    ) -> None:
+        left_box_bound, right_box_bound = box_bounds
+        W = right_box_bound - left_box_bound
+        h = self.y_distance_between_uncoloured_levels
+
+        def _is_top_level_coloured(v_idx: int) -> bool:
+            v_colour = G.get_vertex_colour(v_idx)
+            if v_colour == 0:
+                return False
+            parent = G.colour_nodes_ptrs[v_colour].parent
+            return (parent.colour == 0)
+
+        uncol_order_on_level: Dict[int, int] = {}
+
+        Vkl = list(vertices_per_level[kl])
+        nkl = len(Vkl)
+        edges_to_colour_sum = [0 for _ in range(nkl)]
+        edges_to_any_colour_cnt = [0 for _ in range(nkl)]
+
+        for i, u_idx in enumerate(Vkl):
+            for v_idx in G.N(u_idx):
+                if _is_top_level_coloured(v_idx):
+                    v_colour = G.get_vertex_colour(v_idx)
+                    edges_to_colour_sum[i] += v_colour
+                    edges_to_any_colour_cnt[i] += 1
+
+        E: List[Tuple[int, float]] = []
+        INF = float("inf")
+        for i, u_idx in enumerate(Vkl):
+            avg = (edges_to_colour_sum[i] / edges_to_any_colour_cnt[i]) if edges_to_any_colour_cnt[i] else INF
+            E.append((u_idx, float(avg)))
+        E.sort(key=lambda p: p[1])
+
+        s = (W / (nkl + 1)) if nkl > 0 else 0.0
+        for i, (v_idx, _) in enumerate(E):
+            uncol_order_on_level[v_idx] = i + 1
+            xi = left_box_bound + (i if match_cpp_off_by_one else (i + 1)) * s
+            G.V[v_idx].position = (xi, -h)
+
+        h += self.y_distance_between_uncoloured_levels
+
+        k = kl - 1
+        while k >= 1:
+            Vk = list(vertices_per_level[k])
+            nk = len(Vk)
+            edges_to_colour_sum = [0 for _ in range(nk)]
+            edges_to_any_colour_cnt = [0 for _ in range(nk)]
+
+            for i, u_idx in enumerate(Vk):
+                for v_idx in G.N(u_idx):
+                    if getattr(G.V[v_idx], "level", 10**9) <= kl:
+                        uncol_rank = uncol_order_on_level.get(v_idx, 0)
+                        edges_to_colour_sum[i] += uncol_rank
+                        edges_to_any_colour_cnt[i] += 1
+
+            E.clear()
+            for i, u_idx in enumerate(Vk):
+                avg = (edges_to_colour_sum[i] / edges_to_any_colour_cnt[i]) if edges_to_any_colour_cnt[i] else INF
+                E.append((u_idx, float(avg)))
+            E.sort(key=lambda p: p[1])
+
+            s = (W / (nk + 1)) if nk > 0 else 0.0
+            for i, (v_idx, _) in enumerate(E):
+                uncol_order_on_level[v_idx] = i + 1
+                xi = left_box_bound + (i if match_cpp_off_by_one else (i + 1)) * s
+                G.V[v_idx].position = (xi, -h)
+
+            h += self.y_distance_between_uncoloured_levels
+            k -= 1
+
+# wrapper
 def create_layout(G: Graph) -> List[Tuple[float, float]]:
-    check_if_levels_and_L_sets_computed(G)
-    global_Vs_per_levels = build_Vs_per_levels_collection(G)
-    F_interspring_collection = build_F_interspring_collection(G, global_Vs_per_levels)
-    Gs_by_colour = build_colour_subgraphs(G)
-    # print(F_interspring_collection)
-    # for i in range(len(F_interspring_collection)):
-    #     F_i_x, F_i_y = F_interspring_collection[i]
-    #     if abs(F_i_x) > SIGNUM_EPS or abs(F_i_y) > SIGNUM_EPS:
-    #         print(i, F_i_x, F_i_y)
-
-    eroding_global_Vs_per_levels = copy(global_Vs_per_levels)
-    P: List[Optional[Tuple[float, float]]] = [None for _ in range (len(G.V))]
-    offset = 0
-    padding = PADDING
-    for c in range(len(Gs_by_colour)):
-        G_c = Gs_by_colour[c]
-        Vs_per_levels_for_G_c = extract_Vs_per_levels_for_subgraph(
-            G, c, eroding_global_Vs_per_levels
-        )
-        if len(Vs_per_levels_for_G_c) == 0:
-            continue
-        W_c = determine_box_width_for_subgraph(Vs_per_levels_for_G_c) 
-        # print("W_c", W_c, type(W_c))
-        G_c_positions = find_layout_for_subgraph(
-            G_c, c, W_c, 
-            F_interspring_collection, 
-            Vs_per_levels_for_G_c
-        )
-        # print(G_c_positions)
-        for v, (v_pos_x, v_pos_y) in G_c_positions:
-            if P[v] is not None:
-                print(f"Double calculated v!")
-            P[v] = (v_pos_x + offset, v_pos_y) 
-        offset += W_c + padding
-
-    return P            
-        
+    return LayoutCreator().create(G)
