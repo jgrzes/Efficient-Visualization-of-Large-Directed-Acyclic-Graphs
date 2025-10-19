@@ -196,6 +196,8 @@ if __name__ == "__main__":
       for u_c in c_list:
          G.V[u_c].L_set_index = c
    P_G = create_layout(G)
+   for i in range(0, len(P_G)):
+      print(f"{i} : {P_G[i]}")
    
    for i in range(len(P_G)):
       if P_G[i] is not None:

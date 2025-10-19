@@ -346,7 +346,7 @@ void LayoutDrawer::transferFInterspringUpwards(const ArrayOfArraysInterface<uint
         for (size_t i=0; i<nk; ++i) {
             uint32_t uIndex = Vk[i];
             uint32_t uColour = graph.getVertexColour(uColour);
-            auto cumFInterspringU = m_cumFInterspring[uIndex];
+            auto cumFInterspringU = m_cumFInterspring.dataAtOr(uIndex, {0, 0});
 
             for (uint32_t wIndex : graph.NR(uIndex)) {
                 if (uColour != graph.getVertexColour(wIndex)) continue;

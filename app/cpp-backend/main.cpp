@@ -849,10 +849,10 @@ int main(int argc, char** argv) {
     ](uint32_t uColour, uint32_t uLevel, uint32_t vColour, uint32_t vLevel) -> std::pair<double, double> {
       int64_t a = static_cast<int64_t>(uColour) - static_cast<int64_t>(vColour);
       uint32_t b = std::abs(a);
-      uint32_t c = std::abs(static_cast<int64_t>(uLevel) - static_cast<int64_t>(vLevel));
+      int64_t c = static_cast<int64_t>(uLevel) - static_cast<int64_t>(vLevel);
       return {
-        w1XInterspring * static_cast<double>(std::pow(b, w2XInterspring)) * _signum(a), 
-        -(w1YInterspring * static_cast<double>(std::pow(b, w2YInterspring))) * (w3YInterspring * static_cast<double>(std::pow(c, w4YInterspring)))
+        w1XInterspring * static_cast<double>(std::pow(b, w2XInterspring)) * _signum(-a), 
+        w1YInterspring * static_cast<double>(std::pow(b, w2YInterspring)) * w3YInterspring * static_cast<double>(std::pow(std::abs(c), w4YInterspring)) * _signum(c)
       };
     };
 
@@ -881,6 +881,11 @@ int main(int argc, char** argv) {
 
   auto layoutDrawer = LayoutDrawer(layoutAlgorithmParams);
   auto layoutPositions = layoutDrawer.findLayoutForGraph(colouredGraph, colourHierarchyRoot, 1.0);
+
+  size_t n = layoutPositions.size();
+  for (size_t uIndex=0; uIndex<n; ++uIndex) {
+    std::cout << "(" <<  uIndex << ": (" << layoutPositions[uIndex].first << ", " << layoutPositions[uIndex].second << ")),\n";
+  }
 
   return 0;
 }

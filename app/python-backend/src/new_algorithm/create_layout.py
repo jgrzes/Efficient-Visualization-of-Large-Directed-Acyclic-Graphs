@@ -192,7 +192,7 @@ def find_cum_F_interspring(G: Graph, v: int) -> Tuple[float, float]:
             )
 
     # Changed: was N(v), pretty sure it should have been NR(v)
-    for u in G.NR(v): # employ checking if the vertice is not doubly calculated in graphs with some undirected edges
+    for u in G.N_reversed(v): # employ checking if the vertice is not doubly calculated in graphs with some undirected edges
         if G.V[u].L_set_index != colour_v:
             F_interspring_u = F_interspring(G.V[v], G.V[u])
             cum_F_interspring = (
