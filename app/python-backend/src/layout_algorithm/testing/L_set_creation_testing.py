@@ -1,5 +1,8 @@
-from create_L_sets import Graph, LSetCreator
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from preprocess_graph import assign_levels
+from create_L_sets import Graph, LSetCreator
 
 
 G1 = Graph(

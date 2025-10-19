@@ -1,13 +1,12 @@
-from graph import Graph, Vertex
+from graph import Graph
 from collections import deque as queue
 from copy import deepcopy
 
-
 def assign_levels(G: Graph):
-    if G.vertex_levels_computed: 
+    if G.vertex_levels_computed:
         raise Exception("Vertex levels already computed")
     
-    roots = G.roots 
+    roots = G.roots
     if len(roots) == 0:
         raise Exception("The graph must have at least one root")
     
@@ -17,7 +16,7 @@ def assign_levels(G: Graph):
         Q.append((u, 0))
 
     should_ignore = [False for _ in range (G.vertex_count)]
-    live_I_v_collection = [deepcopy(G.N_reversed(u)) for u in range (G.vertex_count)]    
+    live_I_v_collection = [deepcopy(G.N_reversed(u)) for u in range (G.vertex_count)]
 
     while not (len(Q) == 0 and len(Q_prim) == 0):
         if len(Q) > 0:
@@ -35,6 +34,3 @@ def assign_levels(G: Graph):
                     Q_prim.append((v, level+1))
                 else:
                     Q.append((v, level+1))
-
-
-

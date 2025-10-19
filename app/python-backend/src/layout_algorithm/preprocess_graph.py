@@ -1,5 +1,5 @@
-from graph import Graph, Vertex
-from copy import deepcopy, copy
+from graph import Graph
+from copy import deepcopy
 from assign_levels import assign_levels
 from typing import List, Tuple
 
