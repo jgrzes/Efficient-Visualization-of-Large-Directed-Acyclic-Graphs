@@ -52,14 +52,13 @@ def fr_net_force(
         - sum of squared net forces
     """
     EPS_D = 1e-6
-    EPS_AREA = 1e-6
 
     idx = [i for i, p in enumerate(P) if p is not None]
     n = len(idx)
     if n <= 1:
         return 0.0
 
-    area = bounding_box_area(P) + EPS_AREA
+    area = bounding_box_area(P)
 
     k = C * math.sqrt(area / n)
 
@@ -106,7 +105,7 @@ def fr_net_force(
         inv = 1.0 / dist
         ux = dx * inv
         uy = dy * inv
-        Fa = math.pow(dist, 2) / k
+        Fa = math.pow(dist, 2) / k # |Fa| = dist^2 / k
 
         Fx[u] += ux * Fa
         Fy[u] += uy * Fa
