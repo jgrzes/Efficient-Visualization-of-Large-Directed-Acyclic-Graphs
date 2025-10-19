@@ -1,5 +1,5 @@
-from create_L_sets import Graph, create_initial_L_sets
-from preprocess_graph import preprocess_graph, assign_levels
+from create_L_sets import Graph, LSetCreator
+from preprocess_graph import assign_levels
 
 
 G1 = Graph(
@@ -306,9 +306,8 @@ G3 = Graph(
 )
 
 if __name__ == "__main__":
-    # assign_levels(G1) 
-    # print(create_initial_L_sets(G1))
     assign_levels(G3)
-    L_sets = create_initial_L_sets(G3)
+    LSetCreator = LSetCreator()
+    L_sets = LSetCreator.create_initial_L_sets(G3)
     for l_set in L_sets:
       print(l_set)
