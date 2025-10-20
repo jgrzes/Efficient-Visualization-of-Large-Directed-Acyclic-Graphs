@@ -529,7 +529,7 @@ def determine_box_width_for_subgraph(Vs_per_levels: List[List[int]]) -> float:
 
 
 class LayoutCreator:
-
+    
     def __init__(
         self,
         padding: float = PADDING,
@@ -548,13 +548,13 @@ class LayoutCreator:
         vertice_weight: float = VERTICE_WEIGHT,
         add_children_weight_coeff: float = ADD_CHILDREN_WEIGHT_COEFF,
         g_acc: float = G_ACC,
-        k_init_layout_coeff: float = 1.0,
-        pull_up_coeff: float = 1.0,
-        signum_eps: float = 1.0,
-        w1_x_acs: float = 1.0,
-        w2_x_acs: float = 1.0,
-        roots_initial_positions_max_iter: int = 100,
-        max_req_movement: float = 10.0,
+        k_init_layout_coeff: float = K_INIT_LAYOUT_COEFF,
+        pull_up_coeff: float = PULL_UP_COEFF,
+        signum_eps: float = SIGNUM_EPS,
+        w1_x_acs: float = W_1_X_ACS,
+        w2_x_acs: float = W_2_X_ACS,
+        roots_initial_positions_max_iter: int = ROOTS_INITIAL_POSITIONS_MAX_ITER,
+        max_req_movement: float = MAX_REQ_MOVEMENT,
         y_distance_between_uncoloured_levels: float = 60.0,
         box_width_fn: Optional[Callable[[List[List[int]]], float]] = None,
     ):
