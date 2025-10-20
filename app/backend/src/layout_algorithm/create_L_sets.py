@@ -221,19 +221,15 @@ def greedily_divide_into_L_sets(
 
 
 class LSetCreator:
-    """
-    Class creating L-sets for a given graph G.
 
-        determine_starting_level_fn(
-            cum_d_edges_per_level=...,    # List[List[tuple[int,int]]] lub ekwiwalent
-            cum_V_counts_per_level=...,   # List[int]
-            Vs_per_level=...,             # List[List[int]]
-            G=...                         # Graph
-        ) -> int
     """
+    Class for creating initial L-sets from a directed acyclic graph (DAG).
+    The L-sets are created based on the structure of the graph and a starting level determined by a user-defined function.
+    """
+
     def __init__(self, determine_starting_level_fn: Optional[Callable[..., int]] = None):
         if determine_starting_level_fn is None:
-            self.determine_starting_level_fn = lambda **_: 2
+            self.determine_starting_level_fn = lambda **_: 1
         else:
             self.determine_starting_level_fn = determine_starting_level_fn
 

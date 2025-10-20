@@ -529,7 +529,7 @@ def determine_box_width_for_subgraph(Vs_per_levels: List[List[int]]) -> float:
 
 
 class LayoutCreator:
-    
+
     def __init__(
         self,
         padding: float = PADDING,
@@ -555,7 +555,7 @@ class LayoutCreator:
         w2_x_acs: float = W_2_X_ACS,
         roots_initial_positions_max_iter: int = ROOTS_INITIAL_POSITIONS_MAX_ITER,
         max_req_movement: float = MAX_REQ_MOVEMENT,
-        y_distance_between_uncoloured_levels: float = 60.0,
+        y_distance_between_uncoloured_levels: float = 10,
         box_width_fn: Optional[Callable[[List[List[int]]], float]] = None,
     ):
         self.padding = padding
@@ -684,7 +684,6 @@ class LayoutCreator:
                 vertices_per_level=vertices_per_level,
                 kl=kl,
                 box_bounds=(left_box_bound, right_box_bound),
-                match_cpp_off_by_one=False,
             )
 
             for v in range(len(G.V)):
@@ -700,15 +699,21 @@ class LayoutCreator:
         kl: int,
         box_bounds: Tuple[float, float],
         *,
-        match_cpp_off_by_one: bool = False,
     ) -> None:
+        """
+        Draws uncoloured part of the graph in the specified box bounds, starting from level kl down to level 0.
+        Takes: 
+            - G: Graph object
+            - vertices_per_level: List of lists, where each sublist contains vertex indices at that level
+            - kl: The highest level with uncoloured vertices to start drawing from
+            - box_bounds: Tuple specifying the left and right bounds of the box (left_box_bound, right_box_bound)   
+        """
         left_box_bound, right_box_bound = box_bounds
         W = right_box_bound - left_box_bound
         h = self.y_distance_between_uncoloured_levels
 
         def _is_top_level_coloured(v_idx: int) -> bool:
             return getattr(G.V[v_idx], "L_set_index", -1) >= 0
-
 
         uncol_order_on_level: Dict[int, int] = {}
 
@@ -717,13 +722,14 @@ class LayoutCreator:
         edges_to_colour_sum = [0 for _ in range(nkl)]
         edges_to_any_colour_cnt = [0 for _ in range(nkl)]
 
-        for i, u_idx in enumerate(Vkl):
-            for v_idx in G.N(u_idx):
+        for i, u_idx in enumerate(Vkl): # for each uncoloured vertex on level kl
+            for v_idx in G.N(u_idx): # for each neighbour
                 if _is_top_level_coloured(v_idx):
                     v_colour = getattr(G.V[v_idx], "L_set_index", -1)
                     edges_to_colour_sum[i] += v_colour
                     edges_to_any_colour_cnt[i] += 1
 
+        # Create list E of tuples (vertex_index, average_colour_value)
         E: List[Tuple[int, float]] = []
         INF = float("inf")
         for i, u_idx in enumerate(Vkl):
@@ -734,11 +740,12 @@ class LayoutCreator:
         s = (W / (nkl + 1)) if nkl > 0 else 0.0
         for i, (v_idx, _) in enumerate(E):
             uncol_order_on_level[v_idx] = i + 1
-            xi = left_box_bound + (i if match_cpp_off_by_one else (i + 1)) * s
+            xi = left_box_bound + i * s
             G.V[v_idx].position = (xi, -h)
 
         h += self.y_distance_between_uncoloured_levels
 
+        # proceed to lower levels
         k = kl - 1
         while k >= 1:
             Vk = list(vertices_per_level[k])
@@ -762,7 +769,7 @@ class LayoutCreator:
             s = (W / (nk + 1)) if nk > 0 else 0.0
             for i, (v_idx, _) in enumerate(E):
                 uncol_order_on_level[v_idx] = i + 1
-                xi = left_box_bound + (i if match_cpp_off_by_one else (i + 1)) * s
+                xi = left_box_bound + i * s
                 G.V[v_idx].position = (xi, -h)
 
             h += self.y_distance_between_uncoloured_levels
