@@ -545,7 +545,7 @@ def extract_Vs_per_levels_for_subgraph(
 
     if start_level > end_level:
         return []
-    return Vs_per_levels[start_level: end_level + 1]
+    return Vs_per_levels[start_level : end_level + 1]
 
 
 def determine_box_width_for_subgraph(Vs_per_levels: List[List[int]]) -> float:
