@@ -193,7 +193,7 @@ def greedily_divide_into_L_sets(
                 if not determine_if_should_merge(k, count):
                     break
                 if G.V[u].merge_set is None and G.V[v].merge_set is None:
-                    G.V[u].merge_set = set(u, v)
+                    G.V[u].merge_set = {u, v}
                     G.V[v].merge_set = G.V[u].merge_set
                 elif G.V[v].merge_set is None:
                     G.V[u].merge_set.add(v)

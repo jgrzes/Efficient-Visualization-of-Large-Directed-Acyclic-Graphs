@@ -171,7 +171,7 @@ def edge_length_variance(G: Graph, P: List[Optional[Vec2]]) -> float:
     if len(lengths) < 2:
         return 0.0
     mean = sum(lengths) / len(lengths)
-    return sum((l - mean) * (l - mean) for l in lengths) / len(lengths)
+    return sum((length - mean) * (length - mean) for length in lengths) / len(lengths)
 
 
 def overlap_penalty(P: List[Optional[Vec2]], min_dist: float = 8.0) -> float:
