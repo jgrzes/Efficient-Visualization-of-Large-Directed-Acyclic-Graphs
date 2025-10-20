@@ -1,17 +1,20 @@
-# This module contains functions for optimizing parameters used in the layout creation process. Based on Force-directed layout by Stephen G. Kobourov.
+# Based on Force-directed layout by Stephen G. Kobourov.
 
 import math
-from typing import Tuple, Optional, Iterable, List, Dict
-from .graph import Graph
 import random
+from typing import Dict, Iterable, List, Optional, Tuple
+
 from .create_layout import LayoutCreator
+from .graph import Graph
 
 Vec2 = Tuple[float, float]
+
 
 def euclidean_distance(p1: Vec2, p2: Vec2) -> float:
     dx = p1[0] - p2[0]
     dy = p1[1] - p2[1]
     return math.hypot(dx, dy)
+
 
 def bounding_box_area(points: Iterable[Optional[Vec2]]) -> float:
     # Calculates area of bounding box around given points. Necessary for FR calculations.
@@ -19,7 +22,8 @@ def bounding_box_area(points: Iterable[Optional[Vec2]]) -> float:
     for p in points:
         if p is None:
             continue
-        xs.append(p[0]); ys.append(p[1])
+        xs.append(p[0])
+        ys.append(p[1])
     if not xs:
         return 1.0
     min_x, max_x = min(xs), max(xs)
@@ -27,6 +31,7 @@ def bounding_box_area(points: Iterable[Optional[Vec2]]) -> float:
     w = max(max_x - min_x, 1e-6)
     h = max(max_y - min_y, 1e-6)
     return w * h
+
 
 def graph_edges(G: Graph) -> set[Tuple[int, int]]:
     # Returns set of undirected edges (no duplicates)
@@ -36,6 +41,7 @@ def graph_edges(G: Graph) -> set[Tuple[int, int]]:
             a, b = (u, v) if u < v else (v, u)
             edges.add((a, b))
     return edges
+
 
 def fr_net_force(
     G: Graph,
@@ -90,7 +96,7 @@ def fr_net_force(
             Fy[j] -= uy * Fr
 
     # Attraction along edges
-    for (u, v) in graph_edges(G):
+    for u, v in graph_edges(G):
         pu = P[u]
         pv = P[v]
         if pu is None or pv is None:
@@ -105,7 +111,7 @@ def fr_net_force(
         inv = 1.0 / dist
         ux = dx * inv
         uy = dy * inv
-        Fa = math.pow(dist, 2) / k # |Fa| = dist^2 / k
+        Fa = math.pow(dist, 2) / k  # |Fa| = dist^2 / k
 
         Fx[u] += ux * Fa
         Fy[u] += uy * Fa
@@ -113,6 +119,7 @@ def fr_net_force(
         Fy[v] -= uy * Fa
 
     return sum(Fx[i] * Fx[i] + Fy[i] * Fy[i] for i in idx)
+
 
 def barycentric_residual(G: Graph, P: List[Optional[Vec2]]) -> float:
     """
@@ -154,7 +161,7 @@ def edge_length_variance(G: Graph, P: List[Optional[Vec2]]) -> float:
     Variance of edge lengths.
     """
     lengths: List[float] = []
-    for (u, v) in graph_edges(G):
+    for u, v in graph_edges(G):
         pu, pv = P[u], P[v]
         if pu is None or pv is None:
             continue
@@ -181,7 +188,7 @@ def overlap_penalty(P: List[Optional[Vec2]], min_dist: float = 8.0) -> float:
             x2, y2 = pts[j]
             d = math.hypot(x1 - x2, y1 - y2)
             if d < min_dist:
-                diff = (min_dist - d)
+                diff = min_dist - d
                 pen += diff * diff
     return pen
 
@@ -200,11 +207,12 @@ def quality_score(
         score = w_fr*FR + w_bary*Bary + w_var*Var + w_overlap*Overlap
     Lower score = better layout.
     """
-    fr = fr_net_force(G, P, C=1.0)             # 12.2
-    bary = barycentric_residual(G, P)          # 12.3
+    fr = fr_net_force(G, P, C=1.0)  # 12.2
+    bary = barycentric_residual(G, P)  # 12.3
     var = edge_length_variance(G, P)
     ovl = overlap_penalty(P, min_dist=8.0)
     return w_fr * fr + w_bary * bary + w_var * var + w_overlap * ovl
+
 
 # Parameter optimization
 
@@ -225,16 +233,21 @@ _DEFAULT_SPACE: ParamSpace = {
     "margin_padding_coeff": (0.0, 0.2),
 }
 
+
 def _sample(space: ParamSpace) -> Dict[str, float]:
     return {k: random.uniform(lo, hi) for k, (lo, hi) in space.items()}
 
-def _mutate(params: Dict[str, float], space: ParamSpace, scale: float = 0.2) -> Dict[str, float]:
+
+def _mutate(
+    params: Dict[str, float], space: ParamSpace, scale: float = 0.2
+) -> Dict[str, float]:
     out = dict(params)
     for k, (lo, hi) in space.items():
         span = hi - lo
         sigma = scale * span
         out[k] = min(hi, max(lo, random.gauss(out[k], sigma)))
     return out
+
 
 def _build_creator(params: Dict[str, float]) -> LayoutCreator:
     return LayoutCreator(
@@ -251,6 +264,7 @@ def _build_creator(params: Dict[str, float]) -> LayoutCreator:
         k_init_layout_coeff=params["k_init_layout_coeff"],
         pull_up_coeff=params["pull_up_coeff"],
     )
+
 
 def optimize_params(
     G: Graph,
@@ -281,7 +295,9 @@ def optimize_params(
 
     def _score_for(creator: LayoutCreator) -> float:
         P = creator.create(G)
-        return quality_score(G, P, w_fr=w_fr, w_bary=w_bary, w_var=w_var, w_overlap=w_overlap)
+        return quality_score(
+            G, P, w_fr=w_fr, w_bary=w_bary, w_var=w_var, w_overlap=w_overlap
+        )
 
     best = _sample(space)
     best_creator = _build_creator(best)
@@ -306,4 +322,3 @@ def optimize_params(
         step_scale *= 0.95
 
     return best, best_score
-

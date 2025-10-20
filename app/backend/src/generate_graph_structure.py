@@ -3,12 +3,12 @@ from numbers import Number
 import graph_tool as gt
 import graph_tool.topology as gt_top
 import numpy as np
-
-from layout_algorithm.graph import Graph as PyGraph
 from layout_algorithm.assign_levels import assign_levels
 from layout_algorithm.create_L_sets import LSetCreator
 from layout_algorithm.create_layout import LayoutCreator
+from layout_algorithm.graph import Graph as PyGraph
 from layout_algorithm.param_optimizer import optimize_params
+
 
 def _gt_to_pygraph(G_gt: gt.Graph) -> PyGraph:
     N = int(G_gt.num_vertices())
@@ -19,6 +19,7 @@ def _gt_to_pygraph(G_gt: gt.Graph) -> PyGraph:
         if u != v:
             E_adj[u].add(v)
     return PyGraph(num_of_vertex=N, E=E_adj, is_directed=True)
+
 
 MinDistsEntry = tuple[Number, gt.Vertex | None]
 
@@ -142,13 +143,16 @@ def make_graph_structure(
                 P[i] = (x, -y)
 
     if normalize_to_positive:
-        xs = [p[0] for p in P if p is not None]; ys = [p[1] for p in P if p is not None]
+        xs = [p[0] for p in P if p is not None]
+        ys = [p[1] for p in P if p is not None]
         shift_x = -min(xs) if xs else 0.0
         shift_y = -min(ys) if ys else 0.0
         out = []
         for p in P:
-            if p is None: out.append((0.0, 0.0))
-            else: out.append((p[0] + shift_x, p[1] + shift_y))
+            if p is None:
+                out.append((0.0, 0.0))
+            else:
+                out.append((p[0] + shift_x, p[1] + shift_y))
         return out
     else:
         return [(0.0, 0.0) if p is None else p for p in P]

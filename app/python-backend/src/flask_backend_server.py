@@ -69,6 +69,7 @@ def get_node(node_id):
         }
     )
 
+
 @app.route("/node_index/<string:node_id>")
 def get_node_index(node_id):
     """Returns the index of a node in the graph based on its ID."""
@@ -84,6 +85,7 @@ def get_node_index(node_id):
             return jsonify({"index": int(v)})
 
     return jsonify({"error": "Node with given ID not found"}), 404
+
 
 @app.route("/flask_make_graph_structure", methods=["POST"])
 def flask_make_graph_structure():
@@ -150,6 +152,7 @@ def analyze_graph():
     hierarchy_levels = compute_hierarchy_levels(G_gt)
     return jsonify({"hierarchy_levels": hierarchy_levels})
 
+
 @app.route("/search_node", methods=["POST"])
 def search_node():
     """Search nodes by field (id, name, namespace, def, synonym, is_a, or all) and query string."""
@@ -162,7 +165,10 @@ def search_node():
     query = data.get("query")
     print(field)
     if not field or not query:
-        return jsonify({"error": "Missing parameters: field and query are required"}), 400
+        return (
+            jsonify({"error": "Missing parameters: field and query are required"}),
+            400,
+        )
 
     prop_map = {
         "id": G_gt.vertex_properties["id"],
@@ -206,8 +212,12 @@ def search_node():
                     "name": G_gt.vertex_properties["name"][v],
                     "namespace": G_gt.vertex_properties["namespace"][v],
                     "def": G_gt.vertex_properties["def"][v].replace('"', ""),
-                    "synonym": list(G_gt.vertex_properties["synonym"][v]) if G_gt.vertex_properties["synonym"][v] else [],
-                    "is_a": list(G_gt.vertex_properties["is_a"][v]) if G_gt.vertex_properties["is_a"][v] else [],
+                    "synonym": list(G_gt.vertex_properties["synonym"][v])
+                    if G_gt.vertex_properties["synonym"][v]
+                    else [],
+                    "is_a": list(G_gt.vertex_properties["is_a"][v])
+                    if G_gt.vertex_properties["is_a"][v]
+                    else [],
                 }
             )
 
@@ -215,6 +225,7 @@ def search_node():
         return jsonify({"message": "No matching nodes found"}), 404
 
     return jsonify(results)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT_NUMBER)
