@@ -46,3 +46,7 @@ service GraphLayoutService {
     rpc performPostQAPComputations(PostQAPData) returns (GraphLayout) {};
 
 }
+
+service QAPSolver {
+    rpc SolvePreQAP(PreQAPData) returns (PostQAPData);
+}
