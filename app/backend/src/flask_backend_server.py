@@ -23,23 +23,42 @@ class GraphState:
 
 GRAPH_STATE = GraphState()
 
+def _normalize_positions_to_space( # should be refactored
+    positions: list[tuple[float, float]],
+    padding_ratio: float = 0.02,
+) -> list[float]:
+    if not positions:
+        return []
 
-def build_reponse_json_string_for_make_graph_structure_req(
-    G_gt: gt.Graph, canvas_positions: list[tuple[float, float]]
-) -> str:
-    transformed_canvas_positions = [0 for _ in range(0, 2 * len(canvas_positions))]
-    for i in range(0, len(canvas_positions)):
-        x, y = canvas_positions[i]
-        transformed_canvas_positions[2 * i] = x
-        transformed_canvas_positions[2 * i + 1] = y
+    xs = [x for x, _ in positions]
+    ys = [y for _, y in positions]
+    xmin, xmax = min(xs), max(xs)
+    ymin, ymax = min(ys), max(ys)
+    w = (xmax - xmin) or 1.0
+    h = (ymax - ymin) or 1.0
 
+    space_size = 8192
+    pad = space_size * padding_ratio
+    sx = (space_size - 2 * pad) / w
+    sy = (space_size - 2 * pad) / h
+
+    out = [0.0] * (2 * len(positions))
+    for i, (x, y) in enumerate(positions):
+        nx = (x - xmin) * sx + pad
+        ny = (y - ymin) * sy + pad
+
+        out[2 * i] = nx
+        out[2 * i + 1] = ny
+
+    return out
+
+
+def build_reponse_json_string_for_make_graph_structure_req(G_gt, canvas_positions):
+    points = _normalize_positions_to_space(canvas_positions)
     links = []
     for e in G_gt.edges():
-        u, v = int(e.source()), int(e.target())
-        links.append(u)
-        links.append(v)
-
-    return transformed_canvas_positions, links
+        links.extend([int(e.source()), int(e.target())])
+    return points, links
 
 
 @app.route("/node/<int:node_id>")

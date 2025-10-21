@@ -141,7 +141,7 @@ export function useGraph(
     let hoveredIndex: number | undefined;
 
     const config: GraphConfigInterface = {
-      spaceSize: 256,
+      spaceSize: 8192,
       backgroundColor: '#000',
       pointSize: 1,
       pointColor: [128, 128, 128, 255],
@@ -201,7 +201,6 @@ export function useGraph(
     graphInstance.current.setPointPositions(pointPositions);
     graphInstance.current.setLinks(links);
     graphInstance.current.render();
-    graphInstance.current.fitView();
   }, [pointPositions, links]);
 
   return { fitView, resetView, selectNodeByIndex };

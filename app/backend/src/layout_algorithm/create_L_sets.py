@@ -259,7 +259,7 @@ class LSetCreator:
         self, determine_starting_level_fn: Optional[Callable[..., int]] = None
     ):
         if determine_starting_level_fn is None:
-            self.determine_starting_level_fn = lambda **_: 1
+            self.determine_starting_level_fn = lambda **_: 7
         else:
             self.determine_starting_level_fn = determine_starting_level_fn
 
