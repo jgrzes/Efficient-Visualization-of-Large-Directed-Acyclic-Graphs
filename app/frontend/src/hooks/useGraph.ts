@@ -201,6 +201,7 @@ export function useGraph(
     graphInstance.current.setPointPositions(pointPositions);
     graphInstance.current.setLinks(links);
     graphInstance.current.render();
+    graphInstance.current.fitView();
   }, [pointPositions, links]);
 
   return { fitView, resetView, selectNodeByIndex };

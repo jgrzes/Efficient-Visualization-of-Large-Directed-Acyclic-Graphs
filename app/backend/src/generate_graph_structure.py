@@ -113,7 +113,7 @@ def make_graph_structure(
     w_var: float = 0.15,
     w_overlap: float = 2.0,
     normalize_to_positive: bool = True,
-    invert_y_for_canvas: bool = False,
+    invert_y_for_canvas: bool = True,
 ) -> list[tuple[float, float]]:
     G = _gt_to_pygraph(G_gt)
     assign_levels(G)
