@@ -31,6 +31,7 @@ const App: React.FC = () => {
   const graphRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const initialPointPositionsRef = useRef<Float32Array | null>(null);
 
   // Graph state
   const [pointPositions, setPointPositions] = useState<Float32Array>(
@@ -92,6 +93,7 @@ const App: React.FC = () => {
 
       const data = await response.json();
       setPointPositions(new Float32Array(data.canvas_positions));
+      initialPointPositionsRef.current = new Float32Array(data.canvas_positions);
       setLinks(new Float32Array(data.links));
       setSelectedNode(null);
       setSelectedFile(null);
@@ -179,6 +181,14 @@ const App: React.FC = () => {
     }
   };
 
+  const handleResetView = () => {
+    resetView();
+    if (initialPointPositionsRef.current) {
+      setPointPositions(new Float32Array(initialPointPositionsRef.current));
+    }
+    setSelectedNode(null);
+  };
+
   return (
     <div id="layout" className="bg-black text-gray-200 flex-col">
       <div ref={canvasRef} className="flex-grow" />
@@ -202,7 +212,7 @@ const App: React.FC = () => {
         items={[
           { label: 'Load data', icon: <Upload size={20} />, onClick: handleLoadClick },
           { label: 'Fit view', icon: <Focus size={20} />, onClick: fitView },
-          { label: 'Reset view', icon: <RotateCcw size={20} />, onClick: resetView },
+          { label: 'Reset view', icon: <RotateCcw size={20} />, onClick: handleResetView },
           { label: 'Export', icon: <Download size={20} />, onClick: handleExportClick },
           { label: 'Analyze', icon: <LineChart size={20} />, onClick: handleAnalyzeClick }
         ]}
