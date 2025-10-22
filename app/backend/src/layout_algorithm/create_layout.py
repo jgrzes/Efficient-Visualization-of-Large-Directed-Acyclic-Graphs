@@ -485,7 +485,7 @@ def find_initial_layout_for_subgraph(
         if len(V_k) != 1:
             V_k_positions_x = [(v, G.V[v].position[0]) for v in V_k]
             V_k_positions_x.sort(key=lambda x: x[1])
-            eps_k = (0.5 * W) / (len(V_k) - 1)  # to tune
+            eps_k = W / (len(V_k) - 1)  # to tune
             create_gaps_between_vertices_in_layout(V_k_positions_x, W, eps_k)
             for v, v_pos_x in V_k_positions_x:
                 G.V[v].position = (v_pos_x, G.V[v].position[1])
