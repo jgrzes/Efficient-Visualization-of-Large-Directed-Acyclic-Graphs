@@ -217,6 +217,10 @@ public:
         return m_arraysOfTsSizes->size();
     }    
 
+    inline std::vector<size_t> getSizesOfNestedArrays() const {
+        return *m_arraysOfTsSizes;
+    }
+
     inline size_t getSizeOfArr(size_t arrIndex) const {
         auto& arraysOfTsSizesRef = *m_arraysOfTsSizes;
         if (arrIndex >= arraysOfTsSizesRef.size()) {

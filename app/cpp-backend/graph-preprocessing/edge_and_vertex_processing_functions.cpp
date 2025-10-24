@@ -65,11 +65,11 @@ std::vector<size_t> findDisputableEdgesPerLevelCounts(const GraphInterface& grap
             ++disputableEdgesPerLevelCounts[graph.getVertex(wIndex).level];
         }
     }
-    std::cout << "Overall counts: " << "\n";
-    for (const size_t iSize : disputableEdgesPerLevelCounts) {
-        std::cout << iSize << " ";
-    }
-    std::cout << "\n";
+    // std::cout << "Overall counts: " << "\n";
+    // for (const size_t iSize : disputableEdgesPerLevelCounts) {
+        // std::cout << iSize << " ";
+    // }
+    // std::cout << "\n";
     return std::move(disputableEdgesPerLevelCounts);
 }
 

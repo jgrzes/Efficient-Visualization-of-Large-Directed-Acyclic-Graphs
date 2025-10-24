@@ -106,22 +106,22 @@ public:
     };
 
     SparseMatrix() : SparseMatrix{0} {}
-    SparseMatrix(size_t n) : m_n{n} {
-        m_sparseMatrixData.reserve(m_n);
-        for (size_t i=0; i<m_n; ++i) {
-            m_sparseMatrixData.emplace_back(m_n);
+    SparseMatrix(size_t n) : m_rowCount{n} {
+        m_sparseMatrixData.reserve(m_rowCount);
+        for (size_t i=0; i<m_rowCount; ++i) {
+            m_sparseMatrixData.emplace_back(m_rowCount);
         }
     }
 
     // Returns the number of rows (`rows` = `cols`).
-    size_t size() const {return m_n;}
+    size_t size() const {return m_rowCount;}
     
     // Warning: calling `at(i, j)` will always construct the object, making the cell not-empty.
     const T& at(size_t i, size_t j) const {
         if constexpr (Symmetric) {
             if (i > j) std::swap(i, j);
         }
-        if (i >= m_n && j >= m_n) {
+        if (i >= m_rowCount && j >= m_rowCount) {
             throw std::runtime_error{
                 "Sparse Symmetric Matrix error: attempting to breach bounds of the matrix"
             };
@@ -137,7 +137,7 @@ public:
         if constexpr (Symmetric) {
             if (i > j) std::swap(i, j);
         }
-        if (i >= m_n && j >= m_n) {
+        if (i >= m_rowCount && j >= m_rowCount) {
             throw std::runtime_error{
                 "Sparse Symmetric Matrix error: attempting to breach bounds of the matrix"
             };
@@ -173,12 +173,12 @@ public:
 
     void optimizeRow(size_t i) {m_sparseMatrixData[i].optimize();}
 
-    void optimizeWholeMatrix() {for (size_t i=0; i<m_n; ++i) optimizeRow(i);}
+    void optimizeWholeMatrix() {for (size_t i=0; i<m_rowCount; ++i) optimizeRow(i);}
 
 private:
 
     // `n` = number of rows = number of cols
-    const size_t m_n; 
+    const size_t m_rowCount; 
     std::vector<RowData> m_sparseMatrixData;
 
 };

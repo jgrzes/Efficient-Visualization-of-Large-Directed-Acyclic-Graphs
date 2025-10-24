@@ -9,6 +9,8 @@ target_sources(
     Coloured_Graph.cpp Coloured_Graph.h 
     Partially_Disabled_Graph.cpp Partially_Disabled_Graph.h 
     Graph_Interface.cpp Graph_Interface.h
+    # Other data structure classes
+    Cartesian_Surface_Grid.cpp Cartesian_Surface_Grid.h
     Sparse_Matrix.cpp Sparse_Matrix.h
     Sparse_Array.cpp Sparse_Array.h
 )

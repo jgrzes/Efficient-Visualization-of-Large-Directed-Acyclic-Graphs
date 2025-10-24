@@ -833,13 +833,13 @@ int main(int argc, char** argv) {
     )
   );
   auto&& [colouredGraph, colourHierarchyRoot] = graphColourerAlgorithm.assignColoursToGraph(G3, true, 1);
-  std::cout << "Uncoloured vertices: ";
+  std::cout << "Uncoloured vertices: (";
   for (uint32_t vIndex : colourHierarchyRoot.verticesOfColour) std::cout << vIndex << " ";
-  std::cout << "\n";
+  std::cout << "),\n";
   for (auto& colourNodeChild : colourHierarchyRoot.children) {
-    std::cout << "Colour " << colourNodeChild.colour << ": ";
-    for (uint32_t vIndex : colourNodeChild.verticesOfColour) std::cout << vIndex << " ";
-    std::cout << "\n";
+    std::cout << "Colour " << colourNodeChild.colour << ": (";
+    for (uint32_t vIndex : colourNodeChild.verticesOfColour) std::cout << vIndex << ", ";
+    std::cout << "),\n";
   }
 
   auto layoutAlgorithmParams = LayoutDrawer::AlgorithmParams();
@@ -860,8 +860,12 @@ int main(int argc, char** argv) {
       return {p.first * 0.75, 0};
     };
 
-    layoutAlgorithmParams.epsilonForColourRootCalculator = [boxWidthCoeff = 3.5](uint32_t maxWidth) -> double {
+    layoutAlgorithmParams.epsilonForColourRootCalculator = [boxWidthCoeff = 1.75](uint32_t maxWidth) -> double {
       return static_cast<double>(maxWidth) * boxWidthCoeff;
+    };
+
+    layoutAlgorithmParams.maxVertexCountFromEpsilonCalculator = [inverseBoxWidthCoeff = 1.0 / 1.75](double epsilon) -> uint32_t {
+      return static_cast<uint32_t>(epsilon * inverseBoxWidthCoeff);
     };
 
     layoutAlgorithmParams.firstLevelChildPadding = 2.5;
@@ -875,12 +879,76 @@ int main(int argc, char** argv) {
     layoutAlgorithmParams.defaultBetaP = 1.5;
     layoutAlgorithmParams.marginPadding = 0.1;
     layoutAlgorithmParams.pullUpCoeff = 0.2;
-    layoutAlgorithmParams.minBoxWidthForUncoloured = 40; // TODO: Find a better way of findinf this
+
+    layoutAlgorithmParams.springFCalculator = [
+      springFEps = 1e-6
+    ](std::pair<double, double> d) -> std::pair<double, double> {
+      static const double c1s = 1.6;
+      static const double c2s = 1.0;
+
+      auto [dx, dy] = d;
+
+      double signumDx = (std::abs(dx) < springFEps) 
+        ? 0
+        : ((dx > 0) ? 1 : -1);
+
+      double signumDy = (std::abs(dy) < springFEps) 
+        ? 0
+        : ((dx > 0) ? 1 : -1);
+
+      dx = std::abs(dx);
+      dy = std::abs(dy);
+      auto dLength = std::sqrt(
+        std::pow(dx, 2) + std::pow(dy, 2)
+      );
+
+      if (dLength < springFEps) return {0, 0};
+      auto sinAlpha = dy / dLength;
+      auto cosAlpha = dx / dLength;
+      return {
+        signumDx * cosAlpha * c1s * std::log(std::max(1., dLength/c2s)), 
+        signumDy * sinAlpha * c1s * std::log(std::max(1., dLength/c2s))
+      };
+    };
+
+    layoutAlgorithmParams.repulsionFCalculator = [
+      repulsionFEps = 1e-6
+    ](std::pair<double, double> d, bool areAdj) -> std::pair<double, double> {
+      static const double cr = 1;
+      static const double crAdj = 0.25;
+      auto [dx, dy] = d;
+      double signumDx = (std::abs(dx) < repulsionFEps) 
+        ? 0
+        : ((dx > 0) ? 1 : -1);
+
+      double signumDy = (std::abs(dy) < repulsionFEps) 
+        ? 0
+        : ((dx > 0) ? 1 : -1);
+
+      dx = std::abs(dx);
+      dy = std::abs(dy);
+      auto dLength = std::sqrt(
+        std::pow(dx, 2) + std::pow(dy, 2)
+      );
+
+      if (dLength < repulsionFEps) return {0, 0};
+      auto sinAlpha = dy / dLength;
+      auto cosAlpha = dx / dLength;
+      return {
+        signumDx * cosAlpha * (areAdj ? crAdj : cr) / (std::pow(dLength, 2)), 
+        signumDy * sinAlpha * (areAdj ? crAdj : cr) / (std::pow(dLength, 2))
+      };
+    };
+
+    layoutAlgorithmParams.maxRadiusOfRepulsionField = 5;
+    layoutAlgorithmParams.fineTuningForceMoveCoeff = 0.15;
+
+    layoutAlgorithmParams.minBoxWidthForUncoloured = 40; // TODO: Find a better way of finding this
     layoutAlgorithmParams.yDistanceBetweenUncolouredLevels = 4;
   }
 
   auto layoutDrawer = LayoutDrawer(layoutAlgorithmParams);
-  auto layoutPositions = layoutDrawer.findLayoutForGraph(colouredGraph, colourHierarchyRoot, 1.0);
+  auto layoutPositions = layoutDrawer.findLayoutForGraph(colouredGraph, colourHierarchyRoot, 2.0);
 
   size_t n = layoutPositions.size();
   for (size_t uIndex=0; uIndex<n; ++uIndex) {

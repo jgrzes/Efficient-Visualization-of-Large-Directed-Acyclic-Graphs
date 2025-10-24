@@ -23,20 +23,17 @@ public:
     //     std::cout << *m_bytesAllocatedPtr << "\n\n";
     // }
 
-    CountingAllocator() : BaseClass{} {
-        std::cout << m_bytesAllocatedPtr << "\n";
-        std::cout << *m_bytesAllocatedPtr << "\n\n";
-    }
+    CountingAllocator() : BaseClass{} {}
 
     template <typename R>
     CountingAllocator(const CountingAllocator<R>& otherAllocator) :
-        BaseClass{} {m_bytesAllocatedPtr = otherAllocator.m_bytesAllocatedPtr;}
-        // m_bytesAllocatedPtr{otherAllocator.m_bytesAllocatedPtr} {}
+        BaseClass{}, 
+        m_bytesAllocatedPtr{otherAllocator.m_bytesAllocatedPtr} {}
 
     template <typename R>
     CountingAllocator(CountingAllocator<R>&& otherAllocator) :
-        BaseClass{} {m_bytesAllocatedPtr = std::move(otherAllocator.m_bytesAllocatedPtr);}
-        // m_bytesAllocatedPtr{std::move(otherAllocator.m_bytesAllocatedPtr)} {}    
+        BaseClass{},
+        m_bytesAllocatedPtr{std::move(otherAllocator.m_bytesAllocatedPtr)} {}    
 
     size_t getAllocatedBytes() const {
         // std::cout << "Bytes allocated ptr: " << m_bytesAllocatedPtr << "\n";
@@ -55,6 +52,7 @@ public:
 
     // Should be private but I can't be bothered with compilation errors.
     std::shared_ptr<size_t> m_bytesAllocatedPtr = std::make_shared<size_t>(0);
+    // std::shared_ptr<size_t> m_bytesAllocatedPtr = nullptr;
 
     using propagate_on_container_copy_assignment = std::true_type;
     using propagate_on_container_move_assignment = std::true_type;

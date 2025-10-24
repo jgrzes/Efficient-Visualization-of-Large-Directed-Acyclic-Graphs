@@ -70,6 +70,11 @@ public:
         return (m_singleColourHighlight.anyColourHighlighted
                 && m_singleColourHighlight.highlightedColour != m_vertexColours[v.index]);
     }
+
+    void addNewVertex() override {
+        m_vertexColours.emplace_back(0); 
+        PartiallyDisabledGraph::addNewVertex();
+    }
     
     inline uint32_t getVertexColour(uint32_t vIndex) const {return m_vertexColours[vIndex];}
     inline uint32_t getVertexColour(uint32_t vIndex) {return m_vertexColours[vIndex];} 

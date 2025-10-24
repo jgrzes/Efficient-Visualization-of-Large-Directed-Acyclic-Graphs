@@ -7,6 +7,7 @@
 
 namespace data_structures {
 
+// TODO: Make vertices added after construction be added to a data structure in a seperate field.
 // Graph view which allows some vertices of the graph to be temporarily disabled.
 // Has a view of a graph, but may not directly own (see below), rather stores it in a pointer.
 // View to graph can be stored in a raw pointer or in a shared ptr, based on disclosed `storingPolicy`.
@@ -79,7 +80,10 @@ public:
 
     void addNewEdge(uint32_t uIndex, uint32_t vIndex) override {m_graphView->addNewEdge(uIndex, vIndex);}
     void addNewEdge(const Vertex& u, const Vertex& v) override {m_graphView->addNewEdge(u, v);};
-    void addNewVertex() override {m_graphView->addNewVertex();}
+    void addNewVertex() override {
+        m_disabledFlags.emplace_back(false);
+        m_graphView->addNewVertex();
+    }
 
     GraphStoringPolicy getGraphStroingPolicy() const {return m_storingPolicy;}
     void forgetUnderlyingGraphImpl() {

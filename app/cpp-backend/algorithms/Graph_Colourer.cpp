@@ -375,7 +375,7 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
     std::unordered_map<uint32_t, uint64_t> vertexOfferSummaryMap;
     // TODO: come up with a better way of merge set management than shared pointers.
     // Could implement Union/Find.
-    static std::vector<std::shared_ptr<std::unordered_set<uint32_t>>> mergeSetsPointers(n, nullptr);
+    std::vector<std::shared_ptr<std::unordered_set<uint32_t>>> mergeSetsPointers(n, nullptr);
 
     n = verticesPerLevel.getNumberOfNestedArrays();
     for (size_t k=startingLevel; k<n; ++k) {
@@ -413,7 +413,7 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
             uint32_t chosenColour = 0;
             uint64_t bestOfferCount = 0;
             for (const auto& [c, cCount] : vertexOfferSummaryMap) {
-                // if (vIndex == 30) std::cout << "30: " << c << " " << cCount << "\n";
+                // if (vIndex == 8) std::cout << "8: " << c << " " << cCount << "\n";
                 if (cCount > bestOfferCount) {
                     chosenColour = c;
                     bestOfferCount = cCount;
@@ -476,7 +476,7 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
             for (const uint32_t xIndex : setU) {
                 for (const uint32_t vIndex : graph.N(xIndex)) {
                     auto& mailboxV = vertexMailboxes[vIndex];
-                    if (mailboxV.lastPing != k || graph.getVertex(vIndex).level <= k) continue;
+                    if (mailboxV.lastPing != -1 || graph.getVertex(vIndex).level <= k) continue;
                     mailboxV.lastPing = k; 
                 }
             }
@@ -630,6 +630,7 @@ void GraphColourer::instantlyRerouteOfferPacketsToPreds(
 ) {
 
     #define _colourValid(_c, _minC, _maxC) (_c >= _minC && _c <= _maxC)
+    // if (vIndex == 8) std::cout << vIndex << " receives " << offeringVertexIndex << ", which has colour" << vertexColours[offeringVertexIndex] << "\n";
     vertexMailboxes[vIndex].receivedOfferPackets.emplace_back(offeringVertexIndex);
     for (const uint32_t uIndex : graph.NR(vIndex)) {
         // if (vertexColours[uIndex] != 0 && graph.getVertex(uIndex).level <= k) {
@@ -658,7 +659,7 @@ void GraphColourer::fillColourHierarchyNodesVector(
     std::vector<ColourHierarchyNode*>& colourHierarchyNodes
 ) {
 
-    std::cout << colourNode.colour << "\n";
+    // std::cout << colourNode.colour << "\n";
     colourHierarchyNodes[colourNode.colour] = &colourNode;
     for (auto& childColourNode : colourNode.children) {
         fillColourHierarchyNodesVector(childColourNode, colourHierarchyNodes);

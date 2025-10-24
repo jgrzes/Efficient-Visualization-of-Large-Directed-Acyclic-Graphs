@@ -130,8 +130,9 @@ private:
         GraphInterface& graph, const ArrayOfArraysInterface<uint32_t>& verticesPerLevel, int32_t l
     );
 
-    // Returs min colour and max colour respectively introduced in the call
-    static std::pair<uint32_t, uint32_t> applyGreedyColouring(
+    // Returs min colour and max colour respectively introduced in the call.
+    // This one is not static only because we don't want to reinitialize merge sets every time.
+    std::pair<uint32_t, uint32_t> applyGreedyColouring(
         GraphInterface& graph, 
         const AlgorithmParams& algorithmParams, 
         ArrayOfArraysInterface<uint32_t>& verticesPerLevel, 
@@ -141,7 +142,8 @@ private:
         ColourAcquireFunctionT&& colourAcquirerFunction
     );
 
-    static void buildColourHierarchyRecursivelyRootedAtColour(
+    // This one calls applyInitialGreedyColouring so it cannot be static either. 
+    void buildColourHierarchyRecursivelyRootedAtColour(
         GraphInterface& graph,
         const AlgorithmParams& algorithmParams, 
         ArrayOfArraysInterface<uint32_t>& verticesPerLevel, 
@@ -207,6 +209,13 @@ private:
                 const uint32_t vColour = vertexColours[vIndex];
                 if (vColour == ownColour) ++ownColourCount;
                 else if (vColour == c) ++cCount;
+            }
+
+            // TODO: Consider if should include this
+            for (const auto wIndex : graph.N(uIndex)) {
+                const uint32_t wColour = vertexColours[wIndex];
+                if (wColour == ownColour) ++ownColourCount;
+                else if (wColour == c) ++cCount;
             }
 
             if (cCount >= ownColourCount) vertexColours[uIndex] = c;

@@ -12,58 +12,8 @@
 #include "Graph_Colourer.h"
 #include "../data-structures/Sparse_Array.h"
 #include "../graph-preprocessing/edge_and_vertex_processing_functions.h"
-
-namespace std {
-
-template <typename T, typename R>
-std::enable_if_t<std::is_arithmetic_v<T> && std::is_arithmetic_v<R>, std::pair<T, R>>
-operator+(const std::pair<T, R>& tr1, const std::pair<T, R>& tr2) {
-    return std::make_pair<T, R>(tr1.first + tr2.first, tr1.second + tr2.second);
-}
-
-template <typename T, typename R>
-std::enable_if_t<std::is_arithmetic_v<T> && std::is_arithmetic_v<R>, std::pair<T, R>&>
-operator+=(std::pair<T, R>& tr1, const std::pair<T, R>& tr2) {
-    tr1.first += tr2.first;
-    tr1.second += tr2.second;
-    return tr1;
-}
-
-template <typename T, typename R>
-std::enable_if_t<std::is_arithmetic_v<T> && std::is_arithmetic_v<R>, std::pair<T, R>>
-operator-(const std::pair<T, R>& tr1, const std::pair<T, R>& tr2) {
-    return std::make_pair<T, R>(tr1.first - tr2.first, tr1.second - tr2.second);
-}
-
-template <typename T, typename R>
-std::enable_if_t<std::is_arithmetic_v<T> && std::is_arithmetic_v<R>, std::pair<T, R>&>
-operator-=(std::pair<T, R>& tr1, const std::pair<T, R>& tr2) {
-    tr1.first -= tr2.first;
-    tr1.second -= tr2.second;
-    return tr1;
-}
-
-template <typename T, typename R, typename C>
-std::enable_if_t<std::is_arithmetic_v<T> && std::is_arithmetic_v<R> && std::is_arithmetic_v<C>, std::pair<T, R>>
-operator*(const std::pair<T, R>& tr, const C& c) {
-    return {tr.first * c, tr.second * c};
-} 
-
-template <typename T, typename R, typename C>
-std::enable_if_t<std::is_arithmetic_v<T> && std::is_arithmetic_v<R> && std::is_arithmetic_v<C>, std::pair<T, R>>
-operator*(const C& c, const std::pair<T, R>& tr) {
-    return {c * tr.first, c * tr.second};
-} 
-
-template <typename T, typename R, typename C>
-std::enable_if_t<std::is_arithmetic_v<T> && std::is_arithmetic_v<R> && std::is_arithmetic_v<C>, std::pair<T, R>&>
-operator*=(std::pair<T, R>& tr, const C& c) {
-    tr.first *= c;
-    tr.second *= c;
-    return tr;
-}
-
-}
+#include "../data-structures/Cartesian_Surface_Grid.h"
+#include "../utils/arithmetic_ops_for_pair_overloads.h"
 
 namespace algorithms {
 
@@ -75,6 +25,8 @@ using SparseArray = data_structures::SparseArray<T, true>;
 template <typename T>
 using ArrayOfArraysInterface = data_structures::ArrayOfArraysInterface<T>;
 using Vertex = data_structures::GraphInterface::Vertex;
+template <typename T, typename LC, typename I>
+using CartesianSurfaceGrid = data_structures::CartesianSurfaceGrid<T, LC, I>;
 
 // TODO: Adapt the class to work with recursive colours
 class LayoutDrawer {
@@ -89,10 +41,13 @@ public:
         using FInterspringPushUpwardsValueCalculatorT = std::function<std::pair<double, double>(std::pair<double, double>)>;
         // max_vertex_count_on_a_single_level -> epsilon
         using EpsilonForColourRootCalculatorT = std::function<double(uint32_t)>;
+        // epsilon -> max_vertex_count_on_a_single_level
+        using MaxVertexCountFromEpsilonCalculatorT = std::function<uint32_t(double)>;
 
         FInterspringCalculatorT FInterspringCalculator;
         FInterspringPushUpwardsValueCalculatorT FInterspringPushUpwardsValueCalculator;
         EpsilonForColourRootCalculatorT epsilonForColourRootCalculator;
+        MaxVertexCountFromEpsilonCalculatorT maxVertexCountFromEpsilonCalculator;
 
         double firstLevelChildPadding;
         double gAcceleration;
@@ -106,8 +61,14 @@ public:
         double marginPadding;
         double pullUpCoeff;
 
-        double minBoxWidthForUncoloured;
+        using SpringForceCalculatorT = std::function<std::pair<double, double>(std::pair<double, double>)>;
+        SpringForceCalculatorT springFCalculator;
+        using RepulsionForceCalculatorT = std::function<std::pair<double, double>(std::pair<double, double>, bool)>;
+        RepulsionForceCalculatorT repulsionFCalculator;
+        double maxRadiusOfRepulsionField;
+        double fineTuningForceMoveCoeff;
 
+        double minBoxWidthForUncoloured;
         double yDistanceBetweenUncolouredLevels;
     }; 
 
@@ -236,7 +197,11 @@ private:
         const std::pair<double, double>& boxBounds
     );
 
-    void findInitialLayoutForColouredSubgraph(
+    // TODO: Find better implementation for terminating fine tuning stage
+    bool checkIfFineTuningStageEndConditionMet(uint32_t iter) {return iter >= 20;}
+
+    // Returns higehst y coord assigned to any vertice during the execution of the method
+    double findInitialLayoutForColouredSubgraph(
         ArrayOfArraysInterface<uint32_t>& verticesPerLevelForColour, 
         const std::pair<double, double>& startingPositionForColourRoot, 
         const std::pair<double, double>& boxBounds
@@ -257,13 +222,13 @@ private:
 
     void createGapsAlongXAxisBetweenVertices(
         std::vector<std::pair<uint32_t, double>>& VkVerticesXPositions,
-        const std::pair<double, double>& boxBounds
+        const std::pair<double, double>& boxBounds, double gapEpsilon
     );
 
     void createGapForTwoConsecutiveVertices(
         std::vector<std::pair<uint32_t, double>>& VkVerticesXPositions, 
         size_t i, std::optional<double>& gamma, 
-        const std::pair<double, double>& boxBounds
+        const std::pair<double, double>& boxBounds, double gapEpsilon
     );
 
     // TODO: Come up with a better way of drawing uncoloured vertices
