@@ -18,6 +18,7 @@ export function useGraph(
   pointPositions: Float32Array,
   links: Float32Array,
   spaceSize: number,
+  pointSize: number,
   setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>,
 ) {
   const graphInstance = useRef<Graph | null>(null);
@@ -144,7 +145,7 @@ export function useGraph(
     const config: GraphConfigInterface = {
       spaceSize: spaceSize,
       backgroundColor: '#000',
-      pointSize: 1,
+      pointSize: pointSize,
       pointColor: [128, 128, 128, 255],
       pointGreyoutOpacity: 0.1,
       linkWidth: 0.8,
@@ -204,7 +205,7 @@ export function useGraph(
     graphInstance.current.setLinks(links);
     graphInstance.current.render();
     graphInstance.current.fitView();
-  }, [pointPositions, links, spaceSize]);
+  }, [pointPositions, links, spaceSize, pointSize]);
 
   return { fitView, resetView, selectNodeByIndex };
 }

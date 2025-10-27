@@ -31,22 +31,35 @@ def next_pow2(x: float) -> int:
     return 1 << (x - 1).bit_length()
 
 
-def estimate_space_size_by_density(
+def estimate_space_and_point_size_by_density(
     n_nodes: int,
-    node_px: int = 4,
+    base_point_px: float = 5.0,
     sep_factor: float = 6.0,
     fill: float = 0.8,
-    min_size: int = 2048,
+    min_size: int = 1024,
     max_size: int = 65536,
     pow2: bool = True,
-) -> int:
+    min_point_px: float = 2.0,
+    max_point_px: float = 6.0,
+    dpi_scale: float = 1.0,
+) -> tuple[int, float]:
     if n_nodes <= 1:
-        return min_size
-    target_sep = sep_factor * node_px
-    area_per_node = (target_sep**2) / fill
+        space = min_size
+        return (next_pow2(space) if pow2 else space, max(base_point_px, min_point_px))
+
+    # space_size
+    target_sep = sep_factor * base_point_px
+    area_per_node = (target_sep**2) / max(fill, 1e-6)
     side = math.sqrt(n_nodes * area_per_node)
     side = max(min_size, min(int(math.ceil(side)), max_size))
-    return next_pow2(side) if pow2 else side
+    space = next_pow2(side) if pow2 else side
+
+    # point_size
+    scale = (max(200.0, min(20000.0, float(n_nodes))) / 2000.0) ** (-0.2)
+    point_px = base_point_px * scale * dpi_scale
+    point_px = max(min_point_px, min(point_px, max_point_px))
+
+    return space, float(point_px)
 
 
 def _normalize_positions_to_space(  # should be refactored
@@ -175,7 +188,9 @@ def flask_make_graph_structure():
         print("Something went wrong when trying to construct the graph: ", e)
 
     if G_gt is not None:
-        space_size = estimate_space_size_by_density(len(G_gt.get_vertices()))
+        space_size, point_size = estimate_space_and_point_size_by_density(
+            len(G_gt.get_vertices())
+        )
         canvas_positions = make_graph_structure(G_gt)
         print("Found canvas positions")
         (
@@ -191,6 +206,7 @@ def flask_make_graph_structure():
                 "canvas_positions": transformed_canvas_positions,
                 "links": links,
                 "space_size": space_size,
+                "point_size": point_size,
             }
         )
 

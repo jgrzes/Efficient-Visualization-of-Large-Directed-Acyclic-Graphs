@@ -41,6 +41,7 @@ const App: React.FC = () => {
     new Float32Array(initialLinks)
   );
   const [spaceSize, setSpaceSize] = useState<number>(8192);
+  const [pointSize, setPointSize] = useState<number>(8);
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
 
@@ -54,7 +55,7 @@ const App: React.FC = () => {
 
   // Graph controls
   const { fitView, resetView, selectNodeByIndex } = useGraph(
-    graphRef, canvasRef, pointPositions, links, spaceSize, setSelectedNode
+    graphRef, canvasRef, pointPositions, links, spaceSize, pointSize, setSelectedNode
   );
 
   // Stats
@@ -93,6 +94,7 @@ const App: React.FC = () => {
       initialPointPositionsRef.current = new Float32Array(data.canvas_positions);
       setLinks(new Float32Array(data.links));
       setSpaceSize(data.space_size || 8192);
+      setPointSize(data.point_size || 1);
       setSelectedNode(null);
       setSelectedFile(null);
     } catch (err) {
