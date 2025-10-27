@@ -100,6 +100,7 @@ def fix_for_vertices_with_inf_distance(
 
     return min_distances
 
+
 def find_start_level(*, cum_d_edges_per_level, cum_V_counts_per_level, Vs_per_level, G):
     total_E = G.edge_count
     total_V = len(G.V)
@@ -107,10 +108,14 @@ def find_start_level(*, cum_d_edges_per_level, cum_V_counts_per_level, Vs_per_le
     T_d = max(20, int(0.03 * total_E))
     T_v = max(200, int(0.15 * total_V))
 
-    k_by_edges = next((k for k, d in enumerate(cum_d_edges_per_level) if len(d) >= T_d),
-                      len(cum_d_edges_per_level) - 1)
-    k_by_nodes = next((k for k, n in enumerate(cum_V_counts_per_level) if n >= T_v),
-                      len(cum_V_counts_per_level) - 1)
+    k_by_edges = next(
+        (k for k, d in enumerate(cum_d_edges_per_level) if len(d) >= T_d),
+        len(cum_d_edges_per_level) - 1,
+    )
+    k_by_nodes = next(
+        (k for k, n in enumerate(cum_V_counts_per_level) if n >= T_v),
+        len(cum_V_counts_per_level) - 1,
+    )
     k = max(k_by_edges, k_by_nodes)
 
     L = len(Vs_per_level)
@@ -119,9 +124,10 @@ def find_start_level(*, cum_d_edges_per_level, cum_V_counts_per_level, Vs_per_le
         return 0  # trivial case
 
     upper = max(0, L - 1 - min_gap_from_bottom)  # max allowed level = L-2
-    k = min(k, upper)     # cut from below
+    k = min(k, upper)  # cut from below
 
     return k
+
 
 def make_graph_structure(
     G_gt: gt.Graph,

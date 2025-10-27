@@ -1,3 +1,5 @@
+import math
+
 import graph_tool as gt
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -23,9 +25,34 @@ class GraphState:
 
 GRAPH_STATE = GraphState()
 
-def _normalize_positions_to_space( # should be refactored
+
+def next_pow2(x: float) -> int:
+    x = max(1, int(math.ceil(x)))
+    return 1 << (x - 1).bit_length()
+
+
+def estimate_space_size_by_density(
+    n_nodes: int,
+    node_px: int = 4,
+    sep_factor: float = 6.0,
+    fill: float = 0.8,
+    min_size: int = 2048,
+    max_size: int = 65536,
+    pow2: bool = True,
+) -> int:
+    if n_nodes <= 1:
+        return min_size
+    target_sep = sep_factor * node_px
+    area_per_node = (target_sep**2) / fill
+    side = math.sqrt(n_nodes * area_per_node)
+    side = max(min_size, min(int(math.ceil(side)), max_size))
+    return next_pow2(side) if pow2 else side
+
+
+def _normalize_positions_to_space(  # should be refactored
     positions: list[tuple[float, float]],
     padding_ratio: float = 0.02,
+    space_size: int = 8192,
 ) -> list[float]:
     if not positions:
         return []
@@ -37,7 +64,6 @@ def _normalize_positions_to_space( # should be refactored
     w = (xmax - xmin) or 1.0
     h = (ymax - ymin) or 1.0
 
-    space_size = 8192
     pad = space_size * padding_ratio
     sx = (space_size - 2 * pad) / w
     sy = (space_size - 2 * pad) / h
@@ -53,8 +79,10 @@ def _normalize_positions_to_space( # should be refactored
     return out
 
 
-def build_reponse_json_string_for_make_graph_structure_req(G_gt, canvas_positions):
-    points = _normalize_positions_to_space(canvas_positions)
+def build_reponse_json_string_for_make_graph_structure_req(
+    G_gt, canvas_positions, space_size
+):
+    points = _normalize_positions_to_space(canvas_positions, space_size=space_size)
     links = []
     for e in G_gt.edges():
         links.extend([int(e.source()), int(e.target())])
@@ -147,18 +175,23 @@ def flask_make_graph_structure():
         print("Something went wrong when trying to construct the graph: ", e)
 
     if G_gt is not None:
+        space_size = estimate_space_size_by_density(len(G_gt.get_vertices()))
         canvas_positions = make_graph_structure(G_gt)
         print("Found canvas positions")
         (
             transformed_canvas_positions,
             links,
         ) = build_reponse_json_string_for_make_graph_structure_req(
-            G_gt=G_gt, canvas_positions=canvas_positions
+            G_gt=G_gt, canvas_positions=canvas_positions, space_size=space_size
         )
         print("Built data to return to frontend")
 
         return jsonify(
-            {"canvas_positions": transformed_canvas_positions, "links": links}
+            {
+                "canvas_positions": transformed_canvas_positions,
+                "links": links,
+                "space_size": space_size,
+            }
         )
 
 

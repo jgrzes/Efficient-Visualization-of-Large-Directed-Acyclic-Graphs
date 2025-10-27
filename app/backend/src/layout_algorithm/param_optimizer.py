@@ -155,6 +155,7 @@ def barycentric_residual(G: Graph, P: List[Optional[Vec2]]) -> float:
         res += dx * dx + dy * dy
     return res
 
+
 '''
 def edge_length_variance(G: Graph, P: List[Optional[Vec2]]) -> float:
     """
@@ -193,6 +194,7 @@ def overlap_penalty(P: List[Optional[Vec2]], min_dist: float = 8.0) -> float:
     return pen
 '''
 
+
 def quality_score(
     G: Graph,
     P: List[Optional[Vec2]],
@@ -209,9 +211,9 @@ def quality_score(
     """
     fr = fr_net_force(G, P, C=1.0)  # 12.2
     bary = barycentric_residual(G, P)  # 12.3
-    #var = edge_length_variance(G, P)
-    #ovl = overlap_penalty(P, min_dist=8.0)
-    #return w_fr * fr + w_bary * bary + w_var * var + w_overlap * ovl
+    # var = edge_length_variance(G, P)
+    # ovl = overlap_penalty(P, min_dist=8.0)
+    # return w_fr * fr + w_bary * bary + w_var * var + w_overlap * ovl
     return w_fr * fr + w_bary * bary
 
 

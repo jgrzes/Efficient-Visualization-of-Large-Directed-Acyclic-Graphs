@@ -281,7 +281,9 @@ class LSetCreator:
         )
 
         self.starting_level = starting_level
-        assert 0 <= starting_level < len(Vs_per_level) - 1, "Starting level is out of valid range."
+        assert (
+            0 <= starting_level < len(Vs_per_level) - 1
+        ), "Starting level is out of valid range."
 
         G_l = extract_subgraph_cut_off_at_level(G, Vs_per_level, starting_level)
 

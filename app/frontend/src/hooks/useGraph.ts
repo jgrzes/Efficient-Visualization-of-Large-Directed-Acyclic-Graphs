@@ -17,7 +17,8 @@ export function useGraph(
   canvasRef: React.RefObject<HTMLDivElement | null>,
   pointPositions: Float32Array,
   links: Float32Array,
-  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>
+  spaceSize: number,
+  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>,
 ) {
   const graphInstance = useRef<Graph | null>(null);
   const linksRef = useRef<Float32Array>(links);
@@ -141,7 +142,7 @@ export function useGraph(
     let hoveredIndex: number | undefined;
 
     const config: GraphConfigInterface = {
-      spaceSize: 8192,
+      spaceSize: spaceSize,
       backgroundColor: '#000',
       pointSize: 1,
       pointColor: [128, 128, 128, 255],
@@ -199,9 +200,11 @@ export function useGraph(
   useEffect(() => {
     if (!graphInstance.current || !pointPositions || !links) return;
     graphInstance.current.setPointPositions(pointPositions);
+    console.log('Example points positions: ', pointPositions.slice(0, 10));
     graphInstance.current.setLinks(links);
     graphInstance.current.render();
-  }, [pointPositions, links]);
+    graphInstance.current.fitView();
+  }, [pointPositions, links, spaceSize]);
 
   return { fitView, resetView, selectNodeByIndex };
 }
