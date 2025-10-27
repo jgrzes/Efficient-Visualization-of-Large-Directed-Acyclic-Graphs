@@ -232,10 +232,14 @@ if __name__ == "__main__":
                 continue
             x_v, y_v = P_G[v]
             if getattr(G.V[v], "L_set_index", -1) == c_u:
+                if c_u is not None and c_u >= 0: # to handle uncolored nodes
+                    color = COLORS[c_u % len(COLORS)]
+                else:
+                    color = "black"
                 plt.plot(
                     [x_u, x_v],
                     [y_u, y_v],
-                    color=COLORS[c_u % len(COLORS)],
+                    color=color,
                     linewidth=1.0,
                 )
             else:
