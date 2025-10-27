@@ -259,9 +259,10 @@ class LSetCreator:
         self, determine_starting_level_fn: Optional[Callable[..., int]] = None
     ):
         if determine_starting_level_fn is None:
-            self.determine_starting_level_fn = lambda **_: 7
+            self.determine_starting_level_fn = lambda **_: 1
         else:
             self.determine_starting_level_fn = determine_starting_level_fn
+        self.starting_level = -1
 
     def create_initial_L_sets(self, G: Graph) -> List[List[int]]:
         cum_d_edges_per_level = build_cum_d_edges_per_level(find_d_edges_per_level(G))
@@ -278,6 +279,9 @@ class LSetCreator:
             Vs_per_level=Vs_per_level,
             G=G,
         )
+
+        self.starting_level = starting_level
+        assert 0 <= starting_level < len(Vs_per_level) - 1, "Starting level is out of valid range."
 
         G_l = extract_subgraph_cut_off_at_level(G, Vs_per_level, starting_level)
 

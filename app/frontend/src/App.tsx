@@ -101,6 +101,7 @@ const App: React.FC = () => {
       console.error('❌ Upload error:', err);
     } finally {
       setLoading(false);
+      fitView();
     }
   };
 
