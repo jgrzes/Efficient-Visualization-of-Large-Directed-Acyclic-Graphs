@@ -98,6 +98,7 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
     double leftBoxBoudForUncoloured = 0;
     double rightBoxBoundForUncoloured = 0;
     double offsetFromZero = 0;
+    double previousRightXBorder = 0;
     for (const auto& firstLevelColourNode : rootColourNode.children) {
         // std::cout << "First level colour: " << firstLevelColourNode.colour << "\n";
         if (firstLevelColourNode.verticesOfColour.empty()) continue;
@@ -112,11 +113,13 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
         }
 
         double WColour = 0.5 * m_epsilonsForVertices.dataAtOrDefault(_getColourRoot(firstLevelColourNode));
+        offsetFromZero += std::max(previousRightXBorder - (offsetFromZero - WColour) + m_algorithmParams.firstLevelChildPadding, 0.0);
         // std::cout << "WColour: " << WColour << "\n";
         findLayoutForColouredSubgraph(
             verticesPerLevelForColour, {offsetFromZero, 0}, 
             {offsetFromZero - WColour, offsetFromZero + WColour}
         );
+        previousRightXBorder = offsetFromZero + WColour + m_algorithmParams.firstLevelChildPadding;
         offsetFromZero += (2.0 * WColour) + m_algorithmParams.firstLevelChildPadding;
         // std::cout << "Offset from zero: " << offsetFromZero << "\n";
         rightBoxBoundForUncoloured = offsetFromZero;
@@ -452,7 +455,8 @@ void LayoutDrawer::findLayoutForColouredSubgraph(
             verticesPerLevelForColour
         ).getNestedArrayView(0)[0]
     );
-    // std::cout << "[CR]: " << startingPositionForColourRoot.first << ", " << startingPositionForColourRoot.second << "\n";
+    std::cout << "[CR]: " << startingPositionForColourRoot.first << ", " << startingPositionForColourRoot.second << "\n";
+    std::cout << "[CR] Box bounds: " << boxBounds.first << ", " << boxBounds.second << "\n";
     double largestYCoord = findInitialLayoutForColouredSubgraph(
         const_cast<ArrayOfArraysInterface<uint32_t>&>(verticesPerLevelForColour), 
         startingPositionForColourRoot, boxBounds
@@ -527,13 +531,14 @@ void LayoutDrawer::findLayoutForColouredSubgraph(
                 uint32_t uIndex = verticeLevelViewI[j];
                 std::pair<double, double> forceAffectingU(0, 0);
                 auto uPosition = m_layoutPositions[uIndex];
+                auto uLevel = graph.getVertex(uIndex).level;
                 // Calculating spring forces 
                 auto Nu = graph.N(uIndex);
                 for (uint32_t vIndex : Nu) {
                     if (graph.getVertexColour(vIndex) != colour) continue;
                     forceAffectingU += m_algorithmParams.springFCalculator(
                         m_layoutPositions[vIndex] - uPosition
-                    );
+                    ) * std::pair<double, double>{1, (uLevel > graph.getVertex(vIndex).level ? 0 : 1)};
                 }
 
                 auto Nru = graph.NR(uIndex);
@@ -541,7 +546,7 @@ void LayoutDrawer::findLayoutForColouredSubgraph(
                     if (graph.getVertexColour(wIndex) != colour) continue;
                     forceAffectingU += m_algorithmParams.springFCalculator(
                         m_layoutPositions[wIndex] - uPosition
-                    );
+                    ) * std::pair<double, double>{1, (uLevel > graph.getVertex(wIndex).level ? 0 : 1)};
                 }
 
                 // Calculating 
@@ -570,6 +575,12 @@ void LayoutDrawer::findLayoutForColouredSubgraph(
                 uint32_t uIndex = verticeLevelViewI[j];
                 auto forceAffectingU = forceEffectLevelViewI[j];
                 m_layoutPositions[uIndex] += m_algorithmParams.fineTuningForceMoveCoeff * forceAffectingU;
+                auto& uPositionX = m_layoutPositions[uIndex].first;
+                auto& uPositionY = m_layoutPositions[uIndex].second;
+                // m_layoutPositions[uIndex].first = std::min(std::max(boxBounds.first, m_la))
+                uPositionX = std::min(std::max(boxBounds.first, uPositionX), boxBounds.second);
+                uPositionY = std::min(std::max(startingPositionForColourRoot.second, uPositionY), largestYCoord);
+
                 grid.moveElementToNewPosition(uIndex, m_layoutPositions[uIndex]);
             }
         }

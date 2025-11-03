@@ -42,9 +42,9 @@ public:
         m_gamma{(upperRight.second - lowerLeft.second) / static_cast<double>(m_columnCount)}, 
         m_elementSetGrid{m_rowCount, m_columnCount}, m_locationContainer{locationContainer} {
 
-        std::cout << "Row and column counts: " << m_rowCount << ", " << m_columnCount << "\n";
-        std::cout << "Lower left: " <<  m_lowerLeft.first << ", " << m_lowerLeft.second << "\n";
-        std::cout << "Upper right: " <<  m_upperRight.first << ", " << m_upperRight.second << "\n";
+        // std::cout << "Row and column counts: " << m_rowCount << ", " << m_columnCount << "\n";
+        // std::cout << "Lower left: " <<  m_lowerLeft.first << ", " << m_lowerLeft.second << "\n";
+        // std::cout << "Upper right: " <<  m_upperRight.first << ", " << m_upperRight.second << "\n";
     }
 
     void emplaceNewElement(const T& t, const std::pair<double, double>& tPosition) {
@@ -55,7 +55,8 @@ public:
     }    
 
     void moveElementToNewPosition(const T& t, const std::pair<double, double>& tNewPosition) {
-        auto&& [iCurrent, jCurrent] = findCurrentPositionForElement(t);
+        // auto&& [iCurrent, jCurrent] = findCurrentPositionForElement(t);
+        auto&& [iCurrent, jCurrent] = findCurrentGridCellForElement(t);
         auto [iNew, jNew] = getIAndJIndicesForPosition(tNewPosition);
         if (iNew != iCurrent || jNew != jCurrent) {
             (m_elementSetGrid.at(iCurrent, jCurrent)).erase(t);
@@ -88,7 +89,7 @@ public:
 
         for (size_t i=leftI; i<=rightI; ++i) {
             for (size_t j=lowerJ; j<=upperJ; ++j) {
-                std::cout << i << " " <<  j << "\n";
+                // std::cout << i << " " <<  j << "\n";
                 if (!m_elementSetGrid.hasDataAt(i, j)) continue;
                 auto& gridIJ = m_elementSetGrid.at(i, j);
                 for (uint32_t tPrim : gridIJ) {
@@ -119,10 +120,11 @@ private:
 
         std::pair<size_t, size_t> cellIndices = {
             static_cast<size_t>(std::floor((xt - m_lowerLeft.first) / m_epsilon)), 
-            static_cast<size_t>(std::floor((yt - m_lowerLeft.first) / m_gamma))
+            static_cast<size_t>(std::floor((yt - m_lowerLeft.second) / m_gamma))
         };
-        cellIndices.first = std::min(std::max(0, cellIndices.first), m_rowCount-1);
-        cellIndices.second = std::min(std::max(0, cellIndices.second), m_columnCount-1);
+        cellIndices.first = std::min(std::max(0UL, cellIndices.first), m_rowCount-1);
+        cellIndices.second = std::min(std::max(0UL, cellIndices.second), m_columnCount-1);
+        return cellIndices;
     }
 
     std::pair<double, double> findCurrentPositionForElement(const T& t) {

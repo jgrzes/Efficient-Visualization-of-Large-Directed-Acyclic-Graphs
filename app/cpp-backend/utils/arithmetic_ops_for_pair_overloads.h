@@ -60,6 +60,21 @@ abs(const std::pair<T, R>& tr) {
     return std::sqrt(std::pow(std::abs(tr.first), 2) + std::pow(std::abs(tr.second), 2));
 }
 
+// Element wise multiplication
+template <typename T, typename R>
+std::enable_if_t<std::is_arithmetic_v<T> && std::is_arithmetic_v<R>, std::pair<T, R>>
+operator*(const std::pair<T, R>& tr1, const std::pair<T, R>& tr2) {
+    return {tr1.first * tr2.first, tr1.second * tr2.second};
+}
+
+template<typename T, typename R>
+std::enable_if_t<std::is_arithmetic_v<T> && std::is_arithmetic_v<R>, std::pair<T, R>&>
+operator*=(std::pair<T, R>& tr1, const std::pair<T, R>& tr2) {
+    tr1.first *= tr2.first;
+    tr1.second *= tr2.second;
+    return tr1;
+}
+
 }
 
 #endif

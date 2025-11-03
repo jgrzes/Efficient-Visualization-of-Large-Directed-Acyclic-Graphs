@@ -883,8 +883,10 @@ int main(int argc, char** argv) {
     layoutAlgorithmParams.springFCalculator = [
       springFEps = 1e-6
     ](std::pair<double, double> d) -> std::pair<double, double> {
-      static const double c1s = 1.6;
+      static const double c1s = 0.15;
       static const double c2s = 1.0;
+
+      return {0, 0};
 
       auto [dx, dy] = d;
 
@@ -914,8 +916,8 @@ int main(int argc, char** argv) {
     layoutAlgorithmParams.repulsionFCalculator = [
       repulsionFEps = 1e-6
     ](std::pair<double, double> d, bool areAdj) -> std::pair<double, double> {
-      static const double cr = 1;
-      static const double crAdj = 0.25;
+      static const double cr = 1.4;
+      static const double crAdj = 0.8;
       auto [dx, dy] = d;
       double signumDx = (std::abs(dx) < repulsionFEps) 
         ? 0
@@ -941,7 +943,7 @@ int main(int argc, char** argv) {
     };
 
     layoutAlgorithmParams.maxRadiusOfRepulsionField = 5;
-    layoutAlgorithmParams.fineTuningForceMoveCoeff = 0.15;
+    layoutAlgorithmParams.fineTuningForceMoveCoeff = 0.1;
 
     layoutAlgorithmParams.minBoxWidthForUncoloured = 40; // TODO: Find a better way of finding this
     layoutAlgorithmParams.yDistanceBetweenUncolouredLevels = 4;
@@ -952,7 +954,7 @@ int main(int argc, char** argv) {
 
   size_t n = layoutPositions.size();
   for (size_t uIndex=0; uIndex<n; ++uIndex) {
-    std::cout << "(" <<  uIndex << ": (" << layoutPositions[uIndex].first << ", " << layoutPositions[uIndex].second << ")),\n";
+    std::cout << "(" <<  uIndex << ", (" << layoutPositions[uIndex].first << ", " << layoutPositions[uIndex].second << ")),\n";
   }
 
   return 0;

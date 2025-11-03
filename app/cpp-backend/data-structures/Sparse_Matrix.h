@@ -28,6 +28,7 @@ public:
     }
 
     SparseMatrix(size_t n, size_t m) : m_rowCount{n}, m_columnCount{m} {
+        // std::cout << "[Sparse Matrix] Row and column count: " << m_rowCount << ", " << m_columnCount << "\n";
         m_sparseMatrixData.reserve(m_rowCount);
         for (size_t i=0; i<m_columnCount; ++i) {
             m_sparseMatrixData.emplace_back(m_columnCount);
@@ -42,7 +43,7 @@ public:
         if constexpr (Symmetric) {
             if (i > j) std::swap(i, j);
         }
-        if (i >= m_rowCount && j >= m_rowCount) {
+        if (i >= m_rowCount || j >= m_columnCount) {
             throw std::runtime_error{
                 "Sparse Symmetric Matrix error: attempting to breach bounds of the matrix"
             };
@@ -58,7 +59,7 @@ public:
         if constexpr (Symmetric) {
             if (i > j) std::swap(i, j);
         }
-        if (i >= m_rowCount && j >= m_rowCount) {
+        if (i >= m_rowCount || j >= m_columnCount) {
             throw std::runtime_error{
                 "Sparse Symmetric Matrix error: attempting to breach bounds of the matrix"
             };

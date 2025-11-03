@@ -33,6 +33,21 @@ public:
     SparseArray(const size_t n, const T& defaultValue = {}) : 
         BaseClass{MemCountingMap<T>()}, m_logicalN{n}, m_defaultValue{defaultValue} {}
 
+    template <bool OtherAutoOptimizing>
+    SparseArray<T, AutoOptimizing>& operator=(const SparseArray<T, OtherAutoOptimizing>& otherSparseArray) {
+        BaseClass::operator=(static_cast<const BaseClass&>(otherSparseArray));
+        m_defaultValue = otherSparseArray.m_defaultValue;
+        const_cast<size_t&>(m_logicalN) = otherSparseArray.m_logicalN;
+    }    
+
+    template <bool OtherAutoOptimizing>
+    SparseArray<T, AutoOptimizing>& operator=(SparseArray<T, OtherAutoOptimizing>&& otherSparseArray) {
+        BaseClass::operator=(static_cast<const BaseClass&>(std::move(otherSparseArray)));
+        m_defaultValue = std::move(otherSparseArray.m_defaultValue);
+        const_cast<size_t&>(m_logicalN) = otherSparseArray.m_logicalN;
+        const_cast<size_t&>(otherSparseArray.m_logicalN) = 0UL;
+    } 
+
     size_t size() const {return m_logicalN;}
 
     const T& operator[](size_t i) const {
@@ -59,6 +74,8 @@ public:
             }
         }
 
+        // std::cout << "Underlying type is vector " << std::holds_alternative<std::vector<std::optional<T>>>(*this) << "\n";
+        // std::cout << i << ", while logical n is " << m_logicalN << "\n";
         auto& castedToVector = std::get<std::vector<std::optional<T>>>(static_cast<BaseClass&>(*this));
         if (!castedToVector[i].has_value()) castedToVector[i] = m_defaultValue;
         return castedToVector[i].value();
@@ -112,6 +129,7 @@ private:
     }
 
     void transformFromMapToVector() {
+        // std::cout << "Transforming from map to vector...\n";
         std::vector<std::optional<T>> rowDataAsVector(m_logicalN, std::nullopt);
         auto& castedToMap = std::get<MemCountingMap<T>>(
             static_cast<BaseClass&>(*this)
@@ -120,9 +138,11 @@ private:
             rowDataAsVector[i] = std::move(t);
         }
         BaseClass::operator=(std::move(rowDataAsVector));
+        auto castedToVectorPtr = std::get_if<std::vector<std::optional<T>>>(static_cast<BaseClass*>(this));
+        // std::cout << "Transforming " << (castedToVectorPtr != nullptr ? "succeeded" : "failed") << "\n";
     }
 
-    size_t m_logicalN; 
+    const size_t m_logicalN; 
     T m_defaultValue;
 
 };
