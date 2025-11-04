@@ -96,7 +96,7 @@ const App: React.FC = () => {
       setSelectedNode(null);
       setSelectedFile(null);
     } catch (err) {
-      console.error('❌ Upload error:', err);
+      console.error('Upload error:', err);
     } finally {
       setLoading(false);
     }
@@ -167,18 +167,6 @@ const App: React.FC = () => {
     }
   };
 
-  /** NODE SELECTION **/
-  const handleSelectNode = async (nodeId: string) => {
-    try {
-      const response = await fetch(`${API_BASE}/node_index/${nodeId}`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      selectNodeByIndex(data.index);
-    } catch (error) {
-      console.error('Failed to fetch node index:', error);
-    }
-  };
-
   return (
     <div id="layout" className="bg-black text-gray-200 flex-col">
       <div ref={canvasRef} className="flex-grow" />
@@ -239,7 +227,7 @@ const App: React.FC = () => {
       <RightSidebar
         onSearch={handleSearch}
         results={results}
-        onSelectNode={(node) => handleSelectNode(node.id)}
+        onSelectNode={(node) => selectNodeByIndex(node.index)}
       />
     </div>
   );

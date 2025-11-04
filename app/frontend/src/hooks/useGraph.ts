@@ -39,36 +39,73 @@ export function useGraph(
 
   /** Highlight selected node and its relationships **/
   const highlightNodes = (
-    selectedIndex: number,
+    selectedIndices: number[],
     pointCount: number,
-    linkCount: number
+    linkCount: number,
+    options?: {
+      colors?: {
+        defaultColor?: [number, number, number, number];
+        selectedColor?: [number, number, number, number];
+        childColor?: [number, number, number, number];
+        parentColor?: [number, number, number, number];
+        defaultLinkColor?: [number, number, number, number];
+        childLinkColor?: [number, number, number, number];
+        parentLinkColor?: [number, number, number, number];
+      };
+      linkWidths?: {
+        default?: number;
+        related?: number;
+      };
+      links?: number[];
+      zoom?: {
+        enabled?: boolean;
+        duration?: number;
+        padding?: number;
+      };
+    }
   ) => {
     const pointColors = new Float32Array(pointCount * 4);
     const linkColors = new Float32Array(linkCount * 4);
     const linkWidths = new Float32Array(linkCount);
 
-    const defaultColor = [0.8, 0.8, 0.8, 0.5];
-    const selectedColor = [0.15, 0.3, 0.9, 0.9];
-    const childColor = [0.2, 0.9, 0.2, 0.9];
-    const parentColor = [0.9, 0.2, 0.2, 0.9];
+    const defaultColor = options?.colors?.defaultColor ?? [0.8, 0.8, 0.8, 0.5] as [number, number, number, number];
+    const providedAnyColors = !!options?.colors;
+
+    const useSelected = providedAnyColors ? !!options!.colors!.selectedColor : true;
+    const useChild    = providedAnyColors ? !!options!.colors!.childColor    : true;
+    const useParent   = providedAnyColors ? !!options!.colors!.parentColor   : true;
+
+    const selectedColor = options?.colors?.selectedColor ?? [0.15, 0.3, 0.9, 0.9] as [number, number, number, number];
+    const childColor    = options?.colors?.childColor    ?? [0.2, 0.9, 0.2, 0.9] as [number, number, number, number];
+    const parentColor   = options?.colors?.parentColor   ?? [0.9, 0.2, 0.2, 0.9] as [number, number, number, number];
+
+    const defaultLinkColor = options?.colors?.defaultLinkColor ?? defaultColor;
+    const childLinkColor   = options?.colors?.childLinkColor   ?? childColor;
+    const parentLinkColor  = options?.colors?.parentLinkColor  ?? parentColor;
+
+    const defaultWidth = options?.linkWidths?.default ?? 1;
+    const relatedWidth = options?.linkWidths?.related ?? 3;
 
     const parents: number[] = [];
     const children: number[] = [];
 
-    for (let i = 0; i < linksRef.current.length; i += 2) {
-      const source = linksRef.current[i];
-      const target = linksRef.current[i + 1];
-      let color = defaultColor;
-      let width = 1;
+    const flatLinks = options?.links ?? linksRef.current;
+    const selectedSet = new Set<number>(selectedIndices);
 
-      if (target === selectedIndex) {
+    for (let i = 0; i < flatLinks.length; i += 2) {
+      const source = flatLinks[i];
+      const target = flatLinks[i + 1];
+      let color = defaultLinkColor;
+      let width = defaultWidth;
+
+      if (selectedSet.has(target)) {
         parents.push(source);
-        color = parentColor;
-        width = 3;
-      } else if (source === selectedIndex) {
+        if (useParent) color = parentLinkColor;
+        if (useParent) width = relatedWidth;
+      } else if (selectedSet.has(source)) {
         children.push(target);
-        color = childColor;
-        width = 3;
+        if (useChild) color = childLinkColor;
+        if (useChild) width = relatedWidth;
       }
 
       linkColors.set(color, i * 2);
@@ -77,9 +114,9 @@ export function useGraph(
 
     for (let i = 0; i < pointCount; i++) {
       let color = defaultColor;
-      if (i === selectedIndex) color = selectedColor;
-      else if (children.includes(i)) color = childColor;
-      else if (parents.includes(i)) color = parentColor;
+      if (selectedSet.has(i) && useSelected) color = selectedColor;
+      else if (children.includes(i) && useChild) color = childColor;
+      else if (parents.includes(i) && useParent) color = parentColor;
       pointColors.set(color, i * 4);
     }
 
@@ -89,7 +126,16 @@ export function useGraph(
     graph.setPointColors(pointColors);
     graph.setLinkColors(linkColors);
     graph.setLinkWidths(linkWidths);
-    graph.zoomToPointByIndex(selectedIndex, 700, 20);
+
+    const zoomEnabled = options?.zoom?.enabled ?? true;
+    if (zoomEnabled) {
+      graph.zoomToPointByIndex(
+        selectedIndices[0],
+        options?.zoom?.duration ?? 700,
+        options?.zoom?.padding ?? 20
+      );
+    }
+
     graph.render();
   };
 
@@ -103,6 +149,7 @@ export function useGraph(
     try {
       const data = await fetchNodeData(index);
       setSelectedNode({
+        index: data.index,
         id: data.id,
         name: data.name,
         namespace: data.namespace,
@@ -111,9 +158,9 @@ export function useGraph(
         is_a: data.is_a
       });
 
-      const pointCount =
-        (graphInstance.current?.getPointPositions()?.length ?? 0) / 2;
-      highlightNodes(index, pointCount, linksRef.current.length / 2);
+      const pointCount = (graphInstance.current?.getPointPositions()?.length ?? 0) / 2;
+      highlightNodes([index], pointCount, linksRef.current.length / 2);
+
     } catch (err) {
       console.error('Node fetch error:', err);
     }

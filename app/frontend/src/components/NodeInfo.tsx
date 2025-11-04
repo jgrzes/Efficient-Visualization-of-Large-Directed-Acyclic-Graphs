@@ -1,6 +1,7 @@
 import React from 'react';
 
 export interface NodeInfoProps {
+  index: number,
   id: string;
   name: string;
   namespace: string;
@@ -9,7 +10,7 @@ export interface NodeInfoProps {
   is_a?: string[];
 }
 
-const NodeInfo: React.FC<NodeInfoProps> = ({ id, name, namespace, def, synonym, is_a }) => {
+const NodeInfo: React.FC<NodeInfoProps> = ({index, id, name, namespace, def, synonym, is_a }) => {
   return (
     <div
       id="info-panel"

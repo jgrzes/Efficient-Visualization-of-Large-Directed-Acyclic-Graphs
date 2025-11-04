@@ -201,7 +201,7 @@ def search_node():
         if match:
             results.append(
                 {
-                    "node_index": int(v),
+                    "index": int(v),
                     "id": G_gt.vertex_properties["id"][v],
                     "name": G_gt.vertex_properties["name"][v],
                     "namespace": G_gt.vertex_properties["namespace"][v],
