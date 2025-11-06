@@ -33,6 +33,7 @@ def build_reponse_json_string_for_make_graph_structure_req(
 
 @app.route("/flask_make_graph_structure", methods=["POST"])
 def flask_make_graph_structure():
+    print(request.__dict__)
     file = request.files["file"]
 
     if file.filename == "":
