@@ -1,4 +1,5 @@
 import hashlib
+import math
 import os
 from datetime import datetime
 
@@ -26,6 +27,42 @@ class GraphState:
         self.ROOT_ID: str | None = None
         self.GODAG = None
         self.HASH: str | None = None  # required to track if the loaded graph matches the saved one, mongodb-wise
+
+
+def next_pow2(x: float) -> int:
+    x = max(1, int(math.ceil(x)))
+    return 1 << (x - 1).bit_length()
+
+
+def estimate_space_and_point_size_by_density(
+    n_nodes: int,
+    base_point_px: float = 5.0,
+    sep_factor: float = 6.0,
+    fill: float = 0.8,
+    min_size: int = 1024,
+    max_size: int = 65536,
+    pow2: bool = True,
+    min_point_px: float = 2.0,
+    max_point_px: float = 6.0,
+    dpi_scale: float = 1.0,
+) -> tuple[int, float]:
+    if n_nodes <= 1:
+        space = min_size
+        return (next_pow2(space) if pow2 else space, max(base_point_px, min_point_px))
+
+    # space_size
+    target_sep = sep_factor * base_point_px
+    area_per_node = (target_sep**2) / max(fill, 1e-6)
+    side = math.sqrt(n_nodes * area_per_node)
+    side = max(min_size, min(int(math.ceil(side)), max_size))
+    space_size = next_pow2(side) if pow2 else side
+
+    # point_size
+    scale = (max(200.0, min(20000.0, float(n_nodes))) / 2000.0) ** (-0.2)
+    point_px = base_point_px * scale * dpi_scale
+    point_size = max(min_point_px, min(point_px, max_point_px))
+
+    return space_size, float(point_size)
 
 
 # --- MongoDB config ---
@@ -284,6 +321,12 @@ def save_graph():
     canvas_positions = data["canvas_positions"]
     links = data["links"]
     meta = data.get("meta", {})
+    config = data.get("config", {})
+    space_size, point_size = estimate_space_and_point_size_by_density(
+        n_nodes=len(canvas_positions) // 2
+    )
+    config["space_size"] = space_size
+    config["point_size"] = point_size
 
     G_gt: gt.Graph | None = GRAPH_STATE.G_GT
     if G_gt is None:
@@ -297,6 +340,8 @@ def save_graph():
     def_prop = G_gt.vertex_properties["def"]
     synonym_prop = G_gt.vertex_properties["synonym"]
     isa_prop = G_gt.vertex_properties["is_a"]
+    space_size = config.get("space_size", 256)
+    point_size = config.get("point_size", 4)
 
     nodes = []
     for v in G_gt.vertices():
@@ -324,6 +369,10 @@ def save_graph():
             "root_id": GRAPH_STATE.ROOT_ID,
         },
         "graph": graph_payload,
+        "config": {
+            "space_size": space_size,
+            "point_size": point_size,
+        },
         "created_at": datetime.utcnow(),
     }
 
@@ -346,11 +395,11 @@ def save_graph():
 
 @app.route("/graphs/<hash_id>", methods=["GET"])
 def get_graph(hash_id: str):
-    """Pobranie zapisanych pozycji grafu po hash-u + odbudowa GRAPH_STATE."""
+    """Get the positions and links of a graph by its hash."""
     doc = graphs.find_one({"hash": hash_id}, {"_id": 0})
     if not doc:
         return jsonify({"error": "Graph not found"}), 404
-    
+
     # if the graph in memory is not the requested one, rebuild it
     if GRAPH_STATE.G_GT is None or GRAPH_STATE.HASH != hash_id:
         graph_doc = doc.get("graph")
@@ -398,6 +447,7 @@ def get_graph(hash_id: str):
             "canvas_positions": doc["canvas_positions"],
             "links": doc["links"],
             "meta": doc.get("meta", {}),
+            "config": doc.get("config", {}),
         }
     )
 

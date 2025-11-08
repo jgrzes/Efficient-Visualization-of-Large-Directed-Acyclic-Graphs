@@ -14,10 +14,14 @@ window.addEventListener('mousemove', (e) => {
 
 export function useGraph(
   graphRef: React.RefObject<HTMLDivElement | null>,
-  canvasRef: React.RefObject<HTMLDivElement | null>,
+  canvasRef: React.RefObject<HTMLDivElement | null>, // nadal nieużywany, ale może się przydać później
   pointPositions: Float32Array,
   links: Float32Array,
-  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>
+  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>,
+  initialConfig?: {
+    spaceSize: number;
+    pointSize: number;
+  }
 ) {
   const graphInstance = useRef<Graph | null>(null);
   const linksRef = useRef<Float32Array>(links);
@@ -141,9 +145,9 @@ export function useGraph(
     let hoveredIndex: number | undefined;
 
     const config: GraphConfigInterface = {
-      spaceSize: 256,
+      spaceSize: initialConfig?.spaceSize ?? 256,
       backgroundColor: '#000',
-      pointSize: 1,
+      pointSize: initialConfig?.pointSize ?? 1,
       pointColor: [128, 128, 128, 255],
       pointGreyoutOpacity: 0.1,
       linkWidth: 0.8,
@@ -187,6 +191,7 @@ export function useGraph(
       }
     };
 
+    graphInstance.current?.destroy?.();
     graphInstance.current = new Graph(graphRef.current, config);
 
     return () => {
@@ -197,10 +202,23 @@ export function useGraph(
 
   /** Update graph data on change **/
   useEffect(() => {
-    if (!graphInstance.current || !pointPositions || !links) return;
-    graphInstance.current.setPointPositions(pointPositions);
-    graphInstance.current.setLinks(links);
-    graphInstance.current.render();
+    const g = graphInstance.current;
+    if (!g || !pointPositions || !links) return;
+
+    graphInstance.current.config.spaceSize = initialConfig?.spaceSize ?? 256;
+    graphInstance.current.config.pointSize = initialConfig?.pointSize ?? 1;
+
+    console.log(
+      '♻️ Updating graph data:',
+      pointPositions.length / 2,
+      'nodes,',
+      links.length / 2,
+      'edges'
+    );
+
+    g.setPointPositions(pointPositions);
+    g.setLinks(links);
+    g.render();
   }, [pointPositions, links]);
 
   return { fitView, resetView, selectNodeByIndex };

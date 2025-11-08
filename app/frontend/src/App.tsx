@@ -43,6 +43,10 @@ const App: React.FC = () => {
   );
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+  const [graphConfig, setGraphConfig] = useState<{
+    spaceSize: number;
+    pointSize: number;
+  } | null>(null);
 
   // UI state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -61,7 +65,8 @@ const App: React.FC = () => {
     canvasRef,
     pointPositions,
     links,
-    setSelectedNode
+    setSelectedNode,
+    graphConfig || undefined
   );
 
   // Stats
@@ -84,6 +89,15 @@ const App: React.FC = () => {
         setPointPositions(new Float32Array(data.canvas_positions));
         setLinks(new Float32Array(data.links));
         setSelectedNode(null);
+
+        if (data.config) {
+          setGraphConfig({
+            spaceSize: data.config.space_size || 1000,
+            pointSize: data.config.point_size || 5
+          });
+        } else {
+          setGraphConfig(null);
+        }
       })
       .catch((err) => {
         console.error('Auto-load failed:', err);
@@ -216,8 +230,13 @@ const App: React.FC = () => {
       canvas_positions: number[];
       links: number[];
       meta?: Record<string, unknown>;
+      config?: {
+        space_size?: number;
+        point_size?: number;
+      };
     }>;
   }
+
 
   /** POST GRAPH TO DB **/
   async function postGraphToDB(canvas_positions: number[], links: number[]) {
@@ -266,6 +285,13 @@ const App: React.FC = () => {
       setPointPositions(new Float32Array(data.canvas_positions));
       setLinks(new Float32Array(data.links));
       setSelectedNode(null);
+
+      if (data.config) {
+        setGraphConfig({
+          spaceSize: data.config.space_size || 1000,
+          pointSize: data.config.point_size || 5
+        });
+      }
 
       const url = new URL(window.location.href);
       url.searchParams.set('g', hash.trim());
