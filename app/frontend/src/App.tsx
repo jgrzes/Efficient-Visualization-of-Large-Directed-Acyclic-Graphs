@@ -21,7 +21,9 @@ import {
   Focus,
   RotateCcw,
   LineChart,
-  Download
+  Download,
+  Save,
+  Link as LinkIcon
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:30301';
@@ -50,6 +52,9 @@ const App: React.FC = () => {
   const [results, setResults] = useState<NodeInfoProps[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Helpers
+  const arrayFromF32 = (f: Float32Array) => Array.from(f);
+
   // Graph controls
   const { fitView, resetView, selectNodeByIndex } = useGraph(
     graphRef,
@@ -64,6 +69,28 @@ const App: React.FC = () => {
     nodeCount: pointPositions.length / 2,
     edgeCount: links.length / 2
   }), [pointPositions, links]);
+
+  /** AUTO LOAD GRAPH FROM LINK ?g=... **/
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const byQuery = params.get('g');
+    const byHash = window.location.hash ? window.location.hash.slice(1) : null;
+    const g = byQuery || byHash;
+    if (!g) return;
+
+    setLoading(true);
+    fetchGraphByHash(g)
+      .then((data) => {
+        setPointPositions(new Float32Array(data.canvas_positions));
+        setLinks(new Float32Array(data.links));
+        setSelectedNode(null);
+      })
+      .catch((err) => {
+        console.error('Auto-load failed:', err);
+        alert('Nie udało się załadować grafu z linku.');
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   /** FILE HANDLING **/
   const handleLoadClick = () => fileInputRef.current?.click();
@@ -179,6 +206,79 @@ const App: React.FC = () => {
     }
   };
 
+
+
+  /** FETCH GRAPH BY HASH **/
+  async function fetchGraphByHash(hash: string) {
+    const res = await fetch(`${API_BASE}/graphs/${hash}`);
+    if (!res.ok) throw new Error(`Graph ${hash} not found`);
+    return res.json() as Promise<{
+      canvas_positions: number[];
+      links: number[];
+      meta?: Record<string, unknown>;
+    }>;
+  }
+
+  /** POST GRAPH TO DB **/
+  async function postGraphToDB(canvas_positions: number[], links: number[]) {
+    const res = await fetch(`${API_BASE}/graphs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ canvas_positions, links }),
+    });
+    if (!res.ok) throw new Error('Save failed');
+    return res.json() as Promise<{ hash: string; url: string }>;
+  }
+
+  /** SAVE GRAPH TO DB (button handler) **/
+  const saveToDb = async () => {
+    try {
+      setLoading(true);
+
+      const payloadPos = arrayFromF32(pointPositions);
+      const payloadLinks = arrayFromF32(links);
+
+      const { hash } = await postGraphToDB(payloadPos, payloadLinks);
+      const share = `${window.location.origin}/?g=${hash}`;
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('g', hash);
+      window.history.replaceState({}, '', url.toString());
+
+      await navigator.clipboard.writeText(share);
+      alert(`Saved! Link copied to clipboard:\n${share}`);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to save the graph to the database.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** LOAD GRAPH FROM DB BY HASH (button handler) **/
+  const loadFromLink = async () => {
+    const hash = window.prompt('Pass hash of the graph:');
+    if (!hash) return;
+
+    try {
+      setLoading(true);
+      const data = await fetchGraphByHash(hash.trim());
+      setPointPositions(new Float32Array(data.canvas_positions));
+      setLinks(new Float32Array(data.links));
+      setSelectedNode(null);
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('g', hash.trim());
+      window.history.replaceState({}, '', url.toString());
+    } catch (e) {
+      console.error(e);
+      alert('Graph not found for the given hash!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   return (
     <div id="layout" className="bg-black text-gray-200 flex-col">
       <div ref={canvasRef} className="flex-grow" />
@@ -204,10 +304,9 @@ const App: React.FC = () => {
           { label: 'Fit view', icon: <Focus size={20} />, onClick: fitView },
           { label: 'Reset view', icon: <RotateCcw size={20} />, onClick: resetView },
           { label: 'Export', icon: <Download size={20} />, onClick: handleExportClick },
-          { label: 'Analyze', icon: <LineChart size={20} />, onClick: handleAnalyzeClick }
-        ]}
-        bottomItems={[
-          { label: 'Settings', icon: <Settings size={20} />, onClick: () => console.log('Settings') }
+          { label: 'Analyze', icon: <LineChart size={20} />, onClick: handleAnalyzeClick },
+          { label: 'Save to DB', icon: <Save size={20} />, onClick: saveToDb },
+          { label: 'Load from link', icon: <LinkIcon size={20} />, onClick: loadFromLink },
         ]}
       />
 

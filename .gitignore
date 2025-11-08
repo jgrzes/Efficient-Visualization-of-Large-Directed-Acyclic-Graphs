@@ -207,6 +207,11 @@ app/backend/venv/
 app/backend/.env
 
 # ==================
+# MONGO DB
+# ==================
+data/
+
+# ==================
 # RESEARCH SCRIPTS
 # ==================
 

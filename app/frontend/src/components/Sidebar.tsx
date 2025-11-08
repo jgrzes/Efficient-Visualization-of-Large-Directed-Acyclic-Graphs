@@ -38,4 +38,3 @@ const Sidebar: React.FC<SidebarProps> = ({ items, bottomItems = [] }) => {
   )
 }
 export default Sidebar
-

@@ -1,5 +1,10 @@
+import hashlib
+import os
+from datetime import datetime
+
 import graph_tool as gt
-from flask import Flask, jsonify, request
+import orjson
+from flask import Flask, jsonify, redirect, request
 from flask_cors import CORS
 from generate_graph_structure import make_graph_structure
 from graph_analysis import compute_hierarchy_levels
@@ -8,6 +13,7 @@ from graph_utils import (
     build_gt_graph_from_obo,
     filter_graph_by_root,
 )
+from pymongo import MongoClient, ReturnDocument
 
 PORT_NUMBER = 30_301
 app = Flask(__name__)
@@ -19,6 +25,21 @@ class GraphState:
         self.G_GT: gt.Graph | None = None
         self.ROOT_ID: str | None = None
         self.GODAG = None
+
+
+# --- MongoDB config ---
+MONGODB_URI = os.getenv(
+    "MONGODB_URI",
+    "mongodb://inz_user:devpass@mongo:27017/inz?authSource=inz",
+)
+FRONT_URL = os.getenv("FRONT_URL", "http://localhost:30306")
+DB_NAME = os.getenv("DB_NAME", "inz")
+COLL_NAME = os.getenv("COLL_NAME", "graphs")
+
+client = MongoClient(MONGODB_URI)
+db = client[DB_NAME]
+graphs = db[COLL_NAME]
+graphs.create_index("hash", unique=True)
 
 
 GRAPH_STATE = GraphState()
@@ -40,6 +61,22 @@ def build_reponse_json_string_for_make_graph_structure_req(
         links.append(v)
 
     return transformed_canvas_positions, links
+
+
+def _canonicalize_positions(xs: list[float]) -> list[float]:
+    return [round(float(v), 5) for v in xs]
+
+
+def _canonicalize_links(ls: list[int]) -> list[int]:
+    return [int(v) for v in ls]
+
+
+def _compute_hash(canvas_positions: list[float], links: list[int]) -> str:
+    payload = {
+        "p": _canonicalize_positions(canvas_positions),
+        "l": _canonicalize_links(links),
+    }
+    return hashlib.sha256(orjson.dumps(payload)).hexdigest()[:12]
 
 
 @app.route("/node/<int:node_id>")
@@ -69,6 +106,7 @@ def get_node(node_id):
         }
     )
 
+
 @app.route("/node_index/<string:node_id>")
 def get_node_index(node_id):
     """Returns the index of a node in the graph based on its ID."""
@@ -84,6 +122,7 @@ def get_node_index(node_id):
             return jsonify({"index": int(v)})
 
     return jsonify({"error": "Node with given ID not found"}), 404
+
 
 @app.route("/flask_make_graph_structure", methods=["POST"])
 def flask_make_graph_structure():
@@ -150,6 +189,7 @@ def analyze_graph():
     hierarchy_levels = compute_hierarchy_levels(G_gt)
     return jsonify({"hierarchy_levels": hierarchy_levels})
 
+
 @app.route("/search_node", methods=["POST"])
 def search_node():
     """Search nodes by field (id, name, namespace, def, synonym, is_a, or all) and query string."""
@@ -162,7 +202,10 @@ def search_node():
     query = data.get("query")
     print(field)
     if not field or not query:
-        return jsonify({"error": "Missing parameters: field and query are required"}), 400
+        return (
+            jsonify({"error": "Missing parameters: field and query are required"}),
+            400,
+        )
 
     prop_map = {
         "id": G_gt.vertex_properties["id"],
@@ -178,7 +221,7 @@ def search_node():
         match = False
 
         if field == "all":
-            for prop_name, prop in prop_map.items():
+            for _, prop in prop_map.items():
                 value = prop[v]
                 if isinstance(value, (list, tuple)):
                     if any(query.lower() in str(item).lower() for item in value):
@@ -206,8 +249,12 @@ def search_node():
                     "name": G_gt.vertex_properties["name"][v],
                     "namespace": G_gt.vertex_properties["namespace"][v],
                     "def": G_gt.vertex_properties["def"][v].replace('"', ""),
-                    "synonym": list(G_gt.vertex_properties["synonym"][v]) if G_gt.vertex_properties["synonym"][v] else [],
-                    "is_a": list(G_gt.vertex_properties["is_a"][v]) if G_gt.vertex_properties["is_a"][v] else [],
+                    "synonym": list(G_gt.vertex_properties["synonym"][v])
+                    if G_gt.vertex_properties["synonym"][v]
+                    else [],
+                    "is_a": list(G_gt.vertex_properties["is_a"][v])
+                    if G_gt.vertex_properties["is_a"][v]
+                    else [],
                 }
             )
 
@@ -215,6 +262,73 @@ def search_node():
         return jsonify({"message": "No matching nodes found"}), 404
 
     return jsonify(results)
+
+
+@app.route("/graphs", methods=["POST"])
+def save_graph():
+    """
+    Save graph positions and links to the database.
+
+    Expects JSON:
+    {
+      "canvas_positions": [x0, y0, x1, y1, ...],
+      "links": [u0, v0, u1, v1, ...],
+      "meta": {...}  # optional
+    }
+    """
+    data = request.get_json(force=True)
+    if not data or "canvas_positions" not in data or "links" not in data:
+        return jsonify({"error": "canvas_positions and links are required"}), 400
+
+    canvas_positions = data["canvas_positions"]
+    links = data["links"]
+    meta = data.get("meta", {})
+
+    ghash = _compute_hash(canvas_positions, links)
+
+    doc = {
+        "hash": ghash,
+        "canvas_positions": _canonicalize_positions(canvas_positions),
+        "links": _canonicalize_links(links),
+        "meta": meta,
+        "created_at": datetime.utcnow(),
+    }
+
+    saved = graphs.find_one_and_update(
+        {"hash": ghash},
+        {"$setOnInsert": doc},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+
+    return jsonify(
+        {
+            "hash": saved["hash"],
+            "url": f"{FRONT_URL}/?g={saved['hash']}",
+        }
+    )
+
+
+@app.route("/graphs/<hash_id>", methods=["GET"])
+def get_graph(hash_id: str):
+    """Get saved graph positions and links by hash."""
+    doc = graphs.find_one({"hash": hash_id}, {"_id": 0})
+    if not doc:
+        return jsonify({"error": "Graph not found"}), 404
+
+    return jsonify(
+        {
+            "canvas_positions": doc["canvas_positions"],
+            "links": doc["links"],
+            "meta": doc.get("meta", {}),
+        }
+    )
+
+
+@app.route("/g/<hash_id>", methods=["GET"])
+def redirect_to_front(hash_id: str):
+    return redirect(f"{FRONT_URL}/?g={hash_id}", code=302)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT_NUMBER)

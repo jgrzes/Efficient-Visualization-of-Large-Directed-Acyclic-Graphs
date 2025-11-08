@@ -9,3 +9,7 @@ flask
 flask_cors
 scikit-learn
 argparse
+flask
+flask-cors
+pymongo
+orjson
