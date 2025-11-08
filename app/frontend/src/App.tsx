@@ -87,7 +87,7 @@ const App: React.FC = () => {
       })
       .catch((err) => {
         console.error('Auto-load failed:', err);
-        alert('Nie udało się załadować grafu z linku.');
+        alert('Failed to load graph from link.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -270,6 +270,8 @@ const App: React.FC = () => {
       const url = new URL(window.location.href);
       url.searchParams.set('g', hash.trim());
       window.history.replaceState({}, '', url.toString());
+
+      setTimeout(() => fitView(), 100);
     } catch (e) {
       console.error(e);
       alert('Graph not found for the given hash!');

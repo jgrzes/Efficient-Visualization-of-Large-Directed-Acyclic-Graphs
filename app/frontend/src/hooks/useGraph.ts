@@ -152,10 +152,10 @@ export function useGraph(
       curvedLinks: false,
       renderHoveredPointRing: false,
       enableDrag: true,
-      simulationLinkSpring: 0.2,
-      simulationRepulsion: 1.5,
-      simulationGravity: 0.1,
-      simulationDecay: 100,
+      simulationLinkSpring: 0,
+      simulationRepulsion: 0,
+      simulationGravity: 0,
+      simulationDecay: 0,
       onClick: selectNodeByIndex,
 
       onPointMouseOver: async (index) => {

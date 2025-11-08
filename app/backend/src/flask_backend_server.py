@@ -25,6 +25,7 @@ class GraphState:
         self.G_GT: gt.Graph | None = None
         self.ROOT_ID: str | None = None
         self.GODAG = None
+        self.HASH: str | None = None  # required to track if the loaded graph matches the saved one, mongodb-wise
 
 
 # --- MongoDB config ---
@@ -284,22 +285,56 @@ def save_graph():
     links = data["links"]
     meta = data.get("meta", {})
 
+    G_gt: gt.Graph | None = GRAPH_STATE.G_GT
+    if G_gt is None:
+        return jsonify({"error": "Graph structure not loaded on backend"}), 500
+
     ghash = _compute_hash(canvas_positions, links)
+
+    id_prop = G_gt.vertex_properties["id"]
+    name_prop = G_gt.vertex_properties["name"]
+    namespace_prop = G_gt.vertex_properties["namespace"]
+    def_prop = G_gt.vertex_properties["def"]
+    synonym_prop = G_gt.vertex_properties["synonym"]
+    isa_prop = G_gt.vertex_properties["is_a"]
+
+    nodes = []
+    for v in G_gt.vertices():
+        nodes.append(
+            {
+                "id": id_prop[v],
+                "name": name_prop[v],
+                "namespace": namespace_prop[v],
+                "def": def_prop[v],
+                "synonym": list(synonym_prop[v]) if synonym_prop[v] else [],
+                "is_a": list(isa_prop[v]) if isa_prop[v] else [],
+            }
+        )
+
+    graph_payload = {
+        "nodes": nodes,
+    }
 
     doc = {
         "hash": ghash,
         "canvas_positions": _canonicalize_positions(canvas_positions),
         "links": _canonicalize_links(links),
-        "meta": meta,
+        "meta": {
+            **meta,
+            "root_id": GRAPH_STATE.ROOT_ID,
+        },
+        "graph": graph_payload,
         "created_at": datetime.utcnow(),
     }
 
     saved = graphs.find_one_and_update(
         {"hash": ghash},
-        {"$setOnInsert": doc},
+        {"$set": doc},
         upsert=True,
         return_document=ReturnDocument.AFTER,
     )
+
+    GRAPH_STATE.HASH = ghash
 
     return jsonify(
         {
@@ -311,10 +346,52 @@ def save_graph():
 
 @app.route("/graphs/<hash_id>", methods=["GET"])
 def get_graph(hash_id: str):
-    """Get saved graph positions and links by hash."""
+    """Pobranie zapisanych pozycji grafu po hash-u + odbudowa GRAPH_STATE."""
     doc = graphs.find_one({"hash": hash_id}, {"_id": 0})
     if not doc:
         return jsonify({"error": "Graph not found"}), 404
+    
+    # if the graph in memory is not the requested one, rebuild it
+    if GRAPH_STATE.G_GT is None or GRAPH_STATE.HASH != hash_id:
+        graph_doc = doc.get("graph")
+        if graph_doc and "nodes" in graph_doc:
+            nodes = graph_doc["nodes"]
+
+            g = gt.Graph(directed=True)
+            g.add_vertex(len(nodes))
+
+            id_prop = g.new_vertex_property("string")
+            name_prop = g.new_vertex_property("string")
+            namespace_prop = g.new_vertex_property("string")
+            def_prop = g.new_vertex_property("string")
+            synonym_prop = g.new_vertex_property("object")
+            isa_prop = g.new_vertex_property("object")
+
+            for idx, node in enumerate(nodes):
+                v = g.vertex(idx)
+                id_prop[v] = node.get("id", "")
+                name_prop[v] = node.get("name", "")
+                namespace_prop[v] = node.get("namespace", "")
+                def_prop[v] = node.get("def", "")
+                synonym_prop[v] = node.get("synonym", [])
+                isa_prop[v] = node.get("is_a", [])
+
+            g.vertex_properties["id"] = id_prop
+            g.vertex_properties["name"] = name_prop
+            g.vertex_properties["namespace"] = namespace_prop
+            g.vertex_properties["def"] = def_prop
+            g.vertex_properties["synonym"] = synonym_prop
+            g.vertex_properties["is_a"] = isa_prop
+
+            links = doc["links"]
+            for i in range(0, len(links), 2):
+                u = int(links[i])
+                v = int(links[i + 1])
+                g.add_edge(u, v)
+
+            GRAPH_STATE.G_GT = g
+            GRAPH_STATE.HASH = hash_id
+            GRAPH_STATE.ROOT_ID = doc.get("meta", {}).get("root_id")
 
     return jsonify(
         {
