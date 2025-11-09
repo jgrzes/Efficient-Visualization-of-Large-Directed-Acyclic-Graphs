@@ -1,5 +1,4 @@
 import hashlib
-import math
 import os
 from datetime import datetime
 
@@ -29,40 +28,10 @@ class GraphState:
         self.HASH: str | None = None  # required to track if the loaded graph matches the saved one, mongodb-wise
 
 
-def next_pow2(x: float) -> int:
-    x = max(1, int(math.ceil(x)))
-    return 1 << (x - 1).bit_length()
-
-
-def estimate_space_and_point_size_by_density(
-    n_nodes: int,
-    base_point_px: float = 5.0,
-    sep_factor: float = 6.0,
-    fill: float = 0.8,
-    min_size: int = 1024,
-    max_size: int = 65536,
-    pow2: bool = True,
-    min_point_px: float = 2.0,
-    max_point_px: float = 6.0,
-    dpi_scale: float = 1.0,
-) -> tuple[int, float]:
-    if n_nodes <= 1:
-        space = min_size
-        return (next_pow2(space) if pow2 else space, max(base_point_px, min_point_px))
-
-    # space_size
-    target_sep = sep_factor * base_point_px
-    area_per_node = (target_sep**2) / max(fill, 1e-6)
-    side = math.sqrt(n_nodes * area_per_node)
-    side = max(min_size, min(int(math.ceil(side)), max_size))
-    space_size = next_pow2(side) if pow2 else side
-
-    # point_size
-    scale = (max(200.0, min(20000.0, float(n_nodes))) / 2000.0) ** (-0.2)
-    point_px = base_point_px * scale * dpi_scale
-    point_size = max(min_point_px, min(point_px, max_point_px))
-
-    return space_size, float(point_size)
+# Placeholder function for future implementation. Currently not used.
+# It is intended to estimate space size and point size based on graph density.
+def estimate_space_and_point_size_by_density() -> tuple[int, float]:
+    pass
 
 
 # --- MongoDB config ---
@@ -322,11 +291,19 @@ def save_graph():
     links = data["links"]
     meta = data.get("meta", {})
     config = data.get("config", {})
+
+    """
+    For now, this is commented, because this function should be adjusted to the final algorithm.
+    I prepared it in advance, it will be needed later since we have to adjust config to the number of nodes/edges.
+    For now, there will be default values set.
+
     space_size, point_size = estimate_space_and_point_size_by_density(
         n_nodes=len(canvas_positions) // 2
     )
+
     config["space_size"] = space_size
     config["point_size"] = point_size
+    """
 
     G_gt: gt.Graph | None = GRAPH_STATE.G_GT
     if G_gt is None:
@@ -340,8 +317,10 @@ def save_graph():
     def_prop = G_gt.vertex_properties["def"]
     synonym_prop = G_gt.vertex_properties["synonym"]
     isa_prop = G_gt.vertex_properties["is_a"]
+
+    # for now, use default values and sent them to the database
     space_size = config.get("space_size", 256)
-    point_size = config.get("point_size", 4)
+    point_size = config.get("point_size", 1)
 
     nodes = []
     for v in G_gt.vertices():
