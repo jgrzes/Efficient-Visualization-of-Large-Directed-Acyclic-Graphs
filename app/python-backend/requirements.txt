@@ -11,3 +11,7 @@ protobuf
 grpcio
 grpcio-tools
 gurobipy
+scikit-learn
+argparse
+pymongo
+orjson
