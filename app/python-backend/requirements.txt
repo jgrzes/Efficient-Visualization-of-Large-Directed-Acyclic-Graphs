@@ -11,3 +11,6 @@ protobuf
 grpcio
 grpcio-tools
 gurobipy
+pymongo
+bson
+python-dotenv

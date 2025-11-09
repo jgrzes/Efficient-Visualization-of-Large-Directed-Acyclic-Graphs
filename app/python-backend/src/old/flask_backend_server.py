@@ -5,9 +5,11 @@ from flask_cors import CORS
 import graph_tool as gt
 from graph_utils import build_gt_graph_from_obo, build_graph_from_txt
 from generate_graph_structure import make_graph_structure
+import dotenv
+import os
 
 
-PORT_NUMBER = 30_301
+# PORT_NUMBER = 30_301
 app = Flask(__name__)
 CORS(app)
 
@@ -111,4 +113,7 @@ def flask_make_graph_structure():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=PORT_NUMBER)
+    dotenv.load_dotenv()
+    server_ip_address = os.getenv("SERVER_IP_ADDRESS")
+    server_port = int(os.getenv("SERVER_PORT"))
+    app.run(host=server_ip_address, port=server_port)
