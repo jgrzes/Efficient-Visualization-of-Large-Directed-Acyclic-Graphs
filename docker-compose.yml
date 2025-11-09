@@ -12,7 +12,7 @@ services:
       - ./data:/data/db
       - ./init.js:/docker-entrypoint-initdb.d/init.js:ro
     networks:
-      - dag-app-network
+      - dag-app-db-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "mongosh --quiet -u root -p rootpass --eval 'db.runCommand({ ping: 1 }).ok' | grep 1"]
@@ -20,19 +20,19 @@ services:
       timeout: 5s
       retries: 10
 
-  python_backend:
-    build: ./app/backend
+  python-backend:
+    build: ./app/python-backend
     environment:
       MONGODB_URI: "mongodb://inz_user:devpass@mongo:27017/inz?authSource=inz"
       PORT: "30301"
     ports:
       - "30301-30305:30301-30305"
     volumes:
-      - ./app/backend:/app
-
+      - ./app/python-backend:/app
     stdin_open: true
     tty: true
     networks:
+      - dag-app-db-network
       - dag-app-py-front-network 
       - dag-app-py-cpp-network
     depends_on:
@@ -65,5 +65,6 @@ services:
       - dag-app-py-cpp-network    
 
 networks:
+  dag-app-db-network:
   dag-app-py-front-network: 
   dag-app-py-cpp-network:                 
