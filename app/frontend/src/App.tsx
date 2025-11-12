@@ -1,11 +1,12 @@
-import React, { useRef, useMemo, useState, ChangeEvent } from 'react';
+// import React, { useRef, useMemo, useState, ChangeEvent, createContext } from 'react';
+import React, { useRef, useState, ChangeEvent, createContext, useContext } from 'react';
 import './style.css';
 import {
   initialPointPositions,
   initialLinks
 } from './data-gen';
 
-import Stats from './components/Stats';
+// import Stats from './components/Stats';
 import NodeInfo, { NodeInfoProps } from './components/NodeInfo';
 import AnalysisPanel from './components/AnalysisPanel';
 import Sidebar from './components/Sidebar';
@@ -17,7 +18,7 @@ import RightSidebar from './components/RightSidebar';
 import { useGraph } from './hooks/useGraph';
 import {
   Upload,
-  Settings,
+  // Settings,
   Focus,
   RotateCcw,
   LineChart,
@@ -28,7 +29,13 @@ import {
 
 const API_BASE = 'http://localhost:30301';
 
-const App: React.FC = () => {
+export const AppContext = createContext<{
+  currentGraphUUID: string | null, 
+  setCurrentGraphUUID: React.Dispatch<React.SetStateAction<string | null>>
+} | null>(null);
+
+const MainAppContext: React.FC = () => {
+// const MainAppContext: React.FC = () => {
   // Refs
   const graphRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -46,7 +53,15 @@ const App: React.FC = () => {
   const [graphConfig, setGraphConfig] = useState<{
     spaceSize: number;
     pointSize: number;
-  } | null>(null);
+  } | null>({spaceSize: 256, pointSize: 1});
+
+  // const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
+
+  const appContext = useContext(AppContext);
+  const currentGraphUUID = appContext!.currentGraphUUID;
+  const setCurrentGraphUUID = appContext!.setCurrentGraphUUID;
+
+  const [currentGraphHash, setCurrentGraphHash] = useState<string | null>("");
 
   // UI state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -54,7 +69,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [results, setResults] = useState<NodeInfoProps[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null);
 
   // Helpers
   const arrayFromF32 = (f: Float32Array) => Array.from(f);
@@ -62,18 +77,20 @@ const App: React.FC = () => {
   // Graph controls
   const { fitView, resetView, selectNodeByIndex } = useGraph(
     graphRef,
-    canvasRef,
+    // canvasRef,
     pointPositions,
     links,
     setSelectedNode,
     graphConfig || undefined
   );
 
+  React.useEffect(() => {console.log("Current graph uuid: " + currentGraphUUID);}, [currentGraphUUID]);
+
   // Stats
-  const stats = useMemo(() => ({
-    nodeCount: pointPositions.length / 2,
-    edgeCount: links.length / 2
-  }), [pointPositions, links]);
+  // const stats = useMemo(() => ({
+  //   nodeCount: pointPositions.length / 2,
+  //   edgeCount: links.length / 2
+  // }), [pointPositions, links]);
 
   /** AUTO LOAD GRAPH FROM LINK ?g=... **/
   React.useEffect(() => {
@@ -132,12 +149,15 @@ const App: React.FC = () => {
       });
 
       const data = await response.json();
+      console.log("Received graph uuid: " + data.uuid);
+      setCurrentGraphUUID(data.uuid);
+      // console.log("Graph uuid set on frontend: " + currentGraphUUID);
       setPointPositions(new Float32Array(data.canvas_positions));
       setLinks(new Float32Array(data.links));
       setSelectedNode(null);
       setSelectedFile(null);
     } catch (err) {
-      console.error('❌ Upload error:', err);
+      console.error('Upload error:', err);
     } finally {
       setLoading(false);
     }
@@ -172,7 +192,7 @@ const App: React.FC = () => {
   const confirmAnalyze = async () => {
     setShowConfirm(false);
     try {
-      const response = await fetch(`${API_BASE}/analyze_graph`, {
+      const response = await fetch(`${API_BASE}/analyze_graph/${currentGraphUUID}`, {
         method: 'POST'
       });
       if (!response.ok) throw new Error('Failed');
@@ -186,32 +206,32 @@ const App: React.FC = () => {
   /** SEARCH **/
   const handleSearch = async (field: string, query: string) => {
     try {
-      setError(null);
+      // setError(null);
       setResults([]);
 
-      const res = await fetch(`${API_BASE}/search_node`, {
+      const res = await fetch(`${API_BASE}/search_node/${currentGraphUUID}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ field, query })
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        setError(err.message || 'Search failed');
+        // const err = await res.json();
+        // setError(err.message || 'Search failed');
         return;
       }
 
       const data = await res.json();
       setResults(Array.isArray(data) ? data : [data]);
     } catch {
-      setError('Connection error');
+      // setError('Connection error');
     }
   };
 
   /** NODE SELECTION **/
   const handleSelectNode = async (nodeId: string) => {
     try {
-      const response = await fetch(`${API_BASE}/node_index/${nodeId}`);
+      const response = await fetch(`${API_BASE}/node_index/${currentGraphUUID}/${nodeId}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       selectNodeByIndex(data.index);
@@ -220,13 +240,13 @@ const App: React.FC = () => {
     }
   };
 
-
-
   /** FETCH GRAPH BY HASH **/
   async function fetchGraphByHash(hash: string) {
-    const res = await fetch(`${API_BASE}/graphs/${hash}`);
+    const res = await fetch(`${API_BASE}/load_graph/${hash}`);
     if (!res.ok) throw new Error(`Graph ${hash} not found`);
     return res.json() as Promise<{
+      graph_hash: string, 
+      uuid: string, 
       canvas_positions: number[];
       links: number[];
       meta?: Record<string, unknown>;
@@ -240,13 +260,19 @@ const App: React.FC = () => {
 
   /** POST GRAPH TO DB **/
   async function postGraphToDB(canvas_positions: number[], links: number[]) {
-    const res = await fetch(`${API_BASE}/graphs`, {
+    const res = await fetch(`${API_BASE}/save_graph/${currentGraphUUID}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ canvas_positions, links }),
+      body: JSON.stringify({ 
+        canvas_positions, 
+        links, 
+        graph_hash: currentGraphHash, 
+        point_size: graphConfig?.pointSize ?? null, 
+        space_size: graphConfig?.spaceSize ?? null, 
+      }),
     });
     if (!res.ok) throw new Error('Save failed');
-    return res.json() as Promise<{ hash: string; url: string }>;
+    return res.json() as Promise<{ hash: string; }>;
   }
 
   /** SAVE GRAPH TO DB (button handler) **/
@@ -258,6 +284,7 @@ const App: React.FC = () => {
       const payloadLinks = arrayFromF32(links);
 
       const { hash } = await postGraphToDB(payloadPos, payloadLinks);
+      setCurrentGraphHash(hash);
       const share = `${window.location.origin}/?g=${hash}`;
 
       const url = new URL(window.location.href);
@@ -282,6 +309,8 @@ const App: React.FC = () => {
     try {
       setLoading(true);
       const data = await fetchGraphByHash(hash.trim());
+      setCurrentGraphUUID(data.uuid);
+      setCurrentGraphHash(data.graph_hash);
       setPointPositions(new Float32Array(data.canvas_positions));
       setLinks(new Float32Array(data.links));
       setSelectedNode(null);
@@ -308,6 +337,7 @@ const App: React.FC = () => {
 
 
   return (
+    <AppContext.Provider value={{ currentGraphUUID, setCurrentGraphUUID }}>
     <div id="layout" className="bg-black text-gray-200 flex-col">
       <div ref={canvasRef} className="flex-grow" />
       <div ref={graphRef} id="graph" className="flex-grow" />
@@ -340,7 +370,7 @@ const App: React.FC = () => {
 
       <input
         type="file"
-        accept=".txt,.obo"
+        accept=".txt,.obo,.json"
         ref={fileInputRef}
         onChange={handleFileUpload}
         className="hidden"
@@ -366,10 +396,29 @@ const App: React.FC = () => {
       <RightSidebar
         onSearch={handleSearch}
         results={results}
-        onSelectNode={(node) => handleSelectNode(node.id)}
+        onSelectNode={(node) => handleSelectNode(node.id !== undefined ? node.id : "")}
       />
     </div>
+    </AppContext.Provider>
   );
 };
+
+// export default function App() {
+//   const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
+//   return (
+//     <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
+//       <MainAppContext />
+//     </AppContext.Provider>
+//   )
+// }
+
+const App: React.FC = () => {
+  const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
+  return (
+    <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
+      <MainAppContext />
+    </AppContext.Provider>
+  )
+}
 
 export default App;

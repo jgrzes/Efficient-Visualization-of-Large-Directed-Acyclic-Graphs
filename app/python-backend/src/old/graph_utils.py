@@ -1,11 +1,57 @@
 import io
 import tempfile
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Any
+import re
+import numpy as np
 
 import graph_tool as gt
 import networkx as nx
 import obonet
 from goatools.obo_parser import GODag
+
+
+# TODO: Add json as an allowed extension
+ALLOWED_FILE_FORMATS = ["obo", "txt"]
+
+
+def read_type_in_gt_compatible_way(value: Any) -> Any:
+    if isinstance(value, str):
+        return "string"
+    elif isinstance(value, int):
+        return "int"
+    elif isinstance(value, float):
+        return "float"
+    elif isinstance(value, bool):
+        return "bool"
+    elif isinstance(value, list):
+        underlying_data = "string"
+        if len(value) != 0:
+            underlying_data = read_type_in_gt_compatible_way(value[0])
+        return f"vector<{underlying_data}>"
+
+
+def convert_to_json_parsable_representation(gt_value: Any) -> Any:
+    gt_value_type_hint = str(type(gt_value))
+    # gt_value_type_hint = gt_value_type_hint.rstrip()
+    # gt_value_type_hint = gt_value_type_hint.lstrip()
+
+    # gt_value_type_hint = gt_value_type_hint.rstrip("'>")
+    # gt_value_type_hint = gt_value_type_hint.lstrip("<class '")
+    if len(re.findall(r".+Vector.*", gt_value_type_hint)) != 0:
+        return list(gt_value)
+    # elif len(re.findall(r"(np|numpy)\.int.*", gt_value_type_hint)) != 0:
+    #     return int(gt_value)
+    # elif len(re.findall(r"(np|numpy)\.float.*", gt_value_type_hint)) != 0:
+    #     return float(gt_value)
+    elif isinstance(gt_value, (np.integer,)):
+        return int(gt_value)
+    elif isinstance(gt_value, (np.floating,)):
+        return float(gt_value)
+    elif isinstance(gt_value, str):
+        return gt_value.replace("'", "").replace('"', '')
+    else:
+        return gt_value
+
 
 
 def convert_to_graph_tool_graph(

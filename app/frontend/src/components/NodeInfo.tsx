@@ -1,15 +1,17 @@
+// import { Key, Underline } from 'lucide-react';
 import React from 'react';
 
 export interface NodeInfoProps {
-  id: string;
-  name: string;
-  namespace: string;
-  def: string;
+  id?: string;
+  name?: string;
+  namespace?: string;
+  def?: string;
   synonym?: string[];
   is_a?: string[];
+  [key: string]: unknown;
 }
 
-const NodeInfo: React.FC<NodeInfoProps> = ({ id, name, namespace, def, synonym, is_a }) => {
+const NodeInfo: React.FC<NodeInfoProps> = ({ id, name, namespace, def, synonym, is_a, ...rest }) => {
   return (
     <div
       id="info-panel"
@@ -25,6 +27,17 @@ const NodeInfo: React.FC<NodeInfoProps> = ({ id, name, namespace, def, synonym, 
       {is_a && is_a.length > 0 && (
         <p className="text-sm"><strong>is_a:</strong> {is_a.join(', ')}</p>
       )}
+
+      {Object.entries(rest).map(([key, value]) => {
+        if (value == null || value == undefined || value == '') return null;
+        const displayValue = Array.isArray(value) ? value.join(", ") : String(value);
+        return (
+          <p key={key} className="text-sm mb-1">
+            <strong>{key}:</strong> {displayValue}
+          </p>
+        );
+      })}
+
     </div>
   );
 };

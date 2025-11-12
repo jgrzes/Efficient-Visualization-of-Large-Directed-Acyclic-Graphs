@@ -1,9 +1,137 @@
+from typing import List, Tuple, Dict, Any, Optional, Union
 import pymongo
+from utils import VertexMetadataT
+import datetime
+import numpy as np
+from bson.objectid import ObjectId
+
+from graph_utils import convert_to_json_parsable_representation as convert_to_jp
+
+"""
+Database stores graph data in following format:
+    {
+        "name": <name, type=str>, 
+        "num_of_vertices": <|V|, type=int>, 
+        "last_entry_update": <datetime, type=datetime>, 
+        "vertices": [
+            {
+                "index": <index, type=int>, 
+                "N": <neighbourhood of vertex, type=List[int]>, 
+                "pos": <position in layout>
+            }, ...    
+        ]
+    }
+"""
 
 class MongoDatabaseManager:
+    GRAPH_DATA_COLLECTION = "graph_data"
+
     def __init__(self, db_uri: str, db_name: str):
         self.client_handle = pymongo.MongoClient(db_uri)
         self.db = self.client_handle[db_name]
 
+    def check_if_contains_graph_with_hash(self, graph_id: Union[ObjectId, str]) -> bool:
+        return self.fetch_data(graph_id) is not None    
 
+    def fetch_data(self, graph_id: Union[ObjectId, str]) -> Dict[str, Any]:
+        if isinstance(graph_id, str):
+            graph_id = self._convert_to_object_id(graph_id)
         
+        sought_graph_data = self.db[self.GRAPH_DATA_COLLECTION].find_one({
+            "_id": graph_id
+        })
+        # print(f"Sought graph data: {sought_graph_data}")
+
+        return sought_graph_data
+
+    def push_new_entry(
+        self, name: str, E_adj_list: List[List[int]], 
+        layout: List[Tuple[int, int]], vertices_metadata: VertexMetadataT, 
+        additional_config: Optional[Dict[str, Any]] = None
+    ) -> str:
+        n = len(E_adj_list)
+        print("Inserting new...")
+        # print(E_adj_list)
+        # print(vertices_metadata)
+        result = self.db[self.GRAPH_DATA_COLLECTION].insert_one({
+            "name": name, 
+            "num_of_vertices": n, 
+            "last_entry_update": datetime.datetime.utcnow(),
+            "vertices": [
+                ({
+                    "index": i, "N": np.array(E_adj_list[i]).astype(int).tolist(), "pos": list(layout[i])
+                } | vertices_metadata[i])
+                for i in range(0, n)
+            ]
+        } | (additional_config if additional_config is not None else {}))
+
+        print(f"Database insertion resulted in {"success" if result.inserted_id else "failure"}")
+        return str(result.inserted_id)
+    
+    def override_existing_entry(
+        self, graph_id: Union[ObjectId, str], 
+        name: str, E_adj_list: List[List[int]], 
+        layout: List[Tuple[int, int]], vertices_metadata: VertexMetadataT, 
+        additional_config: Optional[Dict[str, Any]] = None
+    ):
+        if isinstance(graph_id, str):
+            graph_id = self._convert_to_object_id(graph_id)
+
+        print("Overriding...")
+        n = len(E_adj_list)
+        self.db[self.GRAPH_DATA_COLLECTION].replace_one({"_id": graph_id} , {
+            "name": name, 
+            "num_of_vertices": n, 
+            "last_entry_update": datetime.datetime.utcnow(),
+            "vertices": [
+                ({
+                    "index": i, "N": np.array(E_adj_list[i]).astype(int).tolist(), "pos": list(layout[i])
+                } | vertices_metadata[i])
+                for i in range(0, n)
+            ]
+        } | (additional_config if additional_config is not None else {}))    
+        
+    
+    def delete_entry(self, graph_id: Union[ObjectId, str]) -> None:
+        if isinstance(graph_id, str):
+            graph_id = self._convert_to_object_id(graph_id)
+
+        self.db[self.GRAPH_DATA_COLLECTION].delete_one({"_id": graph_id})    
+
+    def update_existing_entry(self, graph_id: Union[ObjectId, str], new_vals: Dict[str, Any]) -> None:
+        if isinstance(graph_id, str):
+            graph_id = self._convert_to_object_id(graph_id)
+
+        self.db[self.GRAPH_DATA_COLLECTION].update_one(
+            {"_id": graph_id}, 
+            self._build_update_dict(new_vals)
+        )    
+
+    def _build_update_dict(self, new_vals: Dict[str, Any]) -> Dict:
+        update_dict: Dict[str, Any] = {"$set": {}}
+        if "name" in new_vals:
+            update_dict["$set"]["name"] = new_vals["name"]
+
+        if "vertices" in new_vals:
+            vertices_updates_list: List[Tuple[int, List[Tuple[str, Any]]]] = new_vals["vertices"]
+            n = len(vertices_updates_list)
+            for i in range(0, n):
+                vertex_index, vertex_update_list = vertices_updates_list[i]
+                for field, new_val in vertex_update_list:
+                    if field == "N" or field == "index":
+                        raise RuntimeError(
+                            "Attempted to change data that cannot be updated after creation"
+                        )
+                    
+                    update_dict["$set"][f"vertices.{vertex_index}.{field}"] = new_val
+
+        return update_dict       
+
+    # Will return a mock object id if an error occurs
+    @staticmethod
+    def _convert_to_object_id(graph_id: str) -> ObjectId:
+        try:
+            converted_graph_id = ObjectId(graph_id)
+            return converted_graph_id
+        except Exception as e:
+            return ObjectId("0" * 24)        

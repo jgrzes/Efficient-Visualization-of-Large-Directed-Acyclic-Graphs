@@ -1,6 +1,8 @@
-import { Dispatch, SetStateAction, useEffect, useRef } from 'react';
+import { Dispatch, SetStateAction, useEffect, useRef, useContext, useCallback } from 'react';
 import { Graph, GraphConfigInterface } from '@cosmograph/cosmos';
 import { NodeInfoProps } from '../components/NodeInfo';
+import { AppContext } from "../App"
+// import { Underline } from 'lucide-react';
 
 const API_BASE = 'http://localhost:30301';
 
@@ -14,7 +16,7 @@ window.addEventListener('mousemove', (e) => {
 
 export function useGraph(
   graphRef: React.RefObject<HTMLDivElement | null>,
-  canvasRef: React.RefObject<HTMLDivElement | null>, // nadal nieużywany, ale może się przydać później
+  // canvasRef: React.RefObject<HTMLDivElement | null>, // nadal nieużywany, ale może się przydać później
   pointPositions: Float32Array,
   links: Float32Array,
   setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>,
@@ -26,6 +28,17 @@ export function useGraph(
   const graphInstance = useRef<Graph | null>(null);
   const linksRef = useRef<Float32Array>(links);
 
+  const appContext = useContext(AppContext);
+  const currentGraphUUID = appContext?.currentGraphUUID;
+  // const setCurrentGraphUUID = appContext?.setCurrentGraphUUID;
+
+  const currentGraphUUIDRef = useRef<string | null>(currentGraphUUID);
+
+  useEffect(() => {
+    currentGraphUUIDRef.current = currentGraphUUID;
+    console.log("useGraph sees new graph uuid: " + currentGraphUUIDRef.current);
+  }, [currentGraphUUID]);
+
   useEffect(() => {
     linksRef.current = links;
   }, [links]);
@@ -36,9 +49,14 @@ export function useGraph(
 
   /** Fetch node info from backend **/
   const fetchNodeData = async (index: number) => {
-    const response = await fetch(`${API_BASE}/node/${index}`);
+    // const iternalCurrentGraphUUID = appContext?.currentGraphUUID;
+    const uuid = currentGraphUUIDRef.current;
+    if (!uuid) throw new Error("No current graph uuid set");
+    const response = await fetch(`${API_BASE}/node/${uuid}/${index}`);
     if (!response.ok) throw new Error(`Node fetch failed: ${response.status}`);
-    return response.json();
+    const responseJson = await response.json();
+    console.log("Node info json: \n" + JSON.stringify(responseJson, null, 2));
+    return responseJson;
   };
 
   /** Highlight selected node and its relationships **/
@@ -98,7 +116,7 @@ export function useGraph(
   };
 
   /** Select node by index and update UI **/
-  const selectNodeByIndex = async (index?: number) => {
+  const selectNodeByIndex = useCallback(async (index?: number) => {
     if (index === undefined) {
       setSelectedNode(null);
       return;
@@ -106,14 +124,21 @@ export function useGraph(
 
     try {
       const data = await fetchNodeData(index);
-      setSelectedNode({
-        id: data.id,
-        name: data.name,
-        namespace: data.namespace,
-        def: data.def,
-        synonym: data.synonym,
-        is_a: data.is_a
-      });
+      // setSelectedNode({
+      //   id: data.id,
+      //   name: data.name,
+      //   namespace: data.namespace,
+      //   def: data.def,
+      //   synonym: data.synonym,
+      //   is_a: data.is_a
+      // });
+
+      console.log("Node info json: \n" + JSON.stringify(data, null, 2));
+
+      const filteredData = Object.fromEntries(
+        Object.entries(data).filter(([_, value]) => value !== null && value !== undefined && value !== '')
+      );
+      setSelectedNode(filteredData);
 
       const pointCount =
         (graphInstance.current?.getPointPositions()?.length ?? 0) / 2;
@@ -121,7 +146,7 @@ export function useGraph(
     } catch (err) {
       console.error('Node fetch error:', err);
     }
-  };
+  }, [fetchNodeData, setSelectedNode]);
 
   /** Tooltip handling **/
   const showTooltip = (name: string, def: string) => {
@@ -205,11 +230,11 @@ export function useGraph(
     const g = graphInstance.current;
     if (!g || !pointPositions || !links) return;
 
-    graphInstance.current.config.spaceSize = initialConfig?.spaceSize ?? 256;
-    graphInstance.current.config.pointSize = initialConfig?.pointSize ?? 1;
+    graphInstance.current!.config.spaceSize = initialConfig?.spaceSize ?? 256;
+    graphInstance.current!.config.pointSize = initialConfig?.pointSize ?? 1;
 
     console.log(
-      '♻️ Updating graph data:',
+      'Updating graph data:',
       pointPositions.length / 2,
       'nodes,',
       links.length / 2,
