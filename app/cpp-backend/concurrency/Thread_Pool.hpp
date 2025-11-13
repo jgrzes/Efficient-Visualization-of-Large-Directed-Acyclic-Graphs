@@ -8,6 +8,7 @@
 #include <optional>
 #include <vector>
 #include <queue>
+#include <stdexcept>
 
 namespace concurrency {
 

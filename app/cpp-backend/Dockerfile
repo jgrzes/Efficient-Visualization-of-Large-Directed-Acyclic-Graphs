@@ -13,7 +13,10 @@ RUN apt install protobuf-compiler -y \
     && apt install libprotobuf-dev -y 
 
 RUN apt install protobuf-compiler-grpc -y \
-    && apt install libgrpc++-dev -y 
+    && apt install libgrpc++-dev -y \
+    && apt install build-essential -y
+
+RUN apt install dos2unix -y
 
 WORKDIR /app
 

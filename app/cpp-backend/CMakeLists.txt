@@ -15,6 +15,8 @@ add_executable(EGVB main.cpp)
 add_subdirectory(utils)
 add_subdirectory(data-structures)
 add_subdirectory(graph-preprocessing)
+add_subdirectory(concurrency)
+add_subdirectory(net)
 add_subdirectory(algorithms)
 
 # Adding QAP Solver as a library
