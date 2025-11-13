@@ -1,0 +1,50 @@
+import React from "react";
+import { X } from "lucide-react";
+
+export interface SearchInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  onClear: () => void;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+}
+
+export function SearchInput({
+  value,
+  onChange,
+  placeholder,
+  onClear,
+  onKeyDown,
+}: SearchInputProps) {
+  return (
+    <div className="relative flex-1">
+      <label className="sr-only" htmlFor="search-query-input">Search</label>
+
+      <input
+        id="search-query-input"
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-black text-gray-200 placeholder-gray-500
+                   border border-gray-700 rounded-md px-3 py-2 text-sm
+                   transition-all duration-200
+                   focus:outline-none focus:ring-1 focus:ring-gray-500"
+        onKeyDown={onKeyDown}
+      />
+
+      {value && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md 
+                     text-gray-400 hover:text-gray-200 hover:bg-gray-800/70 transition"
+          aria-label="Clear"
+          title="Clear"
+        >
+          <X size={16} />
+        </button>
+      )}
+    </div>
+  );
+}

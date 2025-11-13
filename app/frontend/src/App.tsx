@@ -1,18 +1,18 @@
-import React, { useRef, useMemo, useState, ChangeEvent } from 'react';
+import React, { useRef, useState, ChangeEvent } from 'react';
 import './style.css';
 import {
   initialPointPositions,
   initialLinks
 } from './data-gen';
 
-import Stats from './components/Stats';
+
 import NodeInfo, { NodeInfoProps } from './components/NodeInfo';
 import AnalysisPanel from './components/AnalysisPanel';
 import Sidebar from './components/Sidebar';
 import OntologyModal from './components/OntologyModal';
 import LoadingModal from './components/LoadingModal';
 import ConfirmModal from './components/ConfirmModal';
-import RightSidebar from './components/RightSidebar';
+import RightSidebar from './components/rightsidebar/RightSidebar';
 
 import { useGraph } from './hooks/useGraph';
 import {
@@ -49,6 +49,25 @@ const App: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [results, setResults] = useState<NodeInfoProps[]>([]);
   const [error, setError] = useState<string | null>(null);
+  
+  // Search filters state
+  type SearchFilter = {
+    id: string;
+    field: string;
+    query: string;
+  };
+
+  const [filters, setFilters] = React.useState<SearchFilter[]>([]);
+
+  // Search options state
+  const [searchOptions, setSearchOptions] = React.useState({
+    matchCase: false,
+    matchWords: false,
+  });
+
+  // RightSidebar state
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [activeTab, setActiveTab] = useState<"search" | "favorites" | "comments" | "graph">("search");
 
   // Graph controls
   const { fitView, resetView, selectNodeByIndex } = useGraph(
@@ -59,11 +78,6 @@ const App: React.FC = () => {
     setSelectedNode
   );
 
-  // Stats
-  const stats = useMemo(() => ({
-    nodeCount: pointPositions.length / 2,
-    edgeCount: links.length / 2
-  }), [pointPositions, links]);
 
   /** FILE HANDLING **/
   const handleLoadClick = () => fileInputRef.current?.click();
@@ -143,29 +157,83 @@ const App: React.FC = () => {
   };
 
   /** SEARCH **/
-  const handleSearch = async (field: string, query: string) => {
+  // wysłanie zapytania na backend na podstawie AKTUALNYCH filtrów
+  const performSearch = async (filtersToApply: SearchFilter[]) => {
+    if (filtersToApply.length === 0) {
+      setResults([]);
+      setError(null);
+      return;
+    }
+
     try {
       setError(null);
       setResults([]);
 
       const res = await fetch(`${API_BASE}/search_node`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ field, query })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filters: filtersToApply.map(({ field, query }) => ({ field, query })),
+          matchCase: searchOptions.matchCase,
+          matchWords: searchOptions.matchWords,
+        }),
       });
 
       if (!res.ok) {
         const err = await res.json();
-        setError(err.message || 'Search failed');
+        setError(err.message || "Search failed");
         return;
       }
 
       const data = await res.json();
       setResults(Array.isArray(data) ? data : [data]);
     } catch {
-      setError('Connection error');
+      setError("Connection error");
     }
   };
+
+
+  // wywoływane z SearchBar po Enter – DODANIE FILTRA + nowe zapytanie
+  const handleSearch = (field: string, query: string) => {
+    const q = query.trim();
+    if (!q) return;
+
+    setFilters((prev) => {
+      const alreadyExists = prev.some(
+        (f) => f.field === field && f.query === q
+      );
+
+      if (alreadyExists) {
+        return prev;
+      }
+
+      const newFilter: SearchFilter = {
+        id: crypto.randomUUID(),
+        field,
+        query: q,
+      };
+
+      const updated = [...prev, newFilter];
+      void performSearch(updated);
+      return updated;
+    });
+  };
+
+
+  // usunięcie filtra z listy + nowe zapytanie
+  const handleRemoveFilter = (id: string) => {
+    setFilters((prev) => {
+      const updated = prev.filter((f) => f.id !== id);
+      void performSearch(updated);
+      return updated;
+    });
+  };
+
+  // efekt wywołujący zapytanie przy zmianie opcji wyszukiwania
+  React.useEffect(() => {
+    if (filters.length === 0) return;
+    void performSearch(filters);
+  }, [searchOptions, filters]); // gdy zmienią się opcje albo lista filtrów
 
   return (
     <div id="layout" className="bg-black text-gray-200 flex-col">
@@ -228,6 +296,14 @@ const App: React.FC = () => {
         onSearch={handleSearch}
         results={results}
         onSelectNode={(node) => selectNodeByIndex(node.index)}
+        error={error}
+        expanded={sidebarExpanded}
+        onExpandedChange={setSidebarExpanded}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onOptionsChange={setSearchOptions}
+        filters={filters}
+        onRemoveFilter={handleRemoveFilter}
       />
     </div>
   );
