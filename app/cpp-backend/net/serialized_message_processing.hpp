@@ -21,8 +21,11 @@ uint16_t readGraphIdFromGraphMessageChunk(const std::string& graphMessageChunk);
 // `graph_id`=<number> `is_final`=<true|fals> `n`=<number> `E`={<n1>:[a1,b1,c1,d1,...] <n2>:[a2,b2,c2,d2,...] ...}
 void updateGraphBuildEntry(const std::string& graphMessageChunk, GraphBuildEntry& graphBuildEntry);
 
+// Returns chunks in following form:
+// `graph_id`=<number> <i1>:(x1,y1) <i2>:(x2,y2) ...
 std::vector<std::string> buildLayoutPositionsReturnStringVector(
-    const std::vector<CartesianCoords>& layoutPositions, size_t maxStringChunkSize = 1024
+    const std::vector<CartesianCoords>& layoutPositions, uint16_t graphId, 
+    size_t maxStringChunkSize = 1024
 );
 
 }

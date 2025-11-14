@@ -28,6 +28,7 @@ constexpr timeval createTimeval(time_t seconds, suseconds_t microseconds) {
     return timeval{seconds, microseconds};
 }
 
+// TODO: Add clearer message extraction from stream
 class LayoutService {
 
     using GraphBuildEntry = std::tuple<size_t, Graph::AdjList, bool>;
@@ -81,22 +82,13 @@ private:
         return readGraphIdFromGraphMessageChunk(strNewData);
     }
 
-    void sendReturnLayoutString(int clientFd, const std::vector<CartesianCoords>& layoutVector);
+    void sendReturnLayoutString(
+        int clientFd, int threadId, uint16_t graphId, const std::vector<CartesianCoords>& layoutVector
+    );
 
     // Returns true if graph has been fully constructed, 
     // otherwise returns false
-    bool modifyReqestGraphAfterReceivingNewData(const std::string& strNewData, int threadId, int clientFd) {
-        uint16_t graphId = readGraphIdFromGraphMessageChunk(strNewData);
-        std::unique_lock<std::mutex> lock(m_graphBuildEntriesMutexes[threadId]);
-        auto graphBuildEntry = std::move(m_graphAdjListsForClientRequests[threadId][graphId]);
-        lock.unlock();    
-        updateGraphBuildEntry(strNewData, graphBuildEntry);
-        bool isFinal = std::get<2>(graphBuildEntry);        
-        lock.lock();
-        m_graphAdjListsForClientRequests[threadId][graphId] = std::move(graphBuildEntry);
-        lock.unlock();
-        return isFinal;
-    }
+    bool modifyReqestGraphAfterReceivingNewData(const std::string& strNewData, int threadId, int clientFd);
 
     bool m_serverRunning;
     std::thread m_serverThread;

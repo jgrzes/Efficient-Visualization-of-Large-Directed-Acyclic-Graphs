@@ -99,12 +99,12 @@ void updateGraphBuildEntry(const std::string& graphMessageChunk, GraphBuildEntry
 
 
 std::vector<std::string> buildLayoutPositionsReturnStringVector(
-    const std::vector<CartesianCoords>& layoutPositions, size_t maxStringChunkSize = 1024
+    const std::vector<CartesianCoords>& layoutPositions, uint16_t graphId, size_t maxStringChunkSize
 ) {
 
     size_t n = layoutPositions.size();
     std::vector<std::string> returnMessageChunks;
-    std::string currentChunk;
+    std::string currentChunk = "graph_id=" + std::to_string(graphId);
 
     for (size_t i=0; i<n; ++i) {
         const auto [x, y] = layoutPositions[i];
@@ -115,8 +115,22 @@ std::vector<std::string> buildLayoutPositionsReturnStringVector(
                 std::string("max allowed chunk size (") + std::to_string(vertexPositionAsStr.size()) +
                 " exceeds " + std::to_string(maxStringChunkSize) + ")"
             };
+
+            if (currentChunk.size() + vertexPositionAsStr.size() > maxStringChunkSize) {
+                returnMessageChunks.emplace_back(std::move(vertexPositionAsStr));
+                currentChunk = "graph_id=" + std::to_string(graphId);
+            }
+
+            if (!currentChunk.empty()) currentChunk += " ";
+            currentChunk += vertexPositionAsStr;
         }
     }
+
+    if (!currentChunk.empty()) {
+        returnMessageChunks.emplace_back(std::move(currentChunk));
+    }
+
+    return returnMessageChunks;
 }
 
 #undef _stringsEqual

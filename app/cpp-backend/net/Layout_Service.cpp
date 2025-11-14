@@ -185,7 +185,7 @@ void LayoutService::createClientHandlingThreads() {
                         it = m_graphLayoutsForClientRequests[threadId].erase(it);
                         end = m_graphLayoutsForClientRequests[threadId].end();
                         lock.unlock();
-                        sendReturnLayoutString(clientFd, finishedGraphLayout);
+                        sendReturnLayoutString(clientFd, threadId, graphId, finishedGraphLayout);
                     }
                     ++m;
 
@@ -291,7 +291,40 @@ void LayoutService::internalStart(
     }
 
     close(serverSocketFd);
+}
 
+
+void LayoutService::sendReturnLayoutString(
+    int clientFd, int threadId, uint16_t graphId, const std::vector<CartesianCoords>& layoutVector
+) {
+
+    auto clientMessageChunks = buildLayoutPositionsReturnStringVector(layoutVector, graphId);
+    for (const auto& messageChunk : clientMessageChunks) {
+        send(clientFd, static_cast<const void*>(messageChunk.data()), sizeof(char)*messageChunk.size(), 0);
+    }
+    std::mutex& graphLayoutThreadMutex = m_graphBuildEntriesMutexes[threadId];
+    std::unique_lock<std::mutex> lock(graphLayoutThreadMutex);
+    m_graphLayoutsForClientRequests[threadId].erase(graphId);
+    lock.unlock();
+
+    close(clientFd);
+}
+
+
+bool LayoutService::modifyReqestGraphAfterReceivingNewData(
+    const std::string& strNewData, int threadId, int clientId
+) {
+
+    uint16_t graphId = readGraphIdFromGraphMessageChunk(strNewData);
+    std::unique_lock<std::mutex> lock(m_graphBuildEntriesMutexes[threadId]);
+    auto graphBuildEntry = std::move(m_graphAdjListsForClientRequests[threadId][graphId]);
+    lock.unlock();    
+    updateGraphBuildEntry(strNewData, graphBuildEntry);
+    bool isFinal = std::get<2>(graphBuildEntry);        
+    lock.lock();
+    m_graphAdjListsForClientRequests[threadId][graphId] = std::move(graphBuildEntry);
+    lock.unlock();
+    return isFinal;
 }
 
 }
