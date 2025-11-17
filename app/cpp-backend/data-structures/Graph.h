@@ -39,6 +39,13 @@ public:
     Graph& getUnderlyingGraphImpl() override {return *this;}
 
     size_t getVertexCount() const override {return m_V.size();}
+    size_t getEdgeCount() const override {
+        size_t n = m_V.size(); 
+        size_t edgeCount = 0;
+        for (size_t i=0; i<n; ++i) edgeCount += m_E[i].size();
+        return edgeCount;
+    }
+
     bool isDirected() const override {return m_isDirected;}
 
     const Vertex& getVertex(uint32_t vIndex) const override {return m_V[vIndex];}

@@ -14,6 +14,7 @@
 #include "../graph-preprocessing/edge_and_vertex_processing_functions.h"
 #include "../data-structures/Cartesian_Surface_Grid.h"
 #include "../utils/arithmetic_ops_for_pair_overloads.h"
+#include "../logging/boost_logging.hpp"
 
 namespace algorithms {
 
@@ -75,17 +76,22 @@ public:
     LayoutDrawer(const AlgorithmParams& algorithmParams) : 
         m_algorithmParams{algorithmParams},
         m_graph{nullptr}, m_rootColourNode{nullptr}, 
-        m_cumFInterspring{1}, m_epsilonsForVertices{0} {}
+        m_cumFInterspring{1}, m_epsilonsForVertices{0},
+        m_optLogGraphId{std::nullopt} {}
 
     LayoutDrawer(AlgorithmParams&& algorithmParams) : 
         m_algorithmParams{std::move(algorithmParams)},
         m_graph{nullptr}, m_rootColourNode{nullptr}, 
-        m_cumFInterspring{1}, m_epsilonsForVertices{0} {}
+        m_cumFInterspring{1}, m_epsilonsForVertices{0},
+        m_optLogGraphId{std::nullopt} {}
 
     std::vector<CartesianCoords> findLayoutForGraph(
         ColouredGraph& graph, ColourHierarchyNode& rootColourNode,
         double defaultEpsilon  
     );
+
+    void setLogGraphId(const std::string& logGraphId) {m_optLogGraphId = logGraphId;}
+    void setLogGraphId(std::string&& logGraphId) {m_optLogGraphId.emplace(std::move(logGraphId));}
 
 private:
 
@@ -251,6 +257,8 @@ private:
     SparseArray<double> m_epsilonsForVertices;
 
     std::vector<std::pair<double, double>> m_layoutPositions;
+
+    std::optional<std::string> m_optLogGraphId;
 
 };
 

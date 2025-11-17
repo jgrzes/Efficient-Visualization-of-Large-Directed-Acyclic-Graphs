@@ -17,13 +17,13 @@ namespace net {
 auto& assignLevels = graph_preprocessing::assignLevelsInGraph;
 
 void LayoutService::setAndValidateMaxListenQueueSize(std::optional<uint16_t> optMaxListenQueueSize) {
-    uint16_t maxListenQueueSize;
+    uint16_t maxListenQueueSizeEnforcedByOS;
     {
         std::unique_ptr<FILE, decltype(&pclose)> pipe = std::unique_ptr<FILE, decltype(&pclose)>(
             popen("sysctl net.core.somaxconn | tr ' ' '\n' | tail -n 1" ,"r"), pclose
         );
         if (!pipe) {
-            maxListenQueueSize = 10;
+            maxListenQueueSizeEnforcedByOS = 10;
         } else {
             std::array<char, 1024> buffer = {0};
             std::string readBytes;
@@ -39,8 +39,14 @@ void LayoutService::setAndValidateMaxListenQueueSize(std::optional<uint16_t> opt
         }
     }
     m_maxListenQueueSize = (optMaxListenQueueSize.has_value())
-        ? std::min(maxListenQueueSize, optMaxListenQueueSize.value())
-        : maxListenQueueSize;
+        ? std::min(maxListenQueueSizeEnforcedByOS, optMaxListenQueueSize.value())
+        : maxListenQueueSizeEnforcedByOS;
+    logging::log_debug(
+        "Layout service at " + m_ipAddress + ":" + std::to_string(m_port)
+        + "will allow up to " + std::to_string(m_maxListenQueueSize)
+        + " queued up tcp connections (OS limit = "
+        + std::to_string(maxListenQueueSizeEnforcedByOS) + ")."
+    );    
 }
 
 
@@ -76,6 +82,13 @@ void LayoutService::setLayoutFindingParams(LayoutDrawer::AlgorithmParams&& param
 
 void LayoutService::createClientHandlingThreads() {
     m_clientFdsForThreads.reserve(m_clientHandlingThreadCount);
+    logging::log_trace(
+        "Layout service at " + m_ipAddress + ":"
+        + std::to_string(m_port) + " will create "
+        + std::to_string(m_clientHandlingThreadCount)
+        + " client handling threads."
+    );
+
     for (size_t i=0; i<m_clientHandlingThreadCount; ++i) {
         m_clientHandlingThreads.emplace_back([this, threadId = i]() -> void {
             std::array<char, 1024> buffer;
@@ -104,8 +117,15 @@ void LayoutService::createClientHandlingThreads() {
                     int64_t m = 0;
                     auto it = m_clientFdsForThreads[threadId].begin();
                     auto end = m_clientFdsForThreads[threadId].end();
+
                     while (m < n && it != end) {
                         if (FD_ISSET(*it, &clientFdSet)) {
+                            logging::log_debug(
+                                "Thread " + std::to_string(threadId) + " in layout service "
+                                + m_ipAddress + ":" + std::to_string(m_port) 
+                                + " received data on socket with fd = " + std::to_string(*it) + "."
+                            );
+
                             int readBytesCount = read(
                                 *it, static_cast<void*>(buffer.data()), 
                                 sizeof(char) * buffer.size()
@@ -122,48 +142,84 @@ void LayoutService::createClientHandlingThreads() {
                             // TODO: Decide if should move the client socket to the end after reading it.
                             // Probably not really.
 
-                            uint16_t graphId = readGraphIdFromClientDataChunk(readData);
-                            if (modifyReqestGraphAfterReceivingNewData(
-                                readData, threadId, *it
-                            )) {
-                                Graph graphForClientFd(
-                                    std::get<0>(m_graphAdjListsForClientRequests[threadId][graphId]), 
-                                    std::get<1>(m_graphAdjListsForClientRequests[threadId][graphId]),
-                                    std::get<2>(m_graphAdjListsForClientRequests[threadId][graphId])
-                                );
+                            appendChunkToClientMessageStream(*it, threadId, readData);
+                            std::vector<std::string> messages = extractMessagesFromClientStreamedData(*it, threadId);
 
-                                std::mutex& graphBuildEntriesMutexForThread = m_graphBuildEntriesMutexes[threadId];
-                                std::unique_lock<std::mutex> lock(graphBuildEntriesMutexForThread);
-                                m_graphLayoutsForClientRequests[threadId][graphId] = std::make_pair(
-                                    *it, std::nullopt
-                                );
-                                m_graphAdjListsForClientRequests[threadId].erase(*it);
-                                lock.unlock();
-                                m_layoutServiceThreadPool.enqueueTask({
-                                    [this, threadId, graphId, &graphForClientFd](void* unused) -> void {
-                                        assignLevels(graphForClientFd);
-                                        GraphColourer graphColourer(
-                                            const_cast<const GraphColourer::AlgorithmParams&>(*m_colouringParams)
-                                        );
+                            for (size_t i=0; i<messages.size(); ++i) {
+                                const std::string& m = messages[i];
+                                uint16_t graphId = readGraphIdFromClientDataChunk(m);
+                                if (modifyReqestGraphAfterReceivingNewData(m, threadId, *it)) {
+                                    Graph graphForClientFd(
+                                        std::get<0>(m_graphAdjListsForClientRequests[threadId][graphId]), 
+                                        std::get<1>(m_graphAdjListsForClientRequests[threadId][graphId]),
+                                        std::get<2>(m_graphAdjListsForClientRequests[threadId][graphId])
+                                    );
+                                    const std::string logGraphId = std::to_string(*it) + ":" + std::to_string(graphId);
+                                    logging::log_info(
+                                        "Client on socket with fd = " + std::to_string(*it)
+                                        + " requested a new layout computation for graph (graph_id = " 
+                                        + logGraphId + ") with "
+                                        + std::to_string(graphForClientFd.getVertexCount()) + " vertices and "
+                                        + std::to_string(graphForClientFd.getEdgeCount()) + " edges."
+                                    );
 
-                                        auto&& [colouredGraph, colourHierarchyRoot] = graphColourer.assignColoursToGraph(
-                                            graphForClientFd, m_maxRecursionInGraphColouring
-                                        );
+                                    std::mutex& graphBuildEntriesMutexForThread = m_graphBuildEntriesMutexes[threadId];
+                                    std::unique_lock<std::mutex> lock(graphBuildEntriesMutexForThread);
+                                    m_graphLayoutsForClientRequests[threadId][graphId] = std::make_pair(
+                                        *it, std::nullopt
+                                    );
+                                    m_graphAdjListsForClientRequests[threadId].erase(*it);
+                                    lock.unlock();
+                                    logging::log_trace(
+                                        "Created an empty optional graph layout field for graph with id = "
+                                        + logGraphId + " in graph layouts for client requests array in thread "
+                                        + std::to_string(threadId) + "."
+                                    );
+                                    logging::log_info(
+                                        "Removed client socket with fd = " + std::to_string(*it) 
+                                        + " from client requests array in thread "
+                                        + std::to_string(threadId) + " based on preconceived notion that client sends only one graph per socket."
+                                    );
 
-                                        // TODO: Perform QAP and reassign indices in colour hierarchy tree.
-                                        LayoutDrawer layoutDrawer(
-                                            const_cast<const LayoutDrawer::AlgorithmParams&>(*m_layoutAlgParams)
-                                        );
-                                        auto graphLayout = layoutDrawer.findLayoutForGraph(
-                                            colouredGraph, colourHierarchyRoot, m_defaultEpsilonInLayoutDrawing
-                                        );
+                                    m_layoutServiceThreadPool.enqueueTask({
+                                        [this, threadId, graphId, &graphForClientFd, &logGraphId](void* unused) -> void {
+                                            logging::log_trace("Will compute levels for graph with id" + logGraphId + ".");
+                                            assignLevels(graphForClientFd);
+                                            logging::log_debug("Computed levels for graph with id = " + logGraphId + ".");
 
-                                        std::mutex& layoutEmplacementMutex = m_graphBuildEntriesMutexes[threadId];
-                                        std::unique_lock<std::mutex> lock(layoutEmplacementMutex);
-                                        m_graphLayoutsForClientRequests[threadId][graphId].second = graphLayout;
-                                        lock.unlock();
-                                    }
-                                });
+                                            logging::log_trace("Will colour graph with id = " + logGraphId + ".");
+                                            GraphColourer graphColourer(
+                                                const_cast<const GraphColourer::AlgorithmParams&>(*m_colouringParams)
+                                            );
+                                            graphColourer.setLogGraphId(logGraphId);
+
+                                            auto&& [colouredGraph, colourHierarchyRoot] = graphColourer.assignColoursToGraph(
+                                                graphForClientFd, m_maxRecursionInGraphColouring
+                                            );
+                                            logging::log_info("Coloured graph with id = " + logGraphId + ".");
+
+                                            // TODO: Perform QAP and reassign indices in colour hierarchy tree.
+
+                                            logging::log_trace("Will create layout for graph with id = " + logGraphId + ".");
+                                            LayoutDrawer layoutDrawer(
+                                                const_cast<const LayoutDrawer::AlgorithmParams&>(*m_layoutAlgParams)
+                                            );
+                                            auto graphLayout = layoutDrawer.findLayoutForGraph(
+                                                colouredGraph, colourHierarchyRoot, m_defaultEpsilonInLayoutDrawing
+                                            );
+                                            logging::log_info("Created layout for graph with id = " + logGraphId + ".");
+
+                                            std::mutex& layoutEmplacementMutex = m_graphBuildEntriesMutexes[threadId];
+                                            std::unique_lock<std::mutex> lock(layoutEmplacementMutex);
+                                            m_graphLayoutsForClientRequests[threadId][graphId].second = graphLayout;
+                                            lock.unlock();
+                                            logging::log_debug(
+                                                "Emplaced ready layout for graph with id = " 
+                                                + logGraphId + " in graph layouts for client requests array."
+                                            );
+                                        }
+                                    });
+                                }
                             }
                         }
                         ++m;
@@ -180,12 +236,25 @@ void LayoutService::createClientHandlingThreads() {
                         ++it;
                     } else {
                         auto finishedGraphLayout = std::move(graphLayoutEntry.value());
+                        int clientFdToRemove = (it->second).first;
+                        std::string logGraphId = std::to_string(clientFdToRemove) + ":" + std::to_string(graphId);
+                        logging::log_trace(
+                            "Removing graph layout for client request for graph with id = "
+                            + logGraphId + " for socket with fd = " +
+                            std::to_string(clientFdToRemove) + " because the layout has been computed and will be sent."
+                        );
+
                         std::unique_lock<std::mutex> lock(m_graphBuildEntriesMutexes[threadId]);
                         // std::string graphLayoutString
                         it = m_graphLayoutsForClientRequests[threadId].erase(it);
                         end = m_graphLayoutsForClientRequests[threadId].end();
                         lock.unlock();
                         sendReturnLayoutString(clientFd, threadId, graphId, finishedGraphLayout);
+                        logging::log_debug(
+                            "Removed graph layout for client request for graph with id = "
+                            + logGraphId + " for socket with fd = " +
+                            std::to_string(clientFdToRemove) + " because the layout has been be sent back to the client."
+                        );
                     }
                     ++m;
 
@@ -202,6 +271,7 @@ void LayoutService::start() {
     std::condition_variable serverStartUpCV;
     bool finalizeStartUp = false;
 
+    logging::log_trace("Launching layout server...");
     m_serverThread = std::thread([this, &serverStartUpCV, &finalizeStartUp]() -> void {
         internalStart(finalizeStartUp, serverStartUpCV);
     });
@@ -212,13 +282,69 @@ void LayoutService::start() {
     }
 
     finalizeStartUp = true;
+    logging::log_info("Layout server launched successfully.");
 }
 
 
 void LayoutService::shutDown() {
     if (!m_serverRunning) return;
+    logging::log_trace("Shutting down layout service...");
     m_serverRunning = false;
     m_serverThread.join();
+    logging::log_info("Successfully shut down layout service.");
+}
+
+
+void LayoutService::appendChunkToClientMessageStream(
+    int clientFd, int threadId, const std::string& messageChunk
+) {
+    std::mutex& chunkAppendingMutex = m_clientMessageStreamMutexes[threadId];
+    std::unique_lock<std::mutex> lock(chunkAppendingMutex);
+    m_clientMessageStreams[threadId][clientFd] += messageChunk;
+    lock.unlock();
+}
+
+
+std::vector<std::string> LayoutService::extractMessagesFromClientStreamedData(int clientFd, int threadId) {
+    logging::log_trace(
+        "Will attempt to extract messages from clients stream data for client socket with fd = "
+        + std::to_string(clientFd) + "..."
+    );
+    size_t i = 0;
+    size_t pipeCount = 0;
+    std::mutex& clientStreamMessagesMutex = m_clientMessageStreamMutexes[threadId];
+    
+    std::unique_lock<std::mutex> lock(clientStreamMessagesMutex);
+    size_t n = m_clientMessageStreams[threadId].size();
+    auto& clientMessageStream = m_clientMessageStreams[threadId][clientFd];
+    for (size_t j=0; j<n; ++j) {
+        if (clientMessageStream[j] == '|') {
+            if ((++pipeCount)%2 == 0) i = j+1;
+        }
+    }
+    std::string tempClientMessageStream = std::move(clientMessageStream);    
+    clientMessageStream = std::string(
+        std::next(clientMessageStream.begin(), i), clientMessageStream.end()
+    );
+    lock.unlock();
+
+    tempClientMessageStream.resize(i);
+    std::stringstream allCompleteClientMessageStream(tempClientMessageStream);
+    std::vector<std::string> completeMessages;
+    std::string message;
+    size_t extractedMessagesCount = 0;
+    while (std::getline(allCompleteClientMessageStream, message, '|')) {
+        ++extractedMessagesCount;
+        completeMessages.emplace_back(std::move(message));
+    }
+
+    logging::log_debug(
+        "Extracted " + std::to_string(extractedMessagesCount)
+        + " complete messages from client on socket with fd = "
+        + std::to_string(clientFd) + "."
+    );
+
+    return completeMessages;
 }
 
 
@@ -226,7 +352,17 @@ void LayoutService::internalStart(
     const bool& finalizeStartUp, std::condition_variable& serverStartUpCV
 ) {
 
+    logging::log_trace(
+        "Layout service will create a layout computation thread pool of size " 
+        + std::to_string(m_layoutServiceThreadPool.getThreadCount()) + "..."
+    );
     m_layoutServiceThreadPool.start();
+    logging::log_info("Layout service created layout computation thread pool.");
+
+    logging::log_trace(
+        "Layout service will create server socket at "
+        + m_ipAddress + ":" + std::to_string(m_port) + "."
+    );
     int serverSocketFd;
     if (serverSocketFd = socket(AF_INET, SOCK_STREAM, 0);
         serverSocketFd <= 0) {
@@ -264,7 +400,14 @@ void LayoutService::internalStart(
             "Layout Service error: could not initiate listening on the server socket"
         };
     }
-
+    logging::log_info(
+        "Layout service created server socket at "
+        + m_ipAddress + ":" + std::to_string(m_port) + "."
+    );
+    logging::log_debug(
+        "Layout service can queue up to " + std::to_string(m_maxListenQueueSize) + " tcp connections."
+    );
+ 
     m_serverRunning = true;
     while (!finalizeStartUp) {
         serverStartUpCV.notify_one();
@@ -288,9 +431,18 @@ void LayoutService::internalStart(
             m_graphAdjListsForClientRequests[targetThread][clientFd] = {0, {}, false};
             lock.unlock();
         }
+        logging::log_info(
+            "Layout service received connection request denoted by fd = "
+            + std::to_string(clientFd) + " and assigned it to client handling thread number "
+            + std::to_string(targetThread) + "."
+        );
     }
 
     close(serverSocketFd);
+    logging::log_debug(
+        "Layout service at " + m_ipAddress + ":"
+        + std::to_string(m_port) + " successfully closed its socket."
+    );
 }
 
 
@@ -316,6 +468,8 @@ bool LayoutService::modifyReqestGraphAfterReceivingNewData(
 ) {
 
     uint16_t graphId = readGraphIdFromGraphMessageChunk(strNewData);
+    std::string logGraphId = std::to_string(clientId) + ":" + std::to_string(graphId);
+    logging::log_trace("Updating graph data for " + logGraphId + "...");
     std::unique_lock<std::mutex> lock(m_graphBuildEntriesMutexes[threadId]);
     auto graphBuildEntry = std::move(m_graphAdjListsForClientRequests[threadId][graphId]);
     lock.unlock();    
@@ -324,6 +478,10 @@ bool LayoutService::modifyReqestGraphAfterReceivingNewData(
     lock.lock();
     m_graphAdjListsForClientRequests[threadId][graphId] = std::move(graphBuildEntry);
     lock.unlock();
+    logging::log_trace(
+        "Updated graph data for " + logGraphId + ", the update was "
+        + (isFinal ? "final." : "not final.")
+    );
     return isFinal;
 }
 

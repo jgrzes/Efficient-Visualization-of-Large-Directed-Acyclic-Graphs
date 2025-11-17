@@ -19,27 +19,61 @@ auto& assignLevelsInGraph = graph_preprocessing::assignLevelsInGraph;
 std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
     ColouredGraph& graph, ColourHierarchyNode& rootColourNode, double defaultEpsilon
 ) {
+    logging::log_trace(
+        "Computing layout for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "..."
+    );
     m_graph = &graph;
     m_rootColourNode = &rootColourNode;
 
     // std::cout << "Colour node: " << rootColourNode.colour << "\n";
 
+    logging::log_trace(
+        "Fixing root colour nodes for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "..."
+    );
     std::vector<uint32_t> verticesWithCustomEpsilons;
     uint32_t vertexCountBeforeColourRootFixing = graph.getVertexCount();
     findVerticesWithCustomEpsilonsAndFixColourRoots(verticesWithCustomEpsilons);
+    logging::log_debug(
+        "Fixed root colour nodes for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "."
+    );
 
     size_t n = graph.getVertexCount();
     if (vertexCountBeforeColourRootFixing != n) {
-        // std::cout << "Reassigning vertice levels\n";
+        logging::log_trace(
+          "Recomputing node levels for graph"
+            + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+            + "(neccessary because new root colour nodes have been added)."
+        );
         assignLevelsInGraph(graph);
+        logging::log_trace(
+          "Successfully recomputed node levels for graph"
+            + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+            + "."
+        );
     }
 
     uint32_t maxColourIndex = findMaxColourIndexInColourHierarchy(rootColourNode);
     m_pinkIndices = std::vector<uint32_t>(maxColourIndex+1);
     m_blueIndices = std::vector<uint32_t>(maxColourIndex+1);
     m_maxColour = maxColourIndex;
+    logging::log_trace(
+        "Performing pink and blue indices construction for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "..."
+    );
     performPinkIndicesConstruction();
     performBlueIndicesConstruction();
+        logging::log_debug(
+        "Performing pink and blue indices construction for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "..."
+    );
 
     ArrayOfArrays<uint32_t> verticesPerLevel = graph_preprocessing::findVerticesPerLevels(graph);
     // n = verticesPerLevel.getNumberOfNestedArrays();
@@ -52,6 +86,11 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
     //     std::cout << "\n";
     // }
 
+    logging::log_trace(
+        "Performing cumulative interspring force array construction for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "..."
+    );
     emplaceColourNodesInArray();
     auto equalColourDepthColourFinder = [this](uint32_t uColour, uint32_t vColour) -> std::pair<uint32_t, uint32_t> {
         uint32_t uDepth = (this->m_colourNodesPtrs)[uColour]->depth;
@@ -81,6 +120,12 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
         std::forward<EqualColourDepthColourFinderT>(equalColourDepthColourFinder)
     );
     transferFInterspringUpwards(verticesPerLevel);
+
+    logging::log_debug(
+        "Performed cumulative interspring force array construction for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "."
+    );
 
     m_epsilonsForVertices = SparseArray<double>(n, defaultEpsilon);
     findEpsilonsForColourRoots();
@@ -176,26 +221,36 @@ void LayoutDrawer::findVerticesWithCustomEpsilonsAndFixColourRoots(
     if (n >= 2) {
         auto& graph = *m_graph;
         uint32_t newColourRootIndex = graph.getVertexCount();
-        // std::cout << "New colour root added: " << newColourRootIndex << "\n";
         graph.addNewVertex();
         graph.setVertexColour(newColourRootIndex, colourNode.colour);
         
+        std::string NForNewColourRootStr = "[";
+        std::string NrForNewColourRootStr = "["; 
+
         for (uint32_t rcIndex : colourRoots) {
             for (uint32_t vIndex : graph.NR(rcIndex)) {
                 // TODO: Decide if should include:
                 // graph.removeEdge(vIndex, rcIndex);
-                // std::cout << "Adding new edge: " << vIndex << " -> " << newColourRootIndex << "\n";
+                NrForNewColourRootStr += (NrForNewColourRootStr.size() > 1 ? ", " : "") + std::to_string(vIndex);
                 graph.addNewEdge(vIndex, newColourRootIndex);
             }
-            // std::cout << "Adding new edge: " << newColourRootIndex << " -> " << rcIndex << "\n";
+            NForNewColourRootStr += (NrForNewColourRootStr.size() > 1 ? ", " : "") + std::to_string(rcIndex);
             graph.addNewEdge(newColourRootIndex, rcIndex);
         }
 
+        NForNewColourRootStr += "]";
+        NrForNewColourRootStr += "]";
         verticesWithCustomEpsilons.emplace_back(newColourRootIndex);
-        // Make sure that if new root exists it is the first in the array
-        // to allow `findLayoutForGraph` check if it needs to recompute levels efficiently.
         std::swap(verticesWithCustomEpsilons.front(), verticesWithCustomEpsilons.back());
         colourNode.verticesOfColour.emplace_back(newColourRootIndex);
+
+        logging::log_debug(
+            "Adding new colour graph root for graph"
+            + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+            + ", v = " + std::to_string(newColourRootIndex) + ", N(v) = "
+            + NForNewColourRootStr + ", Nr(v) = " + NrForNewColourRootStr + "."
+        );
+
     } else if (n == 1) {
         verticesWithCustomEpsilons.emplace_back(colourRoots.front());
     }

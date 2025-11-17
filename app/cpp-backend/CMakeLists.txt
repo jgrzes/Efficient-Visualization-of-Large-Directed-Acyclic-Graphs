@@ -8,10 +8,29 @@ project(EGVB LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+#Adding Boost package 
+find_package(
+    Boost REQUIRED COMPONENTS 
+    program_options log log_setup
+    filesystem thread
+)
+
 # Creating the executable
 add_executable(EGVB main.cpp)
 
+target_include_directories(EGVB PRIVATE ${Boost_INCLUDE_DIRS})
+target_link_libraries(
+    EGVB PRIVATE 
+    ${Boost_PROGRAM_OPTIONS_LIBRARY}
+    ${Boost_LOG_LIBRARY}
+    ${Boost_LOG_SETUP_LIBRARY}
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_THREAD_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
+)
+
 # Adding libraries to the same executable
+add_subdirectory(logging)
 add_subdirectory(utils)
 add_subdirectory(data-structures)
 add_subdirectory(graph-preprocessing)

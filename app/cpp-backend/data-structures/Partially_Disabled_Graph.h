@@ -56,6 +56,7 @@ public:
     Graph& getUnderlyingGraphImpl() override;
     
     size_t getVertexCount() const override {return m_graphView->getVertexCount();} 
+    size_t getEdgeCount() const override {return m_graphView->getEdgeCount();}
     bool isDirected() const override {return m_graphView->isDirected();}
 
     const Neighbourhood N(uint32_t vIndex) const override;

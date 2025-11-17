@@ -68,6 +68,8 @@ public:
         else m_threadPoolRunning = false;
     }
 
+    size_t getThreadCount() const {return m_threadCount;}
+
     void enqueueTask(const RunnableTask& newRunnableTask) {
         if (!m_newTaskEmplacementAllowed) {
             throw std::runtime_error{

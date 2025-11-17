@@ -16,6 +16,7 @@
 #include "../algorithms/Layout_Drawer.h"
 #include "../algorithms/Graph_Colourer.h"
 #include "serialized_message_processing.hpp"
+#include "../logging/boost_logging.hpp"
 
 namespace net {
 
@@ -38,19 +39,23 @@ public:
 
     LayoutService(
         const std::string& ipAdddress, int port,
-        const std::string& qapServiceIpAddress,
-        int qapServicePort, 
+        // const std::string& qapServiceIpAddress,
+        // int qapServicePort, 
         size_t clientHandlingThreadCount,
         size_t layoutCreationThreadPoolSize, 
         timeval timewaitOnClientRequestReading = createTimeval(3, 0),
         std::optional<uint16_t> optMaxListenQueueSize = std::nullopt,
         bool startImmediately = true 
     ) : m_ipAddress{ipAdddress}, m_port{port}, 
-        m_qapServiceIpAddress{qapServiceIpAddress}, 
-        m_qapServicePort{qapServicePort},
+        // m_qapServiceIpAddress{qapServiceIpAddress}, 
+        // m_qapServicePort{qapServicePort},
         m_timewaitOnClientRequestReading{timewaitOnClientRequestReading},
         m_clientHandlingThreadCount{clientHandlingThreadCount}, 
         m_layoutServiceThreadPool{layoutCreationThreadPoolSize, startImmediately} {
+
+        logging::log_info("Will create a layout service on " + ipAdddress + ":" + std::to_string(port) + ".");
+        logging::log_debug("Layout service will have " + std::to_string(clientHandlingThreadCount) + " client handling threads");
+        logging::log_debug("Layout service will have " + std::to_string(layoutCreationThreadPoolSize) + " layout computing threads");
 
         setAndValidateMaxListenQueueSize(optMaxListenQueueSize);
         m_serverRunning = false;
@@ -78,6 +83,13 @@ private:
     void createClientHandlingThreads();
     void internalStart(const bool& finalizeStartUp, std::condition_variable& serverStartUpCV);
 
+    void appendChunkToClientMessageStream(
+        int clientFd, int threadId, const std::string& messageChunk
+    );
+    std::vector<std::string> extractMessagesFromClientStreamedData(
+        int clientFd, int threadId 
+    );
+
     uint16_t readGraphIdFromClientDataChunk(const std::string& strNewData) {
         return readGraphIdFromGraphMessageChunk(strNewData);
     }
@@ -98,13 +110,16 @@ private:
 
     std::string m_ipAddress;
     int m_port;
-    std::string m_qapServiceIpAddress;
-    int m_qapServicePort;
+    // std::string m_qapServiceIpAddress;
+    // int m_qapServicePort;
     uint16_t m_maxListenQueueSize;
 
     std::vector<std::thread> m_clientHandlingThreads;
     std::vector<std::list<int>> m_clientFdsForThreads;
     std::vector<std::mutex> m_clientListModMutexes;
+
+    std::vector<std::unordered_map<int, std::string>> m_clientMessageStreams;
+    std::vector<std::mutex> m_clientMessageStreamMutexes;
 
     std::vector<std::unordered_map<uint16_t, GraphBuildEntry>> m_graphAdjListsForClientRequests;
     std::vector<std::unordered_map<uint16_t, std::pair<int, std::optional<std::vector<CartesianCoords>>>>> m_graphLayoutsForClientRequests;

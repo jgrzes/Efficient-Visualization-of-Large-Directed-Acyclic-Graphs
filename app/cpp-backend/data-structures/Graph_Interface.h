@@ -119,6 +119,8 @@ public:
 
     // Vertex count takes into consideration both enabled and disabled vertices.
     virtual size_t getVertexCount() const = 0;
+    // Complexity = O(n)
+    virtual size_t getEdgeCount() const = 0;
     virtual bool isDirected() const = 0;
 
     // neighbourhood getting methods

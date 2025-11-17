@@ -1,5 +1,7 @@
 #include "Graph_Colourer.h"
 
+#include "../logging/boost_logging.hpp"
+
 #define _underlyingValueNotNullptr(_optionalPtr) ((_optionalPtr.has_value() && _optionalPtr.value() != nullptr) || !_optionalPtr.has_value())
 #define _findEnabledVerticesFromErodingContainer(_vpl, _graph) (graph_preprocessing::findEnabledVerticesFromErodingContainer(_vpl, _graph))
 #define _findEnabledDEdgesFromErodingContainer(_depl, _graph) (graph_preprocessing::findEnabledDisputableEdgesFromErodingContainer(_depl, _graph))
@@ -22,6 +24,10 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
 
     bool startingLevelValid;
     uint32_t startingLevel;
+    logging::log_trace(
+        "Determining the starting colouring level for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "") + "..."
+    );
     std::tie(startingLevelValid, startingLevel) = determineTheStartingLevel(
         m_algorithmParams, *(m_verticesPerLevel.value()), *(m_disputableEdgesPerLevel.value())
     );
@@ -32,6 +38,11 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
             ColourHierarchyNode()
         };
     }
+    logging::log_debug(
+        "The starting colouring level for graph "
+        + (m_optLogGraphId.has_value() ? ("with id = " + m_optLogGraphId.value() + " ") : " ") 
+        + "is " + std::to_string(startingLevel) + "."
+    );
     // std::cout << "Starting level: " << startingLevel << "\n";
     PartiallyDisabledGraph graphCutOffAtL = createPartiallyDisabledGraphCutOffAtL(
         const_cast<GraphInterface&>(*m_graph), *(m_verticesPerLevel.value()), startingLevel
@@ -44,18 +55,34 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
             // TODO: in concurrent version: lock the mutex.
             uint32_t returnedColour = this->m_maxCurrentColourIndex+1;
             this->m_maxCurrentColourIndex += numberOfNewColours;
+            logging::log_debug(
+                "Graph "
+                + (m_optLogGraphId.has_value() ? ("with id = " + m_optLogGraphId.value() + " ") : " ") 
+                + "will have " + std::to_string(m_maxCurrentColourIndex) + "." 
+            );
+            ++m_greedyColouringApplyCalls;
             return returnedColour;
             // TODO: in concurrent version: free the mutex.
         }
     );
 
     uint32_t minC, maxC;
+    logging::log_trace(
+        "Applying intial greedy colouring for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "..." 
+    );
     std::tie(minC, maxC) = applyGreedyColouring(
         const_cast<GraphInterface&>(*m_graph), 
         m_algorithmParams,
         *(m_verticesPerLevel.value()), 
         startingLevel, vertexColours, 
         std::forward<ColourAcquireFunctionT>(colourAcquireFunction)
+    );
+    logging::log_info(
+        "Applied greedy colouring for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "." 
     );
     
     ColouredGraph colouredGraph = ColouredGraph(
@@ -81,6 +108,13 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
 
     if (!skipRecursiveColouring) {
         // Warning: Here the algorithm will 'break' vertices per levels and disputable edges per level. This 'distruction' will later be reverted.
+
+        logging::log_trace(
+            "Performing first stage recursive colouring for graph"
+            + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+            + "..." 
+        );
+
         std::unique_ptr<ArrayOfArraysInterface<uint32_t>> verticesPerLevel = std::move(m_verticesPerLevel.value());
         std::unique_ptr<ArrayOfArraysInterface<Edge>> disputableEdgesPerLevel = std::move(m_disputableEdgesPerLevel.value());
         // m_graph = &colouredGraph;
@@ -142,6 +176,18 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
         for (size_t i=0; i<n; ++i) {
             disputableEdgesPerLevel->resize(i, disputableEdgesPerLevelArrSizes[i]);
         }
+
+        logging::log_trace(
+            "Fixed up vertices per level and disputable per edges collections for graph"
+            + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+            + "..." 
+        );
+
+        logging::log_debug(
+            "Performed first stage recursive colouring for graph"
+            + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+            + "." 
+        );
     }
 
     std::vector<ColourHierarchyNode*> colourHierarchyNodes(m_maxCurrentColourIndex+1);
@@ -366,6 +412,14 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
     }
     maxC = c-1;
 
+    logging::log_debug(
+        "Greedy colouring appliance initiated for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + " at level " + std::to_string(startingLevel) 
+        + " (call number " 
+        + std::to_string(m_greedyColouringApplyCalls) + ")."
+    );
+
     n = graph.getVertexCount();
     std::vector<ColouringStageMailbox> vertexMailboxes(n, ColouringStageMailbox{}); 
     std::vector<uint32_t> Vkr;
@@ -413,7 +467,6 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
             uint32_t chosenColour = 0;
             uint64_t bestOfferCount = 0;
             for (const auto& [c, cCount] : vertexOfferSummaryMap) {
-                // if (vIndex == 8) std::cout << "8: " << c << " " << cCount << "\n";
                 if (cCount > bestOfferCount) {
                     chosenColour = c;
                     bestOfferCount = cCount;
@@ -422,6 +475,13 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
 
             vertexColours[vIndex] = chosenColour;
         }
+        logging::log_trace(
+            "Graph"
+            + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+            + " has just had its colours computed for k = " + std::to_string(k) 
+            + " (intial greedy assignment, call number " 
+            + std::to_string(m_greedyColouringApplyCalls) + ")."
+        );
 
         for (const uint32_t uIndex : Vkr) {
             mergeSetsPointers[uIndex] = std::make_shared<std::unordered_set<uint32_t>>(
@@ -517,6 +577,14 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
                 applyBestColouring<std::vector<uint32_t>>(graph, bestColour, Vmu, vertexColours);
             }
         }
+
+        logging::log_trace(
+            "Graph"
+            + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+            + " has just had its colours computed for k = " + std::to_string(k) 
+            + " (local colour fix up, call number " 
+            + std::to_string(m_greedyColouringApplyCalls) + ")."
+        );
     }
 
     return std::make_pair(minC, maxC);
@@ -536,7 +604,12 @@ void GraphColourer::buildColourHierarchyRecursivelyRootedAtColour(
 ) {
 
     uint32_t rootColour = colourHierarchyRoot.colour;
-    // std::cout << "Root colour: " << rootColour << "\n";
+    logging::log_trace(
+        "Building colour hierarchy recursively rooted at colour " 
+        + std::to_string(rootColour) + " for graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "..." 
+    );
     auto [startingLevelValid, startingLevel] = determineTheStartingLevel(
         algorithmParams, verticesPerLevel, disputableEdgesPerLevel
     );

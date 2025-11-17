@@ -81,8 +81,11 @@ public:
         m_algorithmParams{algorithmParams}, 
         m_disputableEdgesPerLevel{nullptr},
         m_verticesPerLevel{nullptr}, 
-        m_maxCurrentColourIndex{0} {}
+        m_maxCurrentColourIndex{0},
+        m_optLogGraphId{std::nullopt} {}
 
+    void setLogGraphId(const std::string& logGraphId) {m_optLogGraphId = logGraphId;}
+    void setLogGraphId(std::string&& logGraphId) {m_optLogGraphId.emplace(std::move(logGraphId));} 
     void resetForNewRun(); 
     
     // Needed: `maxReucursion` >= 1.
@@ -167,7 +170,6 @@ private:
     calculateSimpleScoreForColouring(
         GraphInterface& graph, T* vertexSubsetPtr, const std::vector<uint32_t> vertexColours
     ) {
-        
         uint64_t interColourEdgesCount = 0;
         bool deleteVertexSubset = false;
         if (vertexSubsetPtr == nullptr) {
@@ -264,10 +266,12 @@ private:
 
     const GraphInterface* m_graph;
     std::optional<std::unique_ptr<ArrayOfArraysInterface<Edge>>> m_disputableEdgesPerLevel;
-    // std::optional<std::vector<size_t>> m_cumDisputableEdgesPerLevelCounts;
     std::optional<std::unique_ptr<ArrayOfArraysInterface<uint32_t>>> m_verticesPerLevel; 
-    // std::optional<std::vector<size_t>> m_cumVerticesPerLevelCounts;
+
     uint32_t m_maxCurrentColourIndex;
+    uint32_t m_greedyColouringApplyCalls;
+
+    std::optional<std::string> m_optLogGraphId;
 
 };
 

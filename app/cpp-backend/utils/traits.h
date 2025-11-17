@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <iterator>
 #include <functional>
+#include <string>
 
 namespace utils {
 
