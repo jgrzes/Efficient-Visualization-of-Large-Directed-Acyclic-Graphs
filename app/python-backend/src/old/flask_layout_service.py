@@ -170,8 +170,12 @@ def get_node_information(graph_uuid: str, node_id: int):
     return jsonify(m), 200
 
 
-@app.route("/node_index/<string:graph_uuid>/<int:node_id>", methods=["GET"])
-def get_node_index(graph_uuid: str, node_id: int):
+# TODO: Must be changed to search by name! (obo graphs have 'id' property, but others may not)
+@app.route("/node_index/<string:graph_uuid>/<string:node_id>", methods=["GET"])
+def get_node_index(graph_uuid: str, node_id: str):
+    """
+    Find vertex index by its 'id' property (e.g. GO:0030674) for a given graph UUID.
+    """
     try:
         graph_info = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
     except RuntimeError as e:
@@ -179,8 +183,10 @@ def get_node_index(graph_uuid: str, node_id: int):
         return jsonify({}), 404
 
     G_gt = graph_info["graph"]
+    id_prop = G_gt.vertex_properties.get("id")
+
     for v in G_gt.vertices():
-        if G_gt.vertex_properties["id"] == node_id:
+        if str(id_prop[v]) == node_id:
             return jsonify({"index": int(v)}), 200
 
     return jsonify({}), 404
@@ -254,15 +260,25 @@ def analyze_graph(graph_uuid: str):
     return jsonify({"hierarchy_levels": hierarchy_levels}), 200
 
 
-# TODO: Must be refactored to support any property search
 @app.route("/search_node/<string:graph_uuid>", methods=["POST"])
 def search_node(graph_uuid: str):
-    G_gt: gt.Graph = None
+    """
+    Searches for nodes in the graph based on a specified field and query.
+    Expects a JSON payload with 'field' and 'query'.
+
+    field:
+      - "all"  -> search across all vertex properties
+      - "<prop_name>" -> search only in that property
+
+    Returns a list of matching nodes with:
+      - node_index
+      - all vertex properties (JSON-friendly), excluding EMPTY_PROPERTY_FIELD.
+    """
     try:
         graph_data = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
-        G_gt = graph_data["graph"]
-    except RuntimeError as e:
-        ...
+        G_gt: gt.Graph = graph_data["graph"]
+    except RuntimeError:
+        return jsonify({"error": "Graph not found"}), 404
 
     data = request.get_json()
     field = data.get("field")
@@ -270,61 +286,54 @@ def search_node(graph_uuid: str):
     if not field or not query:
         return jsonify({"error": "Missing field and/or missing query"}), 400
 
-    prop_map = {
-        "id": G_gt.vertex_properties["id"],
-        "name": G_gt.vertex_properties["name"],
-        "namespace": G_gt.vertex_properties["namespace"],
-        "def": G_gt.vertex_properties["def"],
-        "synonym": G_gt.vertex_properties["synonym"],
-        "is_a": G_gt.vertex_properties["is_a"],
-    }
+    query = str(query).lower()
+    all_props = G_gt.vertex_properties
 
-    results = []
+    if field != "all" and field not in all_props:
+        return jsonify({"error": f"Invalid field: {field}"}), 400
+
+    def matches(value: Any) -> bool:
+        if isinstance(value, (list, tuple, set)):
+            return any(query in str(item).lower() for item in value)
+        return query in str(value).lower()
+
+    results: List[Dict[str, Any]] = []
+
     for v in G_gt.vertices():
         match = False
 
         if field == "all":
-            for _, prop in prop_map.items():
-                value = prop[v]
-                if isinstance(value, (list, tuple)):
-                    if any(query.lower() in str(item).lower() for item in value):
-                        match = True
-                        break
-                else:
-                    if query.lower() in str(value).lower():
-                        match = True
-                        break
+            for p in all_props.keys():
+                value = all_props[p][v]
+                if matches(value):
+                    match = True
+                    break
         else:
-            if field not in prop_map:
-                return jsonify({"error": f"Invalid field: {field}"}), 400
+            value = all_props[field][v]
+            if matches(value):
+                match = True
 
-            value = prop_map[field][v]
-            if isinstance(value, (list, tuple)):
-                match = any(query.lower() in str(item).lower() for item in value)
-            else:
-                match = query.lower() in str(value).lower()
+        if not match:
+            continue
 
-        if match:
-            results.append(
-                {
-                    "node_index": int(v),
-                    "id": G_gt.vertex_properties["id"][v],
-                    "name": G_gt.vertex_properties["name"][v],
-                    "namespace": G_gt.vertex_properties["namespace"][v],
-                    "def": G_gt.vertex_properties["def"][v].replace('"', ""),
-                    "synonym": list(G_gt.vertex_properties["synonym"][v])
-                    if G_gt.vertex_properties["synonym"][v]
-                    else [],
-                    "is_a": list(G_gt.vertex_properties["is_a"][v])
-                    if G_gt.vertex_properties["is_a"][v]
-                    else [],
-                }
-            )
+        node_entry: Dict[str, Any] = {"node_index": int(v)}
+
+        for p in all_props.keys():
+            val = all_props[p][v]
+            if val == EMPTY_PROPERTY_FIELD:
+                continue
+            try:
+                parsed_val = json.loads(val)
+                node_entry[p] = parsed_val
+            except (json.JSONDecodeError, TypeError):
+                node_entry[p] = convert_to_json_parsable_representation(val)
+
+        results.append(node_entry)
 
     if not results:
-        return jsonify({"message": "No matching nodes found"}), 404
+        return jsonify({"error": "No matching nodes found"}), 404
 
-    return jsonify(results)
+    return jsonify(results), 200
 
 
 @app.route("/save_graph/<string:graph_uuid>", methods=["POST"])
