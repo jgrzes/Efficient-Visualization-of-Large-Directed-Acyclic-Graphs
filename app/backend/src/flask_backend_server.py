@@ -149,7 +149,6 @@ def search_node():
     match_words = bool(data.get("matchWords", False))
 
     filters = data.get("filters")
-
     field = data.get("field")
     query = data.get("query")
 
@@ -184,17 +183,40 @@ def search_node():
 
     normalized_filters: list[tuple[str, str]] = []
 
+    # ★ NOWY FORMAT: filters = [{ field, query }, ...]
     if filters and isinstance(filters, list):
         for f in filters:
-            f_field = f.get("field")
-            f_query = f.get("query")
-            if not f_field or f_query is None:
-                return jsonify({"error": "Each filter requires 'field' and 'query'"}), 400
-            normalized_filters.append((str(f_field), str(f_query)))
+            raw_field = f.get("field")
+            raw_query = f.get("query")
+
+            # field może być pusty / None → wtedy szukamy po wszystkich
+            if raw_query is None:
+                return jsonify({"error": "Each filter requires 'query'"}), 400
+
+            f_query = str(raw_query).strip()
+
+            # jeśli brak field lub pusty po strip → traktuj jako "all"
+            if raw_field is None:
+                f_field = "all"
+            else:
+                f_field = str(raw_field).strip().lower() or "all"
+
+            normalized_filters.append((f_field, f_query))
+
+    # ★ STARY FORMAT: pojedyncze field/query
     else:
-        if not field or query is None:
-            return jsonify({"error": "Missing parameters: field and query are required"}), 400
-        normalized_filters.append((str(field), str(query)))
+        if query is None:
+            return jsonify({"error": "Missing parameter: query is required"}), 400
+
+        f_query = str(query).strip()
+
+        # jeśli field brak / pusty → "all"
+        if field is None:
+            f_field = "all"
+        else:
+            f_field = str(field).strip().lower() or "all"
+
+        normalized_filters.append((f_field, f_query))
 
     results = []
 
@@ -202,6 +224,7 @@ def search_node():
         vertex_ok = True
 
         for filt_field, filt_query in normalized_filters:
+            # ★ JEŚLI filt_field == "all" → szukamy po wszystkich polach
             if filt_field == "all":
                 matched_any = False
                 for prop_name, prop in prop_map.items():

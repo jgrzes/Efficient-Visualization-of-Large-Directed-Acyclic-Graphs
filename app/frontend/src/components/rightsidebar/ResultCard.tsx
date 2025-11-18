@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { Star, MessageCirclePlus } from "lucide-react";
-import { NodeInfoProps } from "../../components/NodeInfo";
+import { NodeInfoProps } from "../leftsidebar/NodeInfo";
 import { useFavorites } from "../../hooks/useFavorites";
 import { useComments } from "../../hooks/useComments";
 import CommentModal from "../CommentModal";
@@ -28,10 +28,12 @@ const ResultCard: React.FC<ResultCardProps> = ({ node, onSelect }) => {
   };
 
   const handleSubmitComment = useCallback(
-    (text: string) => {
+    (data: { name: string; text: string }) => {
       setCommentOpen(false);
-      addComment({ id: node.id, name: node.name, namespace: node.namespace }, text);
-      // opcjonalnie: toast sukcesu
+      addComment(
+        { id: node.id, name: node.name, namespace: node.namespace },
+        data
+      );
     },
     [addComment, node.id, node.name, node.namespace]
   );
@@ -103,6 +105,8 @@ const ResultCard: React.FC<ResultCardProps> = ({ node, onSelect }) => {
         onClose={() => setCommentOpen(false)}
         onSubmit={handleSubmitComment}
         title={`Komentarz do: ${node.name}`}
+        // jeśli masz jakieś domyślne imię użytkownika, możesz dodać:
+        // initialName={defaultAuthorName}
       />
     </>
   );

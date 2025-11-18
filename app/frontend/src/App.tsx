@@ -6,23 +6,16 @@ import {
 } from './data-gen';
 
 
-import NodeInfo, { NodeInfoProps } from './components/NodeInfo';
+import { NodeInfoProps } from './components/leftsidebar/NodeInfo';
 import AnalysisPanel from './components/AnalysisPanel';
-import Sidebar from './components/Sidebar';
+import LeftSidebar from './components/leftsidebar/LeftSidebar';
+import ToolTip from './components/ToolTip';
 import OntologyModal from './components/OntologyModal';
 import LoadingModal from './components/LoadingModal';
 import ConfirmModal from './components/ConfirmModal';
 import RightSidebar from './components/rightsidebar/RightSidebar';
 
 import { useGraph } from './hooks/useGraph';
-import {
-  Upload,
-  Settings,
-  Focus,
-  RotateCcw,
-  LineChart,
-  Download
-} from 'lucide-react';
 
 const API_BASE = 'http://localhost:30301';
 
@@ -66,11 +59,11 @@ const App: React.FC = () => {
   });
 
   // RightSidebar state
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<"search" | "favorites" | "comments" | "graph">("search");
 
   // Graph controls
-  const { fitView, resetView, selectNodeByIndex } = useGraph(
+  const { fitView, resetView, selectNodeByIndex, tooltips} = useGraph(
     graphRef,
     canvasRef,
     pointPositions,
@@ -238,14 +231,20 @@ const App: React.FC = () => {
   return (
     <div id="layout" className="bg-black text-gray-200 flex-col">
       <div ref={canvasRef} className="flex-grow" />
-      <div ref={graphRef} id="graph" className="flex-grow" />
-      <div id="tooltip" className="absolute border rounded" />
-
-      {selectedNode && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 p-4 rounded-lg shadow-lg">
-          <NodeInfo {...selectedNode} />
+      <div 
+        ref={graphRef}
+        id="graph"
+        className="relative flex-grow" >
+          {tooltips.map((t) => (
+            <ToolTip
+              key={t.index}
+              visible={true}
+              x={t.x}
+              y={t.y}
+              content={<strong>{t.content}</strong>}
+            />
+          ))}
         </div>
-      )}
 
       {analysisResult && (
         <AnalysisPanel
@@ -254,17 +253,13 @@ const App: React.FC = () => {
         />
       )}
 
-      <Sidebar
-        items={[
-          { label: 'Load data', icon: <Upload size={20} />, onClick: handleLoadClick },
-          { label: 'Fit view', icon: <Focus size={20} />, onClick: fitView },
-          { label: 'Reset view', icon: <RotateCcw size={20} />, onClick: resetView },
-          { label: 'Export', icon: <Download size={20} />, onClick: handleExportClick },
-          { label: 'Analyze', icon: <LineChart size={20} />, onClick: handleAnalyzeClick }
-        ]}
-        bottomItems={[
-          { label: 'Settings', icon: <Settings size={20} />, onClick: () => console.log('Settings') }
-        ]}
+      <LeftSidebar
+        handleLoadClick={handleLoadClick}
+        fitView={fitView}
+        resetView={resetView}
+        handleExportClick={handleExportClick}
+        handleAnalyzeClick={handleAnalyzeClick}
+        selectedNode={selectedNode}
       />
 
       <input
@@ -305,6 +300,16 @@ const App: React.FC = () => {
         filters={filters}
         onRemoveFilter={handleRemoveFilter}
       />
+
+      {tooltips.map((t) => (
+        <ToolTip
+          key={t.index}
+          visible={true}
+          x={t.x}
+          y={t.y}
+          content={<strong>{t.content}</strong>}
+        />
+      ))}
     </div>
   );
 };

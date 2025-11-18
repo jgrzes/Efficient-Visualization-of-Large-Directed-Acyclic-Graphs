@@ -1,8 +1,16 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { Star, MessageCirclePlus } from "lucide-react";
-import { useFavorites } from "../hooks/useFavorites";
-import { useComments } from "../hooks/useComments";
-import CommentModal from "./CommentModal";
+import { useFavorites } from "../../hooks/useFavorites";
+import { useComments } from "../../hooks/useComments";
+import CommentModal from "../CommentModal";
+import CopyChip from "./CopyChip";
+import FieldRow from "./FieldRow";
 
 export interface NodeInfoProps {
   index: number;
@@ -12,67 +20,41 @@ export interface NodeInfoProps {
   def: string;
   synonym?: string[];
   is_a?: string[];
-  isFavorite?: boolean;                 // opcjonalny hint z rodzica/backendu
-  onToggleFavorite?: (node: NodeInfoProps) => void; // legacy (opcjonalne)
-  onAddComment?: (node: NodeInfoProps, text: string) => void; // callback do zapisu komentarza
-}
-
-function CopyChip({
-  text,
-  className = "",
-  title,
-  onCopied,
-}: {
-  text: string;
-  className?: string;
-  title?: string;
-  onCopied: () => void;
-}) {
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      onCopied();
-    } catch {
-      /* no-op */
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      className={`inline-flex items-center max-w-full truncate px-2 py-0.5 rounded-md
-                  border border-gray-800 bg-white/[0.04] text-gray-300
-                  hover:bg-white/[0.08] hover:text-gray-100
-                  cursor-copy transition focus:outline-none focus:ring-2 focus:ring-gray-700 ${className}`}
-      title={(title ?? text) + "  •  Click to copy"}
-      aria-label={`Chip: ${text}`}
-    >
-      <span className="font-mono text-xs truncate">{text}</span>
-    </button>
-  );
+  isFavorite?: boolean;
+  onToggleFavorite?: (node: NodeInfoProps) => void;
+  onAddComment?: (node: NodeInfoProps, data: { name: string; text: string }) => void;
 }
 
 const VISIBLE_SYNONYMS = 3;
 
 const NodeInfo: React.FC<NodeInfoProps> = (props) => {
-  const { id, name, namespace, def, synonym, is_a, isFavorite: isFavoriteProp, onAddComment } = props;
+  const {
+    id,
+    name,
+    namespace,
+    def,
+    synonym,
+    is_a,
+    isFavorite: isFavoriteProp,
+    onAddComment,
+  } = props;
 
   const [copied, setCopied] = useState(false);
   const [synExpanded, setSynExpanded] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
   const copiedTimerRef = useRef<number | null>(null);
 
-  // ulubione z globalnego store (Zustand/Context)
-  const { isFavorite: isFavHook, toggleFavorite, isLoading, isSaving } = useFavorites();
+  const { isFavorite: isFavHook, toggleFavorite, isLoading, isSaving } =
+    useFavorites();
   const { addComment } = useComments();
 
-  // Fallback: zanim hook się zhydratuje, pokazuj stan z propsa
   const fav = isLoading ? !!isFavoriteProp : isFavHook(id);
 
   useEffect(() => {
     return () => {
-      if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
+      if (copiedTimerRef.current) {
+        window.clearTimeout(copiedTimerRef.current);
+      }
     };
   }, []);
 
@@ -87,7 +69,7 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
       await navigator.clipboard.writeText(def);
       showCopied();
     } catch {
-      /* no-op */
+      // no-op
     }
   };
 
@@ -97,7 +79,6 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
 
   const handleToggleFav = useCallback(async () => {
     await toggleFavorite(props);
-    // props.onToggleFavorite?.({ ...props, isFavorite: !fav }); // jeśli chcesz legacy callback
   }, [toggleFavorite, props]);
 
   const handleAddCommentOpen = useCallback(() => {
@@ -105,23 +86,22 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
   }, []);
 
   const handleCommentSubmit = useCallback(
-    (text: string) => {
+    (data: { name: string; text: string }) => {
       setCommentOpen(false);
-      addComment({ id, name, namespace }, text);
-      // jeśli chcesz powiadomienie/toast — tutaj
-      // opcjonalnie: przełącz prawy panel na "comments" (jeśli masz taki mechanizm w rodzicu)
+      addComment({ id, name, namespace }, data);
+      onAddComment?.(props, data);
     },
-    [addComment, id, name, namespace]
+    [addComment, id, name, namespace, onAddComment, props]
   );
 
   return (
     <section
       id="info-panel"
       aria-labelledby="info-title"
-      className="relative inline-block w-[800px] max-w-[92vw] bg-black/70 backdrop-blur-md
+      className="relative inline-block w-[400px] max-w-[92vw] bg-black/70 backdrop-blur-md
                  rounded-xl shadow-lg text-gray-200 border border-gray-900/60"
     >
-      {/* Copied indicator (a11y) */}
+      {/* Copied indicator */}
       <span
         role="status"
         aria-live="polite"
@@ -135,16 +115,31 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
       {/* Header */}
       <header className="flex items-start justify-between gap-3 p-4 border-b border-gray-900/60 cursor-default">
         <div className="min-w-0">
+          {/* Name */}
           <CopyChip
             text={name}
             title="Name"
-            className="text-2xl sm:text-3xl font-bold truncate px-0 py-0 bg-transparent border-none
-                      hover:bg-transparent hover:text-gray-100 cursor-copy leading-tight"
+            className="text-3xl sm:text-xl font-bold px-0 py-0 bg-transparent border-none
+                       hover:bg-transparent hover:text-gray-100 cursor-copy leading-tight"
             onCopied={showCopied}
+            mono={false}
           />
+
+          {/* ID + Namespace */}
           <div className="mt-1 flex items-center gap-2 flex-wrap">
-            <CopyChip text={id} title="ID" className="font-mono" onCopied={showCopied} />
-            <CopyChip text={namespace} title="Namespace" className="text-[11px]" onCopied={showCopied} />
+            <CopyChip
+              text={id}
+              title="ID"
+              className="font-mono"
+              onCopied={showCopied}
+            />
+            <CopyChip
+              text={namespace}
+              title="Namespace"
+              className="text-[11px]"
+              onCopied={showCopied}
+              mono={false}
+            />
           </div>
         </div>
 
@@ -157,14 +152,23 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
             disabled={isSaving}
             className={`shrink-0 p-2 rounded-md transition
                         focus:outline-none focus:ring-2 focus:ring-gray-700
-                        ${fav ? "text-yellow-400 hover:bg-yellow-400/10" : "text-gray-300 hover:bg-white/10 hover:text-white"}
+                        ${
+                          fav
+                            ? "text-yellow-400 hover:bg-yellow-400/10"
+                            : "text-gray-300 hover:bg-white/10 hover:text-white"
+                        }
                         ${isSaving ? "opacity-60 cursor-not-allowed" : ""}`}
             title={fav ? "Remove from favorites" : "Add to favorites"}
             aria-label={fav ? "Remove from favorites" : "Add to favorites"}
             aria-pressed={fav}
             aria-busy={isSaving}
           >
-            <Star size={18} className="block" fill={fav ? "currentColor" : "none"} stroke="currentColor" />
+            <Star
+              size={18}
+              className="block"
+              fill={fav ? "currentColor" : "none"}
+              stroke="currentColor"
+            />
           </button>
 
           {/* Add Comment */}
@@ -184,26 +188,37 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
       {/* Body */}
       <div className="p-4 cursor-default">
         <dl className="grid grid-cols-1 gap-4">
-          <div>
-            <dt className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Definition</dt>
-            <dd
+          {/* Definition */}
+          <FieldRow label="Definition">
+            <div
               onClick={copyDefinition}
               className="text-sm whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto pr-1
                          hover:bg-white/[0.02] rounded-md p-1 cursor-copy transition"
               title="Click to copy definition"
             >
               {def}
-            </dd>
-          </div>
+            </div>
+          </FieldRow>
 
           {/* Synonyms */}
           {syns.length > 0 && (
-            <div>
-              <dt className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Synonyms</dt>
-              <dd className={`flex flex-wrap gap-1.5 ${synExpanded ? "max-h-56 overflow-y-auto pr-1" : ""}`}>
+            <FieldRow label="Synonyms">
+              <div
+                className={`flex flex-wrap gap-1.5 ${
+                  synExpanded ? "max-h-56 overflow-y-auto pr-1" : ""
+                }`}
+              >
                 {shownSynonyms.map((s, i) => (
-                  <CopyChip key={`${s}-${i}`} text={s} title="Synonym" className="text-xs" onCopied={showCopied} />
+                  <CopyChip
+                    key={`${s}-${i}`}
+                    text={s}
+                    title="Synonym"
+                    className="text-xs"
+                    onCopied={showCopied}
+                    mono={false}
+                  />
                 ))}
+
                 {hiddenSynCount > 0 && (
                   <button
                     type="button"
@@ -223,25 +238,31 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
                     {synExpanded ? "Show less" : `+${hiddenSynCount} more`}
                   </button>
                 )}
-              </dd>
-            </div>
+              </div>
+            </FieldRow>
           )}
 
           {/* is_a */}
           {is_a && is_a.length > 0 && (
-            <div>
-              <dt className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">is_a</dt>
-              <dd className="flex flex-wrap gap-1.5">
+            <FieldRow label="is_a">
+              <div className="flex flex-wrap gap-1.5">
                 {is_a.map((rel, i) => (
-                  <CopyChip key={`${rel}-${i}`} text={rel} title="is_a" className="text-xs" onCopied={showCopied} />
+                  <CopyChip
+                    key={`${rel}-${i}`}
+                    text={rel}
+                    title="is_a"
+                    className="text-xs"
+                    onCopied={showCopied}
+                    mono={false}
+                  />
                 ))}
-              </dd>
-            </div>
+              </div>
+            </FieldRow>
           )}
         </dl>
       </div>
 
-      {/* Modal dodawania komentarza */}
+      {/* Add Comment Modal */}
       <CommentModal
         open={commentOpen}
         onClose={() => setCommentOpen(false)}

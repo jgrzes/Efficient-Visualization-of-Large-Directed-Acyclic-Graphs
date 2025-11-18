@@ -1,7 +1,7 @@
 // components/right/RightSidebar.tsx
 import React from "react";
 import TabNavigation from "./TabNavigation";
-import { NodeInfoProps } from "../NodeInfo";
+import { NodeInfoProps } from "../leftsidebar/NodeInfo";
 import { useFavorites } from "../../hooks/useFavorites";
 import { SearchPanel } from "./SearchPanel";
 import { FavoritesPanel } from "./FavoritesPanel";
@@ -91,7 +91,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
   return (
     <div
-      className={`fixed top-0 right-0 h-screen text-gray-200 flex transition-[width] duration-200 ${
+      className={`fixed top-0 z-40 right-0 h-screen text-gray-200 flex transition-[width] duration-200 ${
         expanded ? "w-96" : "w-16"
       } bg-black/90 shadow-2xl shadow-black/40 overflow-visible`}
       aria-expanded={expanded}

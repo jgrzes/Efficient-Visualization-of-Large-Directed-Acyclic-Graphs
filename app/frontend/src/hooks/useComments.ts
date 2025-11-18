@@ -1,16 +1,25 @@
 // app/frontend/src/hooks/useComments.ts
 import { create } from "zustand";
 import { nanoid } from "nanoid";
-import { NodeInfoProps } from "../components/NodeInfo";
+import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
 
 export type CommentItem = {
   id: string;
   nodeId: string;
   nodeName: string;
   namespace?: string;
+
+  title: string;
   text: string;
-  createdAt: number; // epoch ms
+
+  createdAt: number;
   updatedAt?: number;
+};
+
+
+export type NewCommentPayload = {
+  name: string;
+  text: string;
 };
 
 type CommentsState = {
@@ -22,7 +31,10 @@ type CommentsState = {
 
   // actions (async)
   loadComments: () => Promise<void>;
-  addComment: (node: Pick<NodeInfoProps, "id" | "name" | "namespace">, text: string) => Promise<void>;
+  addComment: (
+    node: Pick<NodeInfoProps, "id" | "name" | "namespace">,
+    comment: NewCommentPayload
+  ) => Promise<void>;      // <-- ZMIENIONA SYGNATURA
   editComment: (id: string, text: string) => Promise<void>;
   removeComment: (id: string) => Promise<void>;
   clearAll: () => Promise<void>;
@@ -49,29 +61,32 @@ export const useComments = create<CommentsState>((set, get) => ({
     }
   },
 
-  addComment: async (node, text) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+  // TERAZ: node + { name, text }
+  addComment: async (node, comment) => {
+    const trimmedText = comment.text.trim();
+    const trimmedTitle = comment.name.trim(); // <-- name = title
+    if (!trimmedText || !trimmedTitle) return;
 
     const item: CommentItem = {
       id: nanoid(),
       nodeId: node.id,
       nodeName: node.name,
       namespace: node.namespace,
-      text: trimmed,
+      title: trimmedTitle,     // <-- NOWE
+      text: trimmedText,       // treść
       createdAt: Date.now(),
     };
 
     const prev = get().comments;
     set({ comments: [item, ...prev], isSaving: true, error: null });
     try {
-      // symulacja zapisu
       await new Promise((r) => setTimeout(r, 120));
       set({ isSaving: false });
-    } catch (e) {
+    } catch {
       set({ isSaving: false, error: "Nie udało się dodać komentarza" });
     }
   },
+
 
   editComment: async (id, text) => {
     const trimmed = text.trim();

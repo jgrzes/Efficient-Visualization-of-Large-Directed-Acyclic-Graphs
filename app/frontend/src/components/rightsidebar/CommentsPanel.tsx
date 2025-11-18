@@ -16,7 +16,6 @@ const CommentsPanel: React.FC = () => {
   const { getAllSorted, removeComment, editComment } = useComments();
   const comments = getAllSorted();
 
-  // lokalny stan dla trybu edycji
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedText, setEditedText] = useState("");
 
@@ -39,11 +38,13 @@ const CommentsPanel: React.FC = () => {
   if (!comments.length) {
     return (
       <div className="text-sm text-gray-300">
-        <p className="mb-2 text-gray-400 uppercase tracking-wide text-xs">Comments</p>
+        <p className="mb-2 text-gray-400 uppercase tracking-wide text-xs">
+          Komentarze
+        </p>
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-          <p className="text-gray-400">No comments.</p>
+          <p className="text-gray-400">Brak komentarzy.</p>
           <p className="text-gray-500 text-xs mt-1">
-            Add the first comment from search panel or node info panel.
+            Dodaj pierwszy komentarz z panelu wyszukiwania lub panelu informacji o węźle.
           </p>
         </div>
       </div>
@@ -52,7 +53,9 @@ const CommentsPanel: React.FC = () => {
 
   return (
     <div className="text-sm text-gray-300">
-      <p className="mb-2 text-gray-400 uppercase tracking-wide text-xs">Komentarze</p>
+      <p className="mb-2 text-gray-400 uppercase tracking-wide text-xs">
+        Komentarze
+      </p>
 
       <ul className="space-y-3">
         {comments.map((c) => (
@@ -62,33 +65,43 @@ const CommentsPanel: React.FC = () => {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
+                {/* Tytuł komentarza + węzeł */}
                 <div className="text-xs text-gray-400">
-                  <span className="font-medium text-gray-300">{c.nodeName}</span>
-                  {c.namespace ? <span className="text-gray-500"> · {c.namespace}</span> : null}
+                  <span className="font-medium text-gray-300">
+                    {c.title}
+                  </span>
+                  <span className="mx-1 text-gray-600">·</span>
+                  <span className="text-gray-500">{c.nodeName}</span>
+                  {c.namespace ? (
+                    <span className="text-gray-600"> · {c.namespace}</span>
+                  ) : null}
                 </div>
-                <div className="text-[11px] text-gray-500">{formatTime(c.createdAt)}</div>
+
+                {/* Czas */}
+                <div className="text-[11px] text-gray-500 mt-0.5">
+                  {formatTime(c.createdAt)}
+                  {c.updatedAt && (
+                    <span className="ml-1 text-gray-500">(edytowano)</span>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-1">
-                {/* przycisk edycji */}
+                {/* edycja */}
                 {editingId !== c.id && (
                   <button
                     className="p-1.5 rounded-md text-gray-400 hover:text-blue-400 hover:bg-blue-400/10
                                focus:outline-none focus:ring-2 focus:ring-blue-700"
-                    title="Edytuj komentarz"
-                    aria-label="Edytuj komentarz"
                     onClick={() => startEditing(c.id, c.text)}
                   >
                     <Edit2 size={16} />
                   </button>
                 )}
 
-                {/* przycisk usuwania */}
+                {/* usuwanie */}
                 <button
                   className="p-1.5 rounded-md text-gray-400 hover:text-red-400 hover:bg-red-400/10
                              focus:outline-none focus:ring-2 focus:ring-red-700"
-                  title="Usuń komentarz"
-                  aria-label="Usuń komentarz"
                   onClick={() => removeComment(c.id)}
                 >
                   <Trash2 size={16} />
@@ -96,7 +109,7 @@ const CommentsPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* treść komentarza lub formularz edycji */}
+            {/* treść lub edycja */}
             {editingId === c.id ? (
               <div className="mt-2">
                 <textarea

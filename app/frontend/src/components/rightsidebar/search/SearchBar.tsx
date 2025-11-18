@@ -10,8 +10,12 @@ export interface SearchBarProps {
   hideButton?: boolean;
 }
 
-export default function SearchBar({ onSearch, onOptionsChange, hideButton = false }: SearchBarProps) {
-  const [field, setField] = useState("all");
+export default function SearchBar({
+  onSearch,
+  onOptionsChange,
+  hideButton = false,
+}: SearchBarProps) {
+  const [field, setField] = useState("");
   const [query, setQuery] = useState("");
 
   const [matchCase, setMatchCase] = useState(false);
@@ -27,12 +31,12 @@ export default function SearchBar({ onSearch, onOptionsChange, hideButton = fals
   }, [matchWords]);
 
   const handleSearch = () => {
-    const q = query.trim();
-    if (!q) return;
-    onSearch(field, q);
-  };
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) return;
 
-  const clear = () => setQuery("");
+    const normalizedField = field.trim() || "";
+    onSearch(normalizedField, normalizedQuery);
+  };
 
   return (
     <form
@@ -44,7 +48,17 @@ export default function SearchBar({ onSearch, onOptionsChange, hideButton = fals
       }}
     >
       <div className="flex w-full items-center gap-2">
-        <SearchFieldSelect value={field} onChange={setField} />
+        <SearchFieldSelect
+          value={field}
+          onChange={setField}
+          onClear={() => setField("")}
+          onKeyDown={(e: React.KeyboardEvent) => {
+            if (e.key === "Enter") {
+              e.stopPropagation();
+              handleSearch();
+            }
+          }}
+        />
         <SearchOptions
           matchCase={matchCase}
           matchWords={matchWords}
@@ -58,11 +72,11 @@ export default function SearchBar({ onSearch, onOptionsChange, hideButton = fals
           value={query}
           onChange={setQuery}
           placeholder={placeholder}
-          onClear={clear}
+          onClear={() => setQuery("")}
           onKeyDown={(e: React.KeyboardEvent) => {
-            if (e.key === "Escape") clear();
             if (e.key === "Enter") {
               e.stopPropagation();
+              handleSearch();
             }
           }}
         />
@@ -72,9 +86,11 @@ export default function SearchBar({ onSearch, onOptionsChange, hideButton = fals
             type="submit"
             disabled={!query.trim()}
             className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm border transition
-                       ${!query.trim()
-                         ? "border-gray-700 text-gray-500 bg-black cursor-not-allowed"
-                         : "border-gray-700 text-gray-100 bg-white/[0.02] hover:bg-white/[0.06]"}`}
+                       ${
+                         !query.trim()
+                           ? "border-gray-700 text-gray-500 bg-black cursor-not-allowed"
+                           : "border-gray-700 text-gray-100 bg-white/[0.02] hover:bg-white/[0.06]"
+                       }`}
             aria-label="Search"
             title="Search"
           >

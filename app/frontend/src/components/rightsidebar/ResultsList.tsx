@@ -1,5 +1,5 @@
 import React from "react";
-import { NodeInfoProps } from "../NodeInfo";
+import { NodeInfoProps } from "../leftsidebar/NodeInfo";
 import ResultCard from "./ResultCard";
 import EmptyState from "./EmptyState";
 

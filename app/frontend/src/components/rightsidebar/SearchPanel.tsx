@@ -1,7 +1,7 @@
 import React from "react";
 import SearchBar from "./search/SearchBar";
 import { FilterChip } from "./search/FilterChip";
-import { NodeInfoProps } from "../NodeInfo";
+import { NodeInfoProps } from "../leftsidebar/NodeInfo";
 import ResultsList from "./ResultsList";
 
 interface RightSearchPanelProps {
@@ -24,8 +24,9 @@ export const SearchPanel: React.FC<RightSearchPanelProps> = ({
   onRemoveFilter,
 }) => {
   const handleSearch = React.useCallback(
-    (a: string, b?: string) =>
-      onSearch(typeof b === "string" ? a : "all", (b ?? a).trim()),
+    (field: string, query: string) => {
+      onSearch(field, query);
+    },
     [onSearch]
   );
 

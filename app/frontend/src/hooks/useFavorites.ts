@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { NodeInfoProps } from "../components/NodeInfo";
+import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
 
 type FavoritesState = {
   favorites: NodeInfoProps[];

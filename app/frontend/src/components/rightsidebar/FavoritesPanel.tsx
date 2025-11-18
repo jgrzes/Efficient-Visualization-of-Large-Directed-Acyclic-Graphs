@@ -1,6 +1,6 @@
 import React from "react";
 import ResultsList from "./ResultsList";
-import { NodeInfoProps } from "../NodeInfo";
+import { NodeInfoProps } from "../leftsidebar/NodeInfo";
 
 interface FavoritesPanelProps {
   favorites: NodeInfoProps[];
