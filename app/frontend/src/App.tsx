@@ -328,14 +328,17 @@ const MainAppContext: React.FC = () => {
   };
 
   /** NODE SELECTION **/
-  const handleSelectNode = async (nodeId: string) => {
+  const handleSelectNode = async (nodeName: string) => {
+    if (!currentGraphUUID || !nodeName) return;
+
     try {
-      const response = await fetch(`${API_BASE}/node_index/${currentGraphUUID}/${nodeId}`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
+      const encodedName = encodeURIComponent(nodeName);
+      const res = await fetch(`${API_BASE}/node_index/${currentGraphUUID}/${encodedName}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
       selectNodeByIndex(data.index);
-    } catch (error) {
-      console.error('Failed to fetch node index:', error);
+    } catch (err) {
+      console.error('Failed to fetch node index:', err);
     }
   };
 
@@ -495,7 +498,7 @@ const MainAppContext: React.FC = () => {
       <RightSidebar
         onSearch={handleSearch}
         results={results}
-        onSelectNode={(node) => handleSelectNode(node.id !== undefined ? node.id : "")}
+        onSelectNode={(node) => handleSelectNode(node.name !== undefined ? node.name : "")}
       />
     </div>
     </AppContext.Provider>

@@ -170,11 +170,10 @@ def get_node_information(graph_uuid: str, node_id: int):
     return jsonify(m), 200
 
 
-# TODO: Must be changed to search by name! (obo graphs have 'id' property, but others may not)
-@app.route("/node_index/<string:graph_uuid>/<string:node_id>", methods=["GET"])
-def get_node_index(graph_uuid: str, node_id: str):
+@app.route("/node_index/<string:graph_uuid>/<string:node_name>", methods=["GET"])
+def get_node_index(graph_uuid: str, node_name: str):
     """
-    Find vertex index by its 'id' property (e.g. GO:0030674) for a given graph UUID.
+    Returns the index of the node with the given name in the specified graph.
     """
     try:
         graph_info = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
@@ -183,10 +182,12 @@ def get_node_index(graph_uuid: str, node_id: str):
         return jsonify({}), 404
 
     G_gt = graph_info["graph"]
-    id_prop = G_gt.vertex_properties.get("id")
+    name_prop = G_gt.vertex_properties.get("name")
+    if name_prop is None:
+        return jsonify({}), 404
 
     for v in G_gt.vertices():
-        if str(id_prop[v]) == node_id:
+        if str(name_prop[v]).lower() == node_name.lower():
             return jsonify({"index": int(v)}), 200
 
     return jsonify({}), 404
