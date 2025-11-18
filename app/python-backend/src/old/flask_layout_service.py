@@ -59,13 +59,16 @@ def get_node_information(graph_uuid: str, node_id: int):
     all_vertex_properties = G_gt.vertex_properties.keys()
     v = G_gt.vertex(node_id)
 
-    m = {
-        p: convert_to_json_parsable_representation(G_gt.vertex_properties[p][v])
-        for p in all_vertex_properties if G_gt.vertex_properties[p][v] != EMPTY_PROPERTY_FIELD
-    }
-
-    # for key, val in m.items():
-    #     print(f"{key}: {val}, type={type(val)}")
+    m = {}
+    for p in all_vertex_properties:
+        val = G_gt.vertex_properties[p][v]
+        if val == EMPTY_PROPERTY_FIELD:
+            continue
+        try:
+            parsed_val = json.loads(val)
+            m[p] = parsed_val
+        except (json.JSONDecodeError, TypeError):
+            m[p] = convert_to_json_parsable_representation(val)
 
     return jsonify(m), 200
     
@@ -335,7 +338,11 @@ def _build_graph_from_graph_data(graph_data: Dict[str, Any]) -> Dict[str, Any]:
             if p not in vertex_data_entry:
                 G_gt.vertex_properties[p][i] = EMPTY_PROPERTY_FIELD
             else:
-                G_gt.vertex_properties[p][i] = str(vertex_data_entry[p])
+                val = vertex_data_entry[p]
+                if isinstance(val, (list, dict, tuple)):
+                    G_gt.vertex_properties[p][i] = json.dumps(val)
+                else:
+                    G_gt.vertex_properties[p][i] = str(val)
 
     graph_uuid = temp_graph_data_storage.register_new_graph_data(
         {
@@ -426,4 +433,4 @@ def load_graph_from_file():
 if __name__ == "__main__":
     temp_graph_data_storage = GraphDataStorage()
     db_manager = MongoDatabaseManager(MONGO_ACCESS_KEY, MONGO_DB_NAME)
-    app.run(host=SERVICE_IP_ADDRESS, port=SERVICE_PORT, debug=True)
+    app.run(host=SERVICE_IP_ADDRESS, port=SERVICE_PORT)
