@@ -123,14 +123,88 @@ const MainAppContext: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  /** LOAD GENERAL GRAPH FROM JSON FILE **/
+  const loadJsonGraph = async (file: File) => {
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch(`${API_BASE}/load_graph_from_file`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        let errMsg = 'Failed to load graph from JSON file.';
+        try {
+          const errBody = await res.json();
+          if (errBody?.error) errMsg = errBody.error;
+          console.error('JSON load error:', errBody);
+        } catch {
+        }
+        alert(errMsg);
+        return;
+      }
+
+      const data = await res.json();
+      console.log('JSON load response:', data);
+
+      if (data.uuid) {
+        setCurrentGraphUUID(data.uuid);
+      } else {
+        console.warn('JSON response has no uuid field; save_graph may not work correctly.');
+      }
+      if (data.graph_hash) {
+        setCurrentGraphHash(data.graph_hash);
+      }
+
+      setPointPositions(new Float32Array(data.canvas_positions));
+      setLinks(new Float32Array(data.links));
+      setSelectedNode(null);
+
+      if (data.config) {
+        setGraphConfig({
+          spaceSize: data.config.space_size ?? 1000,
+          pointSize: data.config.point_size ?? 5,
+        });
+      } else {
+        setGraphConfig(null);
+      }
+
+    } catch (err) {
+      console.error('Error while loading JSON graph:', err);
+      alert('Unexpected error while loading JSON graph.');
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+
   /** FILE HANDLING **/
   const handleLoadClick = () => fileInputRef.current?.click();
 
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    setSelectedFile(file);
-    setShowOntologyOptions(true);
+
+    const ext = file.name.split('.').pop()?.toLowerCase();
+
+    if (ext === 'obo' || ext === 'txt') { // ontology formats
+      setSelectedFile(file);
+      setShowOntologyOptions(true);
+      return;
+    }
+
+    if (ext === 'json') { // custom general graph format
+      loadJsonGraph(file);
+      return;
+    }
+
+    alert(`Unhandled file format: .${ext ?? 'unknown'}`);
   };
 
   const uploadFileWithNamespace = async (namespace: string) => {
@@ -164,26 +238,51 @@ const MainAppContext: React.FC = () => {
   };
 
   /** EXPORT **/
-  const handleExportClick = () => {
-    const nodePositions: Record<number, [number, number]> = {};
-    for (let i = 0; i < pointPositions.length; i += 2)
-      nodePositions[i / 2] = [pointPositions[i], pointPositions[i + 1]];
+  const handleExportClick = async () => {
+    if (!currentGraphHash) {
+      alert('This graph has not been saved to the backend yet.');
+      return;
+    }
 
-    const linkMap: Record<number, [number, number]> = {};
-    for (let i = 0; i < links.length; i += 2)
-      linkMap[i / 2] = [links[i], links[i + 1]];
-
-    const exportData = { pointPositions: nodePositions, links: linkMap };
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: 'application/json'
+    const res = await fetch(`${API_BASE}/export_graph/${currentGraphHash}`);
+    if (!res.ok) {
+      alert('Failed to export graph from backend.');
+      return;
+    }
+    const data = await res.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
     });
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'graph-data.json';
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const filename = 'graph-data.json';
+
+      if ((window as any).showSaveFilePicker) {
+        const opts = {
+          suggestedName: filename,
+          types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
+        };
+        const handle = await (window as any).showSaveFilePicker(opts);
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+
+      } else if ((navigator as any).msSaveOrOpenBlob) {
+        (navigator as any).msSaveOrOpenBlob(blob, filename);
+
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error('Save failed:', err);
+    }
   };
 
   /** ANALYSIS **/

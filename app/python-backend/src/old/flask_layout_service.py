@@ -109,7 +109,10 @@ def flask_make_graph_structure():
                 root_id, root_vertex = roots.get(root_namespace, None)
                 G_gt = filter_graph_by_root(G_gt, root_vertex)
 
-        elif ext == "txt":
+        elif ext == "json":
+            G_gt = _build_graph_from_graph_data(file.read().decode("utf-8"))
+
+        elif ext == "txt": # maybe we should get rid of this?
             G_gt = build_graph_from_txt(file.read().decode("utf-8"))   
 
     except Exception as e:    
@@ -119,7 +122,7 @@ def flask_make_graph_structure():
         canvas_positions = make_graph_structure(G_gt)
         transformed_canvas_positions, links = build_reponse_json_string_for_make_graph_structure_req(
             G_gt=G_gt, canvas_positions=canvas_positions
-        )    
+        )
 
         graph_uuid = temp_graph_data_storage.register_new_graph_data({
             "name": file.filename,
@@ -300,20 +303,15 @@ def save_graph_to_db(graph_uuid: str):
     }), 200
 
 
-@app.route("/load_graph/<string:graph_hash>", methods=["GET"])
-def load_graph_form_db(graph_hash: str):
-    graph_data = db_manager.fetch_data(graph_hash)
-    if graph_data is None:
-        return jsonify({"error": "No graph with such hash kept in the database"}), 404
-    
+def _build_graph_from_graph_data(graph_data: Dict[str, Any]) -> Dict[str, Any]:
     G_gt = gt.Graph(directed=True)
-    # print(graph_data)
     n = graph_data["num_of_vertices"]
     vertices_data = graph_data["vertices"]
     V = [G_gt.add_vertex() for _ in range(n)]
 
-    linearized_links = []
-    for v in range(0, n):
+    linearized_links: List[int] = []
+
+    for v in range(n):
         Nv = vertices_data[v]["N"]
         for w in Nv:
             G_gt.add_edge(V[v], V[w])
@@ -321,54 +319,68 @@ def load_graph_form_db(graph_hash: str):
             linearized_links.append(w)
 
     vertex_metadata_keys = set()
-    for i in range(len(vertices_data)):
-        vertex_data_entry = vertices_data[i]
+    for vertex_data_entry in vertices_data:
         for field in vertex_data_entry.keys():
-            if field == "index" or field == "N" or field == "pos":
-                continue 
-
-            vertex_metadata_keys.add(field)        
+            if field in {"index", "N", "pos"}:
+                continue
+            vertex_metadata_keys.add(field)
 
     for p in vertex_metadata_keys:
-        # print(p, type(p))
-        G_gt.vertex_properties[p] = G_gt.new_vertex_property(read_type_in_gt_compatible_way(p))
+        G_gt.vertex_properties[p] = G_gt.new_vertex_property(
+            read_type_in_gt_compatible_way(p)
+        )
 
-    for i in range(len(vertices_data)):
-        vertex_data_entry = vertices_data[i]
+    for i, vertex_data_entry in enumerate(vertices_data):
         for p in vertex_metadata_keys:
             if p not in vertex_data_entry:
-                G_gt.vertex_properties[p][i] = EMPTY_PROPERTY_FIELD   
+                G_gt.vertex_properties[p][i] = EMPTY_PROPERTY_FIELD
             else:
-                G_gt.vertex_properties[p][i] = str(vertex_data_entry[p])    
+                G_gt.vertex_properties[p][i] = str(vertex_data_entry[p])
 
-    graph_uuid = temp_graph_data_storage.register_new_graph_data({
-        "name": graph_data["name"], 
-        "graph": G_gt, 
-        "root_id": None, 
-        "godag": None, 
-        "layout": [tuple(vertices_data[i]["pos"]) for i in range(n)]
-    })   
+    graph_uuid = temp_graph_data_storage.register_new_graph_data(
+        {
+            "name": graph_data["name"],
+            "graph": G_gt,
+            "root_id": None,
+            "godag": None,
+            "layout": [tuple(vertices_data[i]["pos"]) for i in range(n)],
+        }
+    )
 
     config_keys = [
-        key for key in graph_data.keys() 
-        if key not in ["name", "num_of_vertices", "last_entry_update", "vertices", "_id"]
+        key
+        for key in graph_data.keys()
+        if key
+        not in ["name", "num_of_vertices", "last_entry_update", "vertices", "_id"]
     ]
-
     config = {key: graph_data[key] for key in config_keys}
-    print(config)
 
-    linearized_canvas_positons = [None for _ in range(2*n)]
-    for i in range(0, n):
-        linearized_canvas_positons[2*i] = vertices_data[i]["pos"][0]
-        linearized_canvas_positons[2*i+1] = vertices_data[i]["pos"][1]
+    linearized_canvas_positions = [None for _ in range(2 * n)]
+    for i in range(n):
+        linearized_canvas_positions[2 * i] = vertices_data[i]["pos"][0]
+        linearized_canvas_positions[2 * i + 1] = vertices_data[i]["pos"][1]
+
+    return {
+        "uuid": graph_uuid,
+        "canvas_positions": linearized_canvas_positions,
+        "links": linearized_links,
+        "config": config,
+    }
+
+
+@app.route("/load_graph/<string:graph_hash>", methods=["GET"])
+def load_graph_from_db(graph_hash: str):
+    graph_data = db_manager.fetch_data(graph_hash)
+    if graph_data is None:
+        return jsonify({"error": "No graph with such hash kept in the database"}), 404
+
+    built = _build_graph_from_graph_data(graph_data)
 
     return jsonify({
         "graph_hash": graph_hash,
-        "uuid": graph_uuid,
-        "canvas_positions": linearized_canvas_positons, 
-        "links": linearized_links, 
-        "config": config, "doc": {} # What does this even mean in this context
-    }), 200     
+        **built,
+        "doc": {}
+    }), 200
 
 
 @app.route("/g/<string:graph_hash>", methods=["GET"])
@@ -377,11 +389,41 @@ def redirect_to_front(graph_hash: str):
     return redirect(f"{frontend_url}/?g={graph_hash}", code=302)
 
 
+@app.route("/export_graph/<string:graph_hash>", methods=["GET"])
+def export_graph(graph_hash: str):
+    graph_data = db_manager.fetch_data(graph_hash)
+    if graph_data is None:
+        return jsonify({"error": "No graph with such hash kept in the database"}), 404
+    
+    graph_data.pop("_id")
+
+    if "last_entry_update" in graph_data:
+        graph_data["last_entry_update"] = graph_data["last_entry_update"].isoformat()
+
+    return jsonify(graph_data), 200
+
+
+@app.route("/load_graph_from_file", methods=["POST"])
+def load_graph_from_file():
+    file = request.files["file"]
+    if file is None or file.filename == "":
+        return jsonify({"error": "No file provided"}), 400
+    
+    try:
+        graph_data = json.load(file)
+    except Exception as e:
+        return jsonify({"error": f"Failed to parse JSON: {e}"}), 400
+    
+    built = _build_graph_from_graph_data(graph_data)
+
+    return jsonify({
+        "graph_hash": None,
+        **built,
+        "doc": {}
+    }), 200
+
+
 if __name__ == "__main__":
     temp_graph_data_storage = GraphDataStorage()
     db_manager = MongoDatabaseManager(MONGO_ACCESS_KEY, MONGO_DB_NAME)
-    app.run(host=SERVICE_IP_ADDRESS, port=SERVICE_PORT)
-
-
-
-
+    app.run(host=SERVICE_IP_ADDRESS, port=SERVICE_PORT, debug=True)
