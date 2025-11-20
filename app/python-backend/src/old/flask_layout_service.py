@@ -153,7 +153,6 @@ def flask_make_graph_structure():
         }
     )
 
-    print(f"New graph uuid: {graph_uuid}")
     logger.info(f"Computed layout for {file.filename}, as well as generated new uuid for it, which is as follows {graph_uuid}")
 
     return (
@@ -475,13 +474,65 @@ def load_graph_from_file():
     except Exception as e:
         return jsonify({"error": f"Failed to parse JSON: {e}"}), 400
 
-    built = _build_graph_from_graph_data(graph_data)
+    vertices = graph_data.get("vertices")
+    num_vertices = graph_data.get("num_of_vertices")
+
+    if not isinstance(vertices, list) or not isinstance(num_vertices, int):
+        return jsonify({"error": "Invalid graph JSON: missing 'vertices' or 'num_of_vertices'"}), 400
+
+    # we check if all vertices have "pos" field
+    has_layout = all(
+        isinstance(v.get("pos", None), (list, tuple)) and len(v["pos"]) == 2
+        for v in vertices
+    )
+
+    # CASE 1: JSON HAS LAYOUT, we just build the graph from it
+    if has_layout:
+        built = _build_graph_from_graph_data(graph_data)
+        return (
+            jsonify(
+                {
+                    "graph_hash": None,
+                    **built,
+                }
+            ),
+            200,
+        )
+
+    # CASE 2: JSON HAS NO LAYOUT -> build the graph and compute layout
+    G_gt = build_gt_graph_from_graph_dict(graph_data)
+
+    canvas_positions = make_graph_structure(G_gt)
+    linearized_canvas_positions, linearized_links = build_reponse_json_string_for_make_graph_structure_req(
+        G_gt=G_gt, canvas_positions=canvas_positions
+    )
+
+    graph_uuid = temp_graph_data_storage.register_new_graph_data(
+        {
+            "name": graph_data.get("name", file.filename or "graph_from_file"),
+            "graph": G_gt,
+            "root_id": None,
+            "godag": None,
+            "layout": linearized_canvas_positions,
+        }
+    )
+
+    config_keys = [
+        key
+        for key in graph_data.keys()
+        if key
+        not in ["name", "num_of_vertices", "last_entry_update", "vertices", "_id"]
+    ]
+    config = {key: graph_data[key] for key in config_keys}
 
     return (
         jsonify(
             {
                 "graph_hash": None,
-                **built,
+                "uuid": graph_uuid,
+                "canvas_positions": linearized_canvas_positions,
+                "links": linearized_links,
+                "config": config,
             }
         ),
         200,
