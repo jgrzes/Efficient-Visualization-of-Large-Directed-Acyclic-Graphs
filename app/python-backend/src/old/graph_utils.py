@@ -1,6 +1,6 @@
 import io
 import tempfile
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, Optional
 import re
 import numpy as np
 
@@ -8,10 +8,13 @@ import graph_tool as gt
 import networkx as nx
 import obonet
 from goatools.obo_parser import GODag
+import json
+from flask import request
 
 
 # TODO: Add json as an allowed extension
 ALLOWED_FILE_FORMATS = ["obo", "txt"]
+EMPTY_PROPERTY_FIELD = "$N/A$"
 
 
 def read_type_in_gt_compatible_way(value: Any) -> Any:
@@ -135,3 +138,97 @@ def filter_graph_by_root(G_gt: gt.Graph, root_vertex: gt.Vertex) -> gt.Graph:
     reachable = gt.topology.label_out_component(G_gt, root_vertex)
     subgraph_view = gt.GraphView(G_gt, vfilt=reachable)
     return gt.Graph(subgraph_view, prune=True)
+
+def build_gt_graph_from_graph_dict(graph_data: Dict[str, Any]) -> gt.Graph:
+    """Builds a graph-tool Graph from a dict in the same format as stored in MongoDB."""
+
+    if "num_of_vertices" not in graph_data:
+        raise ValueError("Missing 'num_of_vertices' field in graph data")
+
+    if "vertices" not in graph_data:
+        raise ValueError("Missing 'vertices' field in graph data")
+
+    n = graph_data["num_of_vertices"]
+    vertices_data = graph_data["vertices"]
+
+    # check if all vertices have "name" field
+    for vertex_data in vertices_data:
+        if "name" not in vertex_data:
+            raise ValueError("Vertex data missing 'name' field")
+
+    G_gt = gt.Graph(directed=True)
+    V = [G_gt.add_vertex() for _ in range(n)]
+
+    for v in range(n):
+        Nv = vertices_data[v]["N"]
+        for w in Nv:
+            G_gt.add_edge(V[v], V[w])
+
+    vertex_metadata_keys = set()
+    for vertex_data_entry in vertices_data:
+        for field in vertex_data_entry.keys():
+            if field in {"index", "N", "pos"}:
+                continue
+            vertex_metadata_keys.add(field)
+
+    for p in vertex_metadata_keys:
+        G_gt.vertex_properties[p] = G_gt.new_vertex_property(
+            read_type_in_gt_compatible_way(p)
+        )
+
+    for i, vertex_data_entry in enumerate(vertices_data):
+        for p in vertex_metadata_keys:
+            if p not in vertex_data_entry:
+                G_gt.vertex_properties[p][i] = EMPTY_PROPERTY_FIELD
+            else:
+                val = vertex_data_entry[p]
+                if isinstance(
+                    val, (list, dict, tuple)
+                ):  # if it's complex, store as JSON string
+                    G_gt.vertex_properties[p][i] = json.dumps(val)
+                else:
+                    G_gt.vertex_properties[p][i] = str(val)
+
+    return G_gt
+
+
+def build_graph_from_json_contents(raw_contents: str) -> gt.Graph:
+    """Builds a graph-tool Graph from a JSON string in the same format as stored in MongoDB."""
+    graph_data = json.loads(raw_contents)
+    return build_gt_graph_from_graph_dict(graph_data)
+
+
+def load_graph_from_uploaded_file(file) -> Tuple[gt.Graph, Optional[str], Any]:
+    """
+    Accepts a file from the request, builds a graph-tool Graph based on the extension,
+    and returns: (G_gt, root_id, godag).
+
+    - OBO: uses build_gt_graph_from_obo + optional filtering by root namespace.
+    - JSON: parses a saved graph (format as in the database/export).
+    """
+    ext = file.filename.rsplit(".", 1)[-1].lower()
+    raw_contents = file.read().decode("utf-8")
+
+    root_id: Optional[str] = None
+    godag: Any = None
+
+    if ext == "obo":
+        G_gt, roots, godag = build_gt_graph_from_obo(raw_contents)
+
+        root_namespace = request.form.get("root", None)
+        if root_namespace is not None:
+            root_id, root_vertex = roots.get(root_namespace, (None, None))
+            if root_vertex is not None:
+                G_gt = filter_graph_by_root(G_gt, root_vertex)
+
+        return G_gt, root_id, godag
+
+    elif ext == "json":
+        G_gt = build_graph_from_json_contents(raw_contents)
+        return G_gt, None, None
+
+    elif ext == "txt":  # maybe we should get rid of this format?
+        G_gt = build_graph_from_txt(raw_contents)
+        return G_gt, None, None
+
+    raise ValueError(f"Unsupported file type: {ext}")

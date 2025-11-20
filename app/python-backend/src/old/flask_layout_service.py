@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import os
 from typing import Any, List, Optional, Tuple, Dict
@@ -34,103 +35,8 @@ EMPTY_PROPERTY_FIELD = "$N/A$"
 logger: logging.Logger = None
 
 
-def _build_gt_graph_from_graph_dict(graph_data: Dict[str, Any]) -> gt.Graph:
-    """Builds a graph-tool Graph from a dict in the same format as stored in MongoDB."""
-
-    if "num_of_vertices" not in graph_data:
-        raise ValueError("Missing 'num_of_vertices' field in graph data")
-
-    if "vertices" not in graph_data:
-        raise ValueError("Missing 'vertices' field in graph data")
-
-    n = graph_data["num_of_vertices"]
-    vertices_data = graph_data["vertices"]
-
-    # check if all vertices have "name" field
-    for vertex_data in vertices_data:
-        if "name" not in vertex_data:
-            raise ValueError("Vertex data missing 'name' field")
-
-    G_gt = gt.Graph(directed=True)
-    V = [G_gt.add_vertex() for _ in range(n)]
-
-    for v in range(n):
-        Nv = vertices_data[v]["N"]
-        for w in Nv:
-            G_gt.add_edge(V[v], V[w])
-
-    vertex_metadata_keys = set()
-    for vertex_data_entry in vertices_data:
-        for field in vertex_data_entry.keys():
-            if field in {"index", "N", "pos"}:
-                continue
-            vertex_metadata_keys.add(field)
-
-    for p in vertex_metadata_keys:
-        G_gt.vertex_properties[p] = G_gt.new_vertex_property(
-            read_type_in_gt_compatible_way(p)
-        )
-
-    for i, vertex_data_entry in enumerate(vertices_data):
-        for p in vertex_metadata_keys:
-            if p not in vertex_data_entry:
-                G_gt.vertex_properties[p][i] = EMPTY_PROPERTY_FIELD
-            else:
-                val = vertex_data_entry[p]
-                if isinstance(
-                    val, (list, dict, tuple)
-                ):  # if it's complex, store as JSON string
-                    G_gt.vertex_properties[p][i] = json.dumps(val)
-                else:
-                    G_gt.vertex_properties[p][i] = str(val)
-
-    return G_gt
-
-
-def _build_graph_from_json_contents(raw_contents: str) -> gt.Graph:
-    """Builds a graph-tool Graph from a JSON string in the same format as stored in MongoDB."""
-    graph_data = json.loads(raw_contents)
-    return _build_gt_graph_from_graph_dict(graph_data)
-
-
-def _load_graph_from_uploaded_file(file) -> Tuple[gt.Graph, Optional[str], Any]:
-    """
-    Accepts a file from the request, builds a graph-tool Graph based on the extension,
-    and returns: (G_gt, root_id, godag).
-
-    - OBO: uses build_gt_graph_from_obo + optional filtering by root namespace.
-    - JSON: parses a saved graph (format as in the database/export).
-    """
-    ext = file.filename.rsplit(".", 1)[-1].lower()
-    raw_contents = file.read().decode("utf-8")
-
-    root_id: Optional[str] = None
-    godag: Any = None
-
-    if ext == "obo":
-        G_gt, roots, godag = build_gt_graph_from_obo(raw_contents)
-
-        root_namespace = request.form.get("root", None)
-        if root_namespace is not None:
-            root_id, root_vertex = roots.get(root_namespace, (None, None))
-            if root_vertex is not None:
-                G_gt = filter_graph_by_root(G_gt, root_vertex)
-
-        return G_gt, root_id, godag
-
-    elif ext == "json":
-        G_gt = _build_graph_from_json_contents(raw_contents)
-        return G_gt, None, None
-
-    elif ext == "txt":  # maybe we should get rid of this format?
-        G_gt = build_graph_from_txt(raw_contents)
-        return G_gt, None, None
-
-    raise ValueError(f"Unsupported file type: {ext}")
-
-
 def build_reponse_json_string_for_make_graph_structure_req(
-    G_gt: gt.Graph, canvas_positions: List[Tuple[float, float]]
+    G_gt: gt.Graph, canvas_positions: list[tuple[float, float]]
 ) -> Tuple[List[int], List[int]]:
     transformed_canvas_positions = [0 for _ in range(0, 2 * len(canvas_positions))]
     for i in range(0, len(canvas_positions)):
@@ -184,14 +90,23 @@ def get_node_index(graph_uuid: str, node_name: str):
     """
     Returns the index of the node with the given name in the specified graph.
     """
-    logger.info(f"Received call on endpoint /node_index/<graph_uuid={graph_uuid}>/<node_id={node_id}>")
-    
+    logger.info(
+        f"Received call on endpoint /node_index/<graph_uuid={graph_uuid}>/<node_name={node_name}>"
+    )
+
     try:
         graph_info = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
     except RuntimeError as e:
         print(f"Node data acquisition error: {e}")
         return jsonify({}), 404
 
+    G_gt: gt.Graph = graph_info["graph"]
+    name_prop = G_gt.vertex_properties.get("name")
+
+    if name_prop is None:
+        return jsonify({"error": "Graph has no 'name' vertex property"}), 400
+
+    for v in G_gt.vertices():
         if str(name_prop[v]).lower() == node_name.lower():
             return jsonify({"index": int(v)}), 200
 
@@ -211,7 +126,7 @@ def flask_make_graph_structure():
     graph_uuid: str = None
 
     try:
-        G_gt, root_id, godag = _load_graph_from_uploaded_file(
+        G_gt, root_id, godag = load_graph_from_uploaded_file(
             file
         )  # it works for all supported types, not only OBO (root_id and godag may be None)
     except ValueError as e:
@@ -239,6 +154,7 @@ def flask_make_graph_structure():
     )
 
     print(f"New graph uuid: {graph_uuid}")
+    logger.info(f"Computed layout for {file.filename}, as well as generated new uuid for it, which is as follows {graph_uuid}")
 
     return (
         jsonify(
@@ -431,7 +347,7 @@ def _build_graph_from_graph_data(graph_data: Dict[str, Any]) -> Dict[str, Any]:
     Builds the response dict for loading a graph from the database, given the graph data dict
     as stored in the database.
     """
-    G_gt = _build_gt_graph_from_graph_dict(graph_data)
+    G_gt = build_gt_graph_from_graph_dict(graph_data)
     n = graph_data["num_of_vertices"]
     vertices_data = graph_data["vertices"]
 
@@ -498,18 +414,54 @@ def redirect_to_front(graph_hash: str):
     return redirect(f"{frontend_url}/?g={graph_hash}", code=302)
 
 
-@app.route("/export_graph/<string:graph_hash>", methods=["GET"])
-def export_graph(graph_hash: str):
-    graph_data = db_manager.fetch_data(graph_hash)
-    if graph_data is None:
-        return jsonify({"error": "No graph with such hash kept in the database"}), 404
+@app.route("/export_graph/<string:graph_uuid>", methods=["GET"])
+def export_graph(graph_uuid: str):
+    try:
+        graph_info = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
+    except RuntimeError:
+        return jsonify({"error": "Graph not found"}), 404
 
-    graph_data.pop("_id", None)
+    G_gt: gt.Graph = graph_info["graph"]
+    name: str = graph_info.get("name", f"graph_{graph_uuid}")
+    layout_linearized = graph_info.get("layout", None)
 
-    if "last_entry_update" in graph_data:
-        graph_data["last_entry_update"] = graph_data["last_entry_update"].isoformat()
+    n = G_gt.num_vertices()
 
-    return jsonify(graph_data), 200
+    positions: List[Tuple[float, float]] = []
+    if layout_linearized is not None and len(layout_linearized) == 2 * n:
+        for i in range(n):
+            positions.append(
+                (layout_linearized[2 * i], layout_linearized[2 * i + 1])
+            )
+    else:
+        positions = [(0.0, 0.0) for _ in range(n)]
+
+    all_vertex_properties = list(G_gt.vertex_properties.keys())
+
+    vertices: List[Dict[str, Any]] = []
+    for i, v in enumerate(G_gt.vertices()):
+        entry: Dict[str, Any] = {
+            "index": i,
+            "N": [int(w) for w in G_gt.get_out_neighbors(v)],
+            "pos": [positions[i][0], positions[i][1]],
+        }
+
+        for p in all_vertex_properties:
+            val = G_gt.vertex_properties[p][v]
+            if val == EMPTY_PROPERTY_FIELD:
+                continue
+            entry[p] = convert_to_json_parsable_representation(val)
+
+        vertices.append(entry)
+
+    export_payload: Dict[str, Any] = {
+        "name": name,
+        "num_of_vertices": int(n),
+        "last_entry_update": datetime.utcnow().isoformat(),
+        "vertices": vertices,
+    }
+
+    return jsonify(export_payload), 200
 
 
 @app.route("/load_graph_from_file", methods=["POST"])

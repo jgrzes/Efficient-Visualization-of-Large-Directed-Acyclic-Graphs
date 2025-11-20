@@ -239,28 +239,35 @@ const MainAppContext: React.FC = () => {
 
   /** EXPORT **/
   const handleExportClick = async () => {
-    if (!currentGraphHash) {
-      alert('This graph has not been saved to the backend yet.');
+    if (!currentGraphUUID) {
+      alert('No graph loaded, cannot export.');
       return;
     }
-
-    const res = await fetch(`${API_BASE}/export_graph/${currentGraphHash}`);
-    if (!res.ok) {
-      alert('Failed to export graph from backend.');
-      return;
-    }
-    const data = await res.json();
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json',
-    });
 
     try {
+      const res = await fetch(`${API_BASE}/export_graph/${currentGraphUUID}`);
+      if (!res.ok) {
+        console.error('Export failed, status:', res.status);
+        alert('Failed to export graph from backend.');
+        return;
+      }
+
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json',
+      });
+
       const filename = 'graph-data.json';
 
       if ((window as any).showSaveFilePicker) {
         const opts = {
           suggestedName: filename,
-          types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
+          types: [
+            {
+              description: 'JSON Files',
+              accept: { 'application/json': ['.json'] },
+            },
+          ],
         };
         const handle = await (window as any).showSaveFilePicker(opts);
         const writable = await handle.createWritable();
