@@ -1,0 +1,124 @@
+#include "algorithm_params_creation.hpp"
+
+namespace algorithms {
+
+#define SIGNUM_EPS 1e-6
+#define _signum(_x) ((std::abs(_x) < SIGNUM_EPS) ? 0 : (_x > 0 ? 1 : -1))
+
+GraphColourer::AlgorithmParams createDefaultGraphColourerAlgParams() {
+    return GraphColourer::AlgorithmParams(
+        [dEdgesThresholdCoeff = 1.8](uint32_t level, uint32_t cumDisputableEdgesAtLevel, uint32_t cumVerticesAtLevel) -> bool {
+            return level >= 2 && (cumDisputableEdgesAtLevel * dEdgesThresholdCoeff) > cumVerticesAtLevel;
+        }, 
+        [](uint32_t level, uint32_t commonVerticesCount) -> bool {
+            return commonVerticesCount >= 3;
+        }
+    );
+}
+
+
+LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
+    LayoutDrawer::AlgorithmParams layoutAlgorithmParams;
+    
+    layoutAlgorithmParams.FInterspringCalculator = [
+        w1XInterspring = 0.25, w2XInterspring = 1, 
+        w1YInterspring = 0.25, w2YInterspring = 1, 
+        w3YInterspring = 1, w4YInterspring = 1
+    ](uint32_t uColour, uint32_t uLevel, uint32_t vColour, uint32_t vLevel) -> std::pair<double, double> {
+        int64_t a = static_cast<int64_t>(uColour) - static_cast<int64_t>(vColour);
+        uint32_t b = std::abs(a);
+        int64_t c = static_cast<int64_t>(uLevel) - static_cast<int64_t>(vLevel);
+        return {
+            w1XInterspring * static_cast<double>(std::pow(b, w2XInterspring)) * _signum(-a), 
+            w1YInterspring * static_cast<double>(std::pow(b, w2YInterspring)) * w3YInterspring * static_cast<double>(std::pow(std::abs(c), w4YInterspring)) * _signum(c)
+        };
+    };
+    
+    layoutAlgorithmParams.FInterspringPushUpwardsValueCalculator = [](auto p) -> std::pair<double, double> {
+        return {p.first * 0.75, 0};
+    };
+
+    layoutAlgorithmParams.epsilonForColourRootCalculator = [boxWidthCoeff = 1.75](uint32_t maxWidth) -> double {
+        return static_cast<double>(maxWidth) * boxWidthCoeff;
+    };
+
+    layoutAlgorithmParams.maxVertexCountFromEpsilonCalculator = [inverseBoxWidthCoeff = 1.0 / 1.75](double epsilon) -> uint32_t {
+        return static_cast<uint32_t>(epsilon * inverseBoxWidthCoeff);
+    };
+
+    layoutAlgorithmParams.firstLevelChildPadding = 2.5;
+    layoutAlgorithmParams.gAcceleration = 9.81;
+    layoutAlgorithmParams.baseVerexWeight = 1.0;
+    layoutAlgorithmParams.addWeightFromChildrenCoeff = 0.04;
+    layoutAlgorithmParams.kInitialLayoutCoeff = 1.8;
+
+    layoutAlgorithmParams.sCoeff = 1.05; 
+    layoutAlgorithmParams.defaultAlphaP = 0.5;
+    layoutAlgorithmParams.defaultBetaP = 1.5;
+    layoutAlgorithmParams.marginPadding = 0.1;
+    layoutAlgorithmParams.pullUpCoeff = 0.1;
+
+    layoutAlgorithmParams.springFCalculator = [
+        springFEps = 1e-6
+    ](std::pair<double, double> d) -> std::pair<double, double> {
+        static const double c1s = 0.0075;
+        static const double c2s = 0.1;
+
+        auto [dx, dy] = d;
+        double signumDx = (std::abs(dx) < springFEps)
+            ? 0
+            : ((dx > 0) ? 1 : -1);
+        double signumDy = (std::abs(dy) < springFEps)
+            ? 0
+            : ((dy > 0) ? 1 : -1);    
+
+        dx = std::abs(dx);
+        dy = std::abs(dy);
+        auto dLength = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
+        if (dLength < springFEps) return {0, 0};
+        auto sinAlpha = dy / dLength;
+        auto cosAlpha = dx / dLength;
+        return {
+            signumDx * cosAlpha * c1s * std::log(std::max(1.0, dLength/c2s)), 
+            signumDy * sinAlpha * c1s * std::log(std::max(1.0, dLength/c2s))
+        };
+    };
+
+    layoutAlgorithmParams.repulsionFCalculator = [
+        repulsionFEps = 1e-6
+    ](std::pair<double, double> d, bool areAdj) -> std::pair<double, double> {
+        static const double cr = 1.2;
+        static const double crAdj = 0.7;
+
+        auto [dx, dy] = d;
+        double signumDx = (std::abs(dx) < repulsionFEps)
+            ? 0
+            : ((dx > 0) ? 1 : -1);
+        double signumDy = (std::abs(dy) < repulsionFEps)
+            ? 0
+            : ((dy > 0) ? 1 : -1);    
+
+        dx = std::abs(dx);
+        dy = std::abs(dy);
+        auto dLength = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
+        if (dLength < repulsionFEps) return {0, 0};
+        auto sinAlpha = dy / dLength;
+        auto cosAlpha = dx / dLength;
+        return {
+            signumDx * cosAlpha * (areAdj ? crAdj : cr) / (std::pow(dLength, 2)), 
+            signumDy * sinAlpha * (areAdj ? crAdj : cr) / (std::pow(dLength, 2))
+        };
+    };
+
+    layoutAlgorithmParams.maxRadiusOfRepulsionField = 6;
+    layoutAlgorithmParams.fineTuningForceMoveCoeff = 0.1;
+    layoutAlgorithmParams.minBoxWidthForUncoloured = 40;
+    layoutAlgorithmParams.yDistanceBetweenUncolouredLevels = 4;
+
+    return layoutAlgorithmParams;
+}
+
+#undef SIGNUM_EPS
+#undef _signum
+
+}

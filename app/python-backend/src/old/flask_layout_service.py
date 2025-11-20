@@ -1,6 +1,7 @@
 import json
 import os
 from typing import Any, List, Optional, Tuple, Dict
+import logging
 
 import graph_tool as gt
 from database_manager import MongoDatabaseManager
@@ -29,6 +30,8 @@ temp_graph_data_storage: GraphDataStorage = None
 db_manager: MongoDatabaseManager = None
 
 EMPTY_PROPERTY_FIELD = "$N/A$"
+
+logger: logging.Logger = None
 
 
 def _build_gt_graph_from_graph_dict(graph_data: Dict[str, Any]) -> gt.Graph:
@@ -146,6 +149,7 @@ def build_reponse_json_string_for_make_graph_structure_req(
 
 @app.route("/node/<string:graph_uuid>/<int:node_id>", methods=["GET"])
 def get_node_information(graph_uuid: str, node_id: int):
+    logger.info(f"Received call on endpoint /node/<graph_uuid={graph_uuid}>/<node_id={node_id}>.")
     try:
         graph_info = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
     except RuntimeError as e:
@@ -166,6 +170,11 @@ def get_node_information(graph_uuid: str, node_id: int):
             m[p] = parsed_val
         except (json.JSONDecodeError, TypeError):
             m[p] = convert_to_json_parsable_representation(val)
+            
+    logger.info(
+        f"Data returned on endpoint call /node/<graph_uuid={graph_uuid}>/<node_id={node_id}>: "
+        + str(m)
+    )
 
     return jsonify(m), 200
 
@@ -175,18 +184,14 @@ def get_node_index(graph_uuid: str, node_name: str):
     """
     Returns the index of the node with the given name in the specified graph.
     """
+    logger.info(f"Received call on endpoint /node_index/<graph_uuid={graph_uuid}>/<node_id={node_id}>")
+    
     try:
         graph_info = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
     except RuntimeError as e:
         print(f"Node data acquisition error: {e}")
         return jsonify({}), 404
 
-    G_gt = graph_info["graph"]
-    name_prop = G_gt.vertex_properties.get("name")
-    if name_prop is None:
-        return jsonify({}), 404
-
-    for v in G_gt.vertices():
         if str(name_prop[v]).lower() == node_name.lower():
             return jsonify({"index": int(v)}), 200
 
@@ -250,7 +255,8 @@ def flask_make_graph_structure():
 # TODO: Weird endpoint name
 @app.route("/analyze_graph/<string:graph_uuid>", methods=["POST"])
 def analyze_graph(graph_uuid: str):
-    G_gt: Optional[gt.Graph] = None
+    logger.info(f"Received request on endpoint /analyze_graph/<graph_uuid={graph_uuid}>")
+    G_gt: gt.Graph = None
     try:
         graph_data = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
         G_gt = graph_data["graph"]
@@ -258,9 +264,11 @@ def analyze_graph(graph_uuid: str):
         return jsonify({"error": "Graph not found"}), 404
 
     hierarchy_levels = compute_hierarchy_levels(G_gt)
+    logger.info(f"Successfully analyzed graph with uuid as follows: {graph_uuid} (WTFM)")
     return jsonify({"hierarchy_levels": hierarchy_levels}), 200
 
 
+# TODO: Merge with @tmsyda's solution and make it support any set of properties, not just this narrow set
 @app.route("/search_node/<string:graph_uuid>", methods=["POST"])
 def search_node(graph_uuid: str):
     """
@@ -275,6 +283,8 @@ def search_node(graph_uuid: str):
       - node_index
       - all vertex properties (JSON-friendly), excluding EMPTY_PROPERTY_FIELD.
     """
+    logger.info(f"Received call on endpoint /search_node/<graph_uuid={graph_uuid}>")
+    G_gt: gt.Graph = None 
     try:
         graph_data = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
         G_gt: gt.Graph = graph_data["graph"]
@@ -334,12 +344,14 @@ def search_node(graph_uuid: str):
     if not results:
         return jsonify({"error": "No matching nodes found"}), 404
 
-    return jsonify(results), 200
+    logger.info(f"Successful node search for graph with uuid as follows: {graph_uuid}")
+    return jsonify(results)
 
 
 @app.route("/save_graph/<string:graph_uuid>", methods=["POST"])
 def save_graph_to_db(graph_uuid: str):
-    graph_data: Optional[Dict[str, Any]] = None
+    logger.info(f"Received call on endpoint /save_graph/<graph_uuid={graph_uuid}>")
+    graph_data: Dict[str, Any] = None 
     try:
         graph_data = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
     except RuntimeError:
@@ -525,6 +537,7 @@ def load_graph_from_file():
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger(__name__)
     temp_graph_data_storage = GraphDataStorage()
     db_manager = MongoDatabaseManager(MONGO_ACCESS_KEY, MONGO_DB_NAME)
     app.run(host=SERVICE_IP_ADDRESS, port=SERVICE_PORT)

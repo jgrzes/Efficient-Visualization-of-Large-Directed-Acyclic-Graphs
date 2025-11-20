@@ -18,6 +18,10 @@ using trivial_severity_level = boost::log::trivial::severity_level;
 using console_sink_t = boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>;
 using file_sink_t = boost::log::sinks::synchronous_sink<boost::log::sinks::text_file_backend>;
 
+trivial_severity_level convertStrToTrivialSeverity(
+    const std::string& trivialSeverityLevelAsStr
+);
+
 void initLogging(
     const std::string& logFileDir, 
     trivial_severity_level consoleSeverityLevel, 
