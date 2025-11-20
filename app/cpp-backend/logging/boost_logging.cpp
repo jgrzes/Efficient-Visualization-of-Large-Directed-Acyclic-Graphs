@@ -14,6 +14,29 @@ std::mutex BoostLogger::s_instanceCreationMutex = std::mutex();
 
 namespace expr = boost::log::expressions;
 
+trivial_severity_level convertStrToTrivialSeverity(
+    const std::string& trivialSeverityLevelAsStr
+) {
+    if (trivialSeverityLevelAsStr == "trace") {
+        return trivial_severity_level::trace;
+    } else if (trivialSeverityLevelAsStr == "debug") {
+        return trivial_severity_level::debug;
+    } else if (trivialSeverityLevelAsStr == "info") {
+        return trivial_severity_level::info;
+    } else if (trivialSeverityLevelAsStr == "warning") {
+        return trivial_severity_level::warning;
+    } else if (trivialSeverityLevelAsStr == "error") {
+        return trivial_severity_level::error;
+    } else if (trivialSeverityLevelAsStr == "fatal") {
+        return trivial_severity_level::fatal;
+    }
+
+    throw std::runtime_error{
+        "Convert String to Trivial Severity Level error: unknown string conversion (cannot convert from "
+        + trivialSeverityLevelAsStr + ")"
+    };
+}
+
 BoostLogger::BoostLogger(
     const std::string& logFileDir,
     trivial_severity_level consoleSeverityLevel, 

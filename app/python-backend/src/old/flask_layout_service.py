@@ -5,6 +5,7 @@ from typing import Optional, List, Tuple, Any
 import os
 import graph_tool as gt
 import json
+import logging
 
 from graph_data_storage import GraphDataStorage
 from database_manager import MongoDatabaseManager
@@ -28,6 +29,8 @@ db_manager: MongoDatabaseManager = None
 
 EMPTY_PROPERTY_FIELD = "$N/A$"
 
+logger: logging.Logger = None
+
 
 def build_reponse_json_string_for_make_graph_structure_req(
     G_gt: gt.Graph, canvas_positions: list[tuple[float, float]]
@@ -49,6 +52,7 @@ def build_reponse_json_string_for_make_graph_structure_req(
 
 @app.route("/node/<string:graph_uuid>/<int:node_id>", methods=["GET"])
 def get_node_information(graph_uuid: str, node_id: int):
+    logger.info(f"Received call on endpoint /node/<graph_uuid={graph_uuid}>/<node_id={node_id}>.")
     try:
         graph_info = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
     except RuntimeError as e:
@@ -63,6 +67,10 @@ def get_node_information(graph_uuid: str, node_id: int):
         p: convert_to_json_parsable_representation(G_gt.vertex_properties[p][v])
         for p in all_vertex_properties if G_gt.vertex_properties[p][v] != EMPTY_PROPERTY_FIELD
     }
+    logger.info(
+        f"Data returned on endpoint call /node/<graph_uuid={graph_uuid}>/<node_id={node_id}>: "
+        + str(m)
+    )
 
     # for key, val in m.items():
     #     print(f"{key}: {val}, type={type(val)}")
@@ -72,17 +80,23 @@ def get_node_information(graph_uuid: str, node_id: int):
 
 @app.route("/node_index/<string:graph_uuid>/<int:node_id>", methods=["GET"])
 def get_node_index(graph_uuid: str, node_id: str):
+    logger.info(f"Received call on endpoint /node_index/<graph_uuid={graph_uuid}>/<node_id={node_id}>")
     try:
         graph_info = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
     except RuntimeError as e:
         print(f"Node data acquisition error: {e}")
         return jsonify({}), 404
     
+    # TODO: Optimize
     G_gt = graph_info["graph"]
     for v in G_gt.vertices():
         if G_gt.vertex_properties["id"] == node_id:
+            logger.info(
+                f"Data returned on endpoint /node_index/<graph_uuid={graph_uuid}>/<node_id={node_id}>: index={int(v)}"
+            )
             return jsonify({"index": int(v)}), 200
-    
+
+
     return jsonify({}), 404    
 
 
@@ -93,13 +107,19 @@ def flask_make_graph_structure():
 
     if file.filename == "":
         return jsonify({}), 400
-    
+    logger.info(
+        f"Received request to construct layout for a graph, filename of graph source file is as follows: {file.filename}"
+    )
+
     root_id, godag = None, None
     G_gt: Optional[gt.Graph] = None 
     graph_uuid: str = None
     try:
         ext = file.filename.split(".")[-1]
         if ext not in ALLOWED_FILE_FORMATS:
+            logger.error(
+                f"Received request for file named {file.filename}, unfortunately .{ext} is not a valid extension"
+            )
             return jsonify({}), 400
         
         if ext == "obo":
@@ -115,11 +135,19 @@ def flask_make_graph_structure():
     except Exception as e:    
         ... 
 
+    logger.debug(
+        f"Successfully extracted graph from {file.filename} and created a graph tool object based on it"
+    )    
+
     if G_gt is not None:
         canvas_positions = make_graph_structure(G_gt)
         transformed_canvas_positions, links = build_reponse_json_string_for_make_graph_structure_req(
             G_gt=G_gt, canvas_positions=canvas_positions
         )    
+
+        logger.debug(
+            f"Computed layout for {file.filename}, waiting for graph uuid generation..."
+        )
 
         graph_uuid = temp_graph_data_storage.register_new_graph_data({
             "name": file.filename,
@@ -129,16 +157,25 @@ def flask_make_graph_structure():
             "layout": transformed_canvas_positions
         })    
 
-        print(f"New graph uuid: {graph_uuid}")
+        logger.info(
+            f"Computed layout for {file.filename}, as well as generated new uuid for it, which is as follows {graph_uuid}"
+        )
 
         return jsonify(
             {"uuid": graph_uuid, "canvas_positions": transformed_canvas_positions, "links": links}
         ), 200
+    
+    logger.error(
+        f"Failed to create layout for graph strored in file {file.filename}"    
+    ) 
+
+    return jsonify({"error": "Failed to create layout"}), 500
 
 
 # TODO: Weird endpoint name
 @app.route("/analyze_graph/<string:graph_uuid>", methods=["POST"])
 def analyze_graph(graph_uuid: str):
+    logger.info(f"Received request on endpoint /analyze_graph/<graph_uuid={graph_uuid}>")
     G_gt: gt.Graph = None
     try:
         graph_data = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
@@ -147,11 +184,14 @@ def analyze_graph(graph_uuid: str):
         ...
 
     hierarchy_levels = compute_hierarchy_levels(G_gt)
+    logger.info(f"Successfully analyzed graph with uuid as follows: {graph_uuid} (WTFM)")
     return jsonify({"hierarchy_levels": hierarchy_levels}), 200
 
 
+# TODO: Merge with @tmsyda's solution and make it support any set of properties, not just this narrow set
 @app.route("/search_node/<string:graph_uuid>", methods=["POST"])
 def search_node(graph_uuid: str):
+    logger.info(f"Received call on endpoint /search_node/<graph_uuid={graph_uuid}>")
     G_gt: gt.Graph = None 
     try:
         graph_data = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
@@ -219,11 +259,13 @@ def search_node(graph_uuid: str):
     if not results:
         return jsonify({"message": "No matching nodes found"}), 404
 
+    logger.info(f"Successful node search for graph with uuid as follows: {graph_uuid}")
     return jsonify(results)
 
 
 @app.route("/save_graph/<string:graph_uuid>", methods=["POST"])
 def save_graph_to_db(graph_uuid: str):
+    logger.info(f"Received call on endpoint /save_graph/<graph_uuid={graph_uuid}>")
     graph_data: Dict[str, Any] = None 
     try:
         graph_data = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
@@ -378,6 +420,7 @@ def redirect_to_front(graph_hash: str):
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger(__name__)
     temp_graph_data_storage = GraphDataStorage()
     db_manager = MongoDatabaseManager(MONGO_ACCESS_KEY, MONGO_DB_NAME)
     app.run(host=SERVICE_IP_ADDRESS, port=SERVICE_PORT)

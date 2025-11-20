@@ -129,11 +129,6 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
 
     m_epsilonsForVertices = SparseArray<double>(n, defaultEpsilon);
     findEpsilonsForColourRoots();
-    
-    // for (uint32_t colourRootIndex : verticesWithCustomEpsilons) {
-        // epsilonsForVertices[colourRootIndex] = findMaxWidthForColourSubgraphNotNested(colourRootIndex);
-        // auto& colourNode = m_colourNodesPtrs[graph.getVertexColour(colourRootIndex)];
-    // }
 
     // Layout positions vector initialization
     n = graph.getVertexCount();
@@ -191,6 +186,11 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
         lastLevelWithNoColoured = i;
     }
 
+    logging::log_trace(
+        "Computing layout for uncoloured part of the graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "..."
+    );
     // std::cout << "Last level with no coloured: " << lastLevelWithNoColoured << "\n";
     if (lastLevelWithNoColoured == n-1) {
         findLayoutForColouredSubgraph(
@@ -203,6 +203,12 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
         verticesPerLevel, lastLevelWithNoColoured, 
         {leftBoxBoudForUncoloured, rightBoxBoundForUncoloured}
     );
+    logging::log_info(
+        "Concluded computing layout for uncoloured part of the graph"
+        + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "..."
+    );
+
     return m_layoutPositions;
 }
 
@@ -510,12 +516,27 @@ void LayoutDrawer::findLayoutForColouredSubgraph(
             verticesPerLevelForColour
         ).getNestedArrayView(0)[0]
     );
-    std::cout << "[CR]: " << startingPositionForColourRoot.first << ", " << startingPositionForColourRoot.second << "\n";
-    std::cout << "[CR] Box bounds: " << boxBounds.first << ", " << boxBounds.second << "\n";
+    // std::cout << "[CR]: " << startingPositionForColourRoot.first << ", " << startingPositionForColourRoot.second << "\n";
+    // std::cout << "[CR] Box bounds: " << boxBounds.first << ", " << boxBounds.second << "\n";
+
+    logging::log_debug(
+        "Finding layout for coloured subgraph (colour = " + std::to_string(colour)
+        + " in graph" + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + ", starting position for colour root = (" + std::to_string(startingPositionForColourRoot.first) 
+        + ", " + std::to_string(startingPositionForColourRoot.second) + "), box bounds along x axis: ("
+        + std::to_string(boxBounds.first) + ", " + std::to_string(boxBounds.second) + ")..."
+    );
+
     double largestYCoord = findInitialLayoutForColouredSubgraph(
         const_cast<ArrayOfArraysInterface<uint32_t>&>(verticesPerLevelForColour), 
         startingPositionForColourRoot, boxBounds
     ); 
+
+    logging::log_trace(
+        "Found initial layout for subgraph (colour = " + std::to_string(colour)
+        + " for graph" + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "."
+    );
 
     // TODO: Implement force directed tuning
     // Pad the height if needed just to be extra safe.
@@ -542,6 +563,12 @@ void LayoutDrawer::findLayoutForColouredSubgraph(
 
     uint32_t iter = 0;
     // TODO: Remember to find better logic for end condition in fine tuning
+
+    logging::log_trace(
+        "Found initial layout for subgraph (colour = " + std::to_string(colour)
+        + " for graph" + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "."
+    );
 
     size_t n = verticesPerLevelForColour.getNumberOfNestedArrays();
     std::vector<ArrayOfArraysInterface<uint32_t>::NestedArrayView> verticesLevelArrayViews;
@@ -573,6 +600,12 @@ void LayoutDrawer::findLayoutForColouredSubgraph(
             grid.emplaceNewElement(uIndex, m_layoutPositions[uIndex]);
         }
     }
+
+    logging::log_trace(
+        "Entering fine tuning layout computation stage for subgraph (colour = " + std::to_string(colour)
+        + " for graph" + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "..."
+    );
 
     while (!checkIfFineTuningStageEndConditionMet(iter)) {
         // std::cout << "Iter " << iter << " of fine tuning...\n";
@@ -643,6 +676,11 @@ void LayoutDrawer::findLayoutForColouredSubgraph(
         ++iter;
     }
 
+    logging::log_debug(
+        "Concluded fine tuning layout computation stage for subgraph (colour = " + std::to_string(colour)
+        + " for graph" + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
+        + "."
+    );
 }
 
 
@@ -678,7 +716,6 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
     
     double largestYCoord = startingPositionForColourRoot.second;
     m_layoutPositions[Vk[0]] = startingPositionForColourRoot;
-    // std::cout << "[Colour Root] position for " << Vk[0] << ": (" << m_layoutPositions[Vk[0]].first << ", " << m_layoutPositions[Vk[0]].second << ")\n";
 
     // TODO: Consider if should trim trailing zero levels
     // (probably not really because that is already taken care of elsewhere).

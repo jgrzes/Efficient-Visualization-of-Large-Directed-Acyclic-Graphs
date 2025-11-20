@@ -1,5 +1,6 @@
 target_sources(
     EGVB PRIVATE 
+    algorithm_params_creation.cpp algorithm_params_creation.hpp 
     Graph_Colourer.cpp Graph_Colourer.h
     Layout_Drawer.cpp Layout_Drawer.h
 )
