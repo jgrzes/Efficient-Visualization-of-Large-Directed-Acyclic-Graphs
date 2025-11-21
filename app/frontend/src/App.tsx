@@ -109,8 +109,8 @@ const MainAppContext: React.FC = () => {
 
         if (data.config) {
           setGraphConfig({
-            spaceSize: data.config.space_size || 1000,
-            pointSize: data.config.point_size || 5
+            spaceSize: data.config.space_size || 256,
+            pointSize: data.config.point_size || 1
           });
         } else {
           setGraphConfig(null);
@@ -130,7 +130,7 @@ const MainAppContext: React.FC = () => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch(`${API_BASE}/load_graph_from_file`, {
+      const res = await fetch(`${API_BASE}/load_graph_from_json`, {
         method: 'POST',
         body: formData,
       });
@@ -426,8 +426,8 @@ const MainAppContext: React.FC = () => {
 
       if (data.config) {
         setGraphConfig({
-          spaceSize: data.config.space_size || 1000,
-          pointSize: data.config.point_size || 5
+          spaceSize: data.config.space_size || 256,
+          pointSize: data.config.point_size || 1
         });
       }
 

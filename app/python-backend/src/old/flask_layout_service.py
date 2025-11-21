@@ -371,10 +371,8 @@ def _build_graph_from_graph_data(graph_data: Dict[str, Any]) -> Dict[str, Any]:
         "layout": linearized_canvas_positions,
     }
     
-    if "point_size" in graph_data:
-        payload["point_size"] = graph_data["point_size"]
-    if "space_size" in graph_data:
-        payload["space_size"] = graph_data["space_size"]
+    payload["point_size"] = graph_data.get("point_size", 1)
+    payload["space_size"] = graph_data.get("space_size", 256)
 
     config_keys = [
         key
@@ -466,19 +464,14 @@ def export_graph(graph_uuid: str):
         "vertices": vertices,
     }
 
-    point_size = graph_info.get("point_size")
-    space_size = graph_info.get("space_size")
-
-    if point_size is not None:
-        export_payload["point_size"] = point_size
-    if space_size is not None:
-        export_payload["space_size"] = space_size
+    export_payload["point_size"] = graph_info.get("point_size", 1)
+    export_payload["space_size"] = graph_info.get("space_size", 256)
 
     return jsonify(export_payload), 200
 
 
-@app.route("/load_graph_from_file", methods=["POST"])
-def load_graph_from_file():
+@app.route("/load_graph_from_json", methods=["POST"])
+def load_graph_from_json():
     file = request.files.get("file")
     if file is None or file.filename == "":
         return jsonify({"error": "No file provided"}), 400
