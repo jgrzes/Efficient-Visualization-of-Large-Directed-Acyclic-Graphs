@@ -357,15 +357,24 @@ def _build_graph_from_graph_data(graph_data: Dict[str, Any]) -> Dict[str, Any]:
             linearized_links.append(v)
             linearized_links.append(w)
 
-    graph_uuid = temp_graph_data_storage.register_new_graph_data(
-        {
-            "name": graph_data["name"],
-            "graph": G_gt,
-            "root_id": None,
-            "godag": None,
-            "layout": [tuple(vertices_data[i]["pos"]) for i in range(n)],
-        }
-    )
+    linearized_canvas_positions: List[float] = [0.0 for _ in range(2 * n)]
+    for i in range(n):
+        x, y = vertices_data[i]["pos"]
+        linearized_canvas_positions[2 * i] = x
+        linearized_canvas_positions[2 * i + 1] = y
+
+    payload = {
+        "name": graph_data["name"],
+        "graph": G_gt,
+        "root_id": None,
+        "godag": None,
+        "layout": linearized_canvas_positions,
+    }
+    
+    if "point_size" in graph_data:
+        payload["point_size"] = graph_data["point_size"]
+    if "space_size" in graph_data:
+        payload["space_size"] = graph_data["space_size"]
 
     config_keys = [
         key
@@ -375,10 +384,7 @@ def _build_graph_from_graph_data(graph_data: Dict[str, Any]) -> Dict[str, Any]:
     ]
     config = {key: graph_data[key] for key in config_keys}
 
-    linearized_canvas_positions: List[float] = [None for _ in range(2 * n)]
-    for i in range(n):
-        linearized_canvas_positions[2 * i] = vertices_data[i]["pos"][0]
-        linearized_canvas_positions[2 * i + 1] = vertices_data[i]["pos"][1]
+    graph_uuid = temp_graph_data_storage.register_new_graph_data(payload)
 
     return {
         "uuid": graph_uuid,
@@ -459,6 +465,14 @@ def export_graph(graph_uuid: str):
         "last_entry_update": datetime.utcnow().isoformat(),
         "vertices": vertices,
     }
+
+    point_size = graph_info.get("point_size")
+    space_size = graph_info.get("space_size")
+
+    if point_size is not None:
+        export_payload["point_size"] = point_size
+    if space_size is not None:
+        export_payload["space_size"] = space_size
 
     return jsonify(export_payload), 200
 
