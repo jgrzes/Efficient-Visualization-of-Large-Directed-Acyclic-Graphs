@@ -82,8 +82,8 @@ export function useGraph(
 
       next.push({
         index: idx,
-        x: rect.left + sx,
-        y: rect.top + sy - 15,
+        x: rect.left + sx - 30,
+        y: rect.top + sy - 30,
         content: namesCacheRef.current.get(idx) ?? `Node ${idx}`,
       });
     });
