@@ -271,9 +271,6 @@ export function useGraph(
 
       console.log("Node info json: \n" + JSON.stringify(data, null, 2));
 
-      const filteredData = Object.fromEntries(
-        Object.entries(data).filter(([_, value]) => value !== null && value !== undefined && value !== '')
-      );
       // setSelectedNode(filteredData);
 
       selectedIndexRef.current = index;
