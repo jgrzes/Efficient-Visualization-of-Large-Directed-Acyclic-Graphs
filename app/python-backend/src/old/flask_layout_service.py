@@ -186,18 +186,7 @@ def analyze_graph(graph_uuid: str):
 # TODO: Merge with @tmsyda's solution and make it support any set of properties, not just this narrow set
 @app.route("/search_node/<string:graph_uuid>", methods=["POST"])
 def search_node(graph_uuid: str):
-    """
-    Searches for nodes in the graph based on a specified field and query.
-    Expects a JSON payload with 'field' and 'query'.
-
-    field:
-      - "all"  -> search across all vertex properties
-      - "<prop_name>" -> search only in that property
-
-    Returns a list of matching nodes with:
-      - node_index
-      - all vertex properties (JSON-friendly), excluding EMPTY_PROPERTY_FIELD.
-    """
+    """Search nodes by field(s) and query string(s)."""
     logger.info(f"Received call on endpoint /search_node/<graph_uuid={graph_uuid}>")
     G_gt: gt.Graph = None 
     try:
@@ -206,60 +195,111 @@ def search_node(graph_uuid: str):
     except RuntimeError:
         return jsonify({"error": "Graph not found"}), 404
 
-    data = request.get_json()
+    data = request.get_json() or {}
+
+    match_case = bool(data.get("matchCase", False))
+    match_words = bool(data.get("matchWords", False))
+
+    filters = data.get("filters")
     field = data.get("field")
     query = data.get("query")
-    if not field or not query:
-        return jsonify({"error": "Missing field and/or missing query"}), 400
 
-    query = str(query).lower()
-    all_props = G_gt.vertex_properties
+    prop_map = {
+        "id": G_gt.vertex_properties["id"],
+        "name": G_gt.vertex_properties["name"],
+        "namespace": G_gt.vertex_properties["namespace"],
+        "def": G_gt.vertex_properties["def"],
+        "synonym": G_gt.vertex_properties["synonym"],
+        "is_a": G_gt.vertex_properties["is_a"],
+    }
 
-    if field != "all" and field not in all_props:
-        return jsonify({"error": f"Invalid field: {field}"}), 400
+    # Helper functions
+    def string_matches(text: str, q: str) -> bool:
+        if not match_case:
+            text_cmp = text.lower()
+            query_cmp = q.lower()
+        else:
+            text_cmp = text
+            query_cmp = q
 
-    def matches(value: Any) -> bool:
-        if isinstance(value, (list, tuple, set)):
-            return any(query in str(item).lower() for item in value)
-        return query in str(value).lower()
+        if match_words:
+            pattern = r"\b{}\b".format(re.escape(query_cmp))
+            return re.search(pattern, text_cmp) is not None
+        else:
+            return query_cmp in text_cmp
 
-    results: List[Dict[str, Any]] = []
+    def value_matches(value, q: str) -> bool:
+        if isinstance(value, (list, tuple)):
+            return any(string_matches(str(item), q) for item in value)
+        else:
+            return string_matches(str(value), q)
+
+    normalized_filters: list[tuple[Optional[str], str]] = []
+
+    if filters and isinstance(filters, list):
+        for f in filters:
+            raw_field = f.get("field")
+            raw_query = f.get("query")
+
+            if raw_query is None:
+                return jsonify({"error": "Each filter requires 'query'"}), 400
+
+            f_query = str(raw_query).strip()
+
+            # if field is None or empty after strip -> search all fields
+            if raw_field is None or not str(raw_field).strip():
+                f_field: Optional[str] = None
+            else:
+                f_field = str(raw_field).strip().lower()
+
+            normalized_filters.append((f_field, f_query))
+
+
+    results = []
 
     for v in G_gt.vertices():
-        match = False
+        vertex_ok = True
 
-        if field == "all":
-            for p in all_props.keys():
-                value = all_props[p][v]
-                if matches(value):
-                    match = True
+        for filt_field, filt_query in normalized_filters:
+            # None -> all fields
+            if filt_field is None:
+                matched_any = False
+                for prop_name, prop in prop_map.items():
+                    value = prop[v]
+                    if value_matches(value, filt_query):
+                        matched_any = True
+                        break
+                if not matched_any:
+                    vertex_ok = False
                     break
-        else:
-            value = all_props[field][v]
-            if matches(value):
-                match = True
+            else:
+                if filt_field not in prop_map:
+                    return jsonify({"error": f"Invalid field: {filt_field}"}), 400
 
-        if not match:
+                value = prop_map[filt_field][v]
+                if not value_matches(value, filt_query):
+                    vertex_ok = False
+                    break
+
+
+        if not vertex_ok:
             continue
 
-        node_entry: Dict[str, Any] = {"node_index": int(v)}
-
-        for p in all_props.keys():
-            val = all_props[p][v]
-            if val == EMPTY_PROPERTY_FIELD:
-                continue
-            try:
-                parsed_val = json.loads(val)
-                node_entry[p] = parsed_val
-            except (json.JSONDecodeError, TypeError):
-                node_entry[p] = convert_to_json_parsable_representation(val)
-
-        results.append(node_entry)
+        results.append(
+            {
+                "index": int(v),
+                "id": G_gt.vertex_properties["id"][v],
+                "name": G_gt.vertex_properties["name"][v],
+                "namespace": G_gt.vertex_properties["namespace"][v],
+                "def": G_gt.vertex_properties["def"][v].replace('"', ""),
+                "synonym": list(G_gt.vertex_properties["synonym"][v]) if G_gt.vertex_properties["synonym"][v] else [],
+                "is_a": list(G_gt.vertex_properties["is_a"][v]) if G_gt.vertex_properties["is_a"][v] else [],
+            }
+        )
 
     if not results:
         return jsonify({"error": "No matching nodes found"}), 404
 
-    logger.info(f"Successful node search for graph with uuid as follows: {graph_uuid}")
     return jsonify(results)
 
 

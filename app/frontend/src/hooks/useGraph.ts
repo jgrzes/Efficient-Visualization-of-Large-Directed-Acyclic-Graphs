@@ -1,18 +1,25 @@
-import { Dispatch, SetStateAction, useEffect, useRef, useContext, useCallback } from 'react';
-import { Graph, GraphConfigInterface } from '@cosmograph/cosmos';
-import { NodeInfoProps } from '../components/NodeInfo';
+import {
+  Dispatch,
+  SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+  useContext,
+  useCallback,
+} from "react";
+import { Graph, GraphConfigInterface } from "@cosmograph/cosmos";
+import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
 import { AppContext } from "../App"
-// import { Underline } from 'lucide-react';
 
-const API_BASE = 'http://localhost:30301';
+const API_BASE = "http://localhost:30301";
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Track mouse for tooltip positioning
-let mouseX = 0;
-let mouseY = 0;
-window.addEventListener('mousemove', (e) => {
-  mouseX = e.clientX;
-  mouseY = e.clientY;
-});
+type NodeTooltip = {
+  index: number;
+  x: number;
+  y: number;
+  content: string;
+};
 
 export function useGraph(
   graphRef: React.RefObject<HTMLDivElement | null>,
@@ -27,6 +34,21 @@ export function useGraph(
 ) {
   const graphInstance = useRef<Graph | null>(null);
   const linksRef = useRef<Float32Array>(links);
+
+  // currently selected index
+  const selectedIndexRef = useRef<number | null>(null);
+
+  // currently highlighted indices
+  const highlightedIndicesRef = useRef<number[]>([]);
+
+  // cache index -> name
+  const namesCacheRef = useRef<Map<number, string>>(new Map());
+
+  // tooltips state
+  const [tooltips, setTooltips] = useState<NodeTooltip[]>([]);
+
+  // highlight token cancelation
+  const highlightTokenRef = useRef(0);
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext?.currentGraphUUID;
@@ -49,7 +71,6 @@ export function useGraph(
 
   /** Fetch node info from backend **/
   const fetchNodeData = async (index: number) => {
-    // const iternalCurrentGraphUUID = appContext?.currentGraphUUID;
     const uuid = currentGraphUUIDRef.current;
     if (!uuid) throw new Error("No current graph uuid set");
     const response = await fetch(`${API_BASE}/node/${uuid}/${index}`);
@@ -59,49 +80,133 @@ export function useGraph(
     return responseJson;
   };
 
-  /** Highlight selected node and its relationships **/
+  /**
+    Recompute tooltip positions based on highlighted indices
+  **/
+  const recomputeTooltipsPositions = () => {
+    const g = graphInstance.current;
+    const el = graphRef.current;
+    const indices = highlightedIndicesRef.current;
+
+    if (!g || !el || indices.length === 0) return;
+
+    const positions = g.getPointPositions();
+    if (!positions || positions.length === 0) return;
+
+    const rect = el.getBoundingClientRect();
+    const next: NodeTooltip[] = [];
+
+    indices.forEach((idx) => {
+      const xSpace = positions[2 * idx];
+      const ySpace = positions[2 * idx + 1];
+
+      const [sx, sy] = g.spaceToScreenPosition([xSpace, ySpace]);
+
+      next.push({
+        index: idx,
+        x: rect.left + sx - 30,
+        y: rect.top + sy - 30,
+        content: namesCacheRef.current.get(idx) ?? `Node ${idx}`,
+      });
+    });
+
+    setTooltips(next);
+  };
+
+  /** Highlight selected node and its relationships + tooltipy **/
   const highlightNodes = (
-    selectedIndex: number,
+    selectedIndices: number[],
     pointCount: number,
-    linkCount: number
+    linkCount: number,
+    options?: {
+      colors?: {
+        defaultColor?: [number, number, number, number];
+        selectedColor?: [number, number, number, number];
+        childColor?: [number, number, number, number];
+        parentColor?: [number, number, number, number];
+        defaultLinkColor?: [number, number, number, number];
+        childLinkColor?: [number, number, number, number];
+        parentLinkColor?: [number, number, number, number];
+      };
+      linkWidths?: {
+        default?: number;
+        related?: number;
+      };
+      links?: number[];
+      zoom?: {
+        enabled?: boolean;
+        duration?: number;
+        scale?: number;
+      };
+    }
   ) => {
     const pointColors = new Float32Array(pointCount * 4);
     const linkColors = new Float32Array(linkCount * 4);
     const linkWidths = new Float32Array(linkCount);
 
-    const defaultColor = [0.8, 0.8, 0.8, 0.5];
-    const selectedColor = [0.15, 0.3, 0.9, 0.9];
-    const childColor = [0.2, 0.9, 0.2, 0.9];
-    const parentColor = [0.9, 0.2, 0.2, 0.9];
+    const defaultColor =
+      options?.colors?.defaultColor ??
+      ([0.8, 0.8, 0.8, 0.5] as [number, number, number, number]);
+    const providedAnyColors = !!options?.colors;
+
+    const useSelected = providedAnyColors ? !!options!.colors!.selectedColor : true;
+    const useChild = providedAnyColors ? !!options!.colors!.childColor : true;
+    const useParent = providedAnyColors ? !!options!.colors!.parentColor : true;
+
+    const selectedColor =
+      options?.colors?.selectedColor ??
+      ([0.15, 0.3, 0.9, 0.9] as [number, number, number, number]);
+    const childColor =
+      options?.colors?.childColor ??
+      ([0.2, 0.9, 0.2, 0.9] as [number, number, number, number]);
+    const parentColor =
+      options?.colors?.parentColor ??
+      ([0.9, 0.2, 0.2, 0.9] as [number, number, number, number]);
+
+    const defaultLinkColor = options?.colors?.defaultLinkColor ?? defaultColor;
+    const childLinkColor = options?.colors?.childLinkColor ?? childColor;
+    const parentLinkColor = options?.colors?.parentLinkColor ?? parentColor;
+
+    const defaultWidth = options?.linkWidths?.default ?? 1;
+    const relatedWidth = options?.linkWidths?.related ?? 3;
 
     const parents: number[] = [];
     const children: number[] = [];
 
-    for (let i = 0; i < linksRef.current.length; i += 2) {
-      const source = linksRef.current[i];
-      const target = linksRef.current[i + 1];
-      let color = defaultColor;
-      let width = 1;
+    const flatLinks = options?.links ?? linksRef.current;
+    const selectedSet = new Set<number>(selectedIndices);
 
-      if (target === selectedIndex) {
+    // link colors / widths
+    for (let i = 0; i < flatLinks.length; i += 2) {
+      const source = flatLinks[i];
+      const target = flatLinks[i + 1];
+      let color = defaultLinkColor;
+      let width = defaultWidth;
+
+      if (selectedSet.has(target)) {
         parents.push(source);
-        color = parentColor;
-        width = 3;
-      } else if (source === selectedIndex) {
+        if (useParent) {
+          color = parentLinkColor;
+          width = relatedWidth;
+        }
+      } else if (selectedSet.has(source)) {
         children.push(target);
-        color = childColor;
-        width = 3;
+        if (useChild) {
+          color = childLinkColor;
+          width = relatedWidth;
+        }
       }
 
       linkColors.set(color, i * 2);
       linkWidths[i / 2] = width;
     }
 
+    // point colors
     for (let i = 0; i < pointCount; i++) {
       let color = defaultColor;
-      if (i === selectedIndex) color = selectedColor;
-      else if (children.includes(i)) color = childColor;
-      else if (parents.includes(i)) color = parentColor;
+      if (selectedSet.has(i) && useSelected) color = selectedColor;
+      else if (children.includes(i) && useChild) color = childColor;
+      else if (parents.includes(i) && useParent) color = parentColor;
       pointColors.set(color, i * 4);
     }
 
@@ -111,63 +216,81 @@ export function useGraph(
     graph.setPointColors(pointColors);
     graph.setLinkColors(linkColors);
     graph.setLinkWidths(linkWidths);
-    graph.zoomToPointByIndex(selectedIndex, 700, 20);
+
+    const zoomEnabled = options?.zoom?.enabled ?? true;
+    const zoomDuration = options?.zoom?.duration ?? 700;
+    const zoomScale = options?.zoom?.scale ?? 30;
+
+    if (zoomEnabled && selectedIndices.length > 0) {
+      graph.zoomToPointByIndex(selectedIndices[0], zoomDuration, zoomScale);
+    }
+
     graph.render();
+
+    // indices to highlight
+    const indicesSet = new Set<number>([
+      ...selectedIndices,
+      ...parents,
+      ...children,
+    ]);
+    highlightedIndicesRef.current = Array.from(indicesSet);
+
+    // hide previous tooltips immediately
+    setTooltips([]);
+    const token = ++highlightTokenRef.current;
+
+    // after zoom - recalculate tooltip positions
+    void sleep(zoomEnabled ? zoomDuration : 0).then(() => {
+      if (token !== highlightTokenRef.current) return;
+      recomputeTooltipsPositions();
+    });
   };
 
   /** Select node by index and update UI **/
   const selectNodeByIndex = useCallback(async (index?: number) => {
     if (index === undefined) {
       setSelectedNode(null);
+      setTooltips([]);
+      selectedIndexRef.current = null;
+      highlightedIndicesRef.current = [];
       return;
     }
 
     try {
       const data = await fetchNodeData(index);
-      // setSelectedNode({
-      //   id: data.id,
-      //   name: data.name,
-      //   namespace: data.namespace,
-      //   def: data.def,
-      //   synonym: data.synonym,
-      //   is_a: data.is_a
-      // });
+
+      setSelectedNode({
+        index: data.index,
+        id: data.id,
+        name: data.name,
+        namespace: data.namespace,
+        def: data.def,
+        synonym: data.synonym,
+        is_a: data.is_a,
+      });
 
       console.log("Node info json: \n" + JSON.stringify(data, null, 2));
 
       const filteredData = Object.fromEntries(
         Object.entries(data).filter(([_, value]) => value !== null && value !== undefined && value !== '')
       );
-      setSelectedNode(filteredData);
+      // setSelectedNode(filteredData);
+
+      selectedIndexRef.current = index;
+      namesCacheRef.current.set(index, data.name);
 
       const pointCount =
         (graphInstance.current?.getPointPositions()?.length ?? 0) / 2;
-      highlightNodes(index, pointCount, linksRef.current.length / 2);
+
+      highlightNodes([index], pointCount, linksRef.current.length / 2);
     } catch (err) {
-      console.error('Node fetch error:', err);
+      console.error("Node fetch error:", err);
     }
   }, [fetchNodeData, setSelectedNode]);
-
-  /** Tooltip handling **/
-  const showTooltip = (name: string, def: string) => {
-    const tooltip = document.getElementById('tooltip');
-    if (!tooltip) return;
-    tooltip.innerHTML = `<strong>${name}</strong><br/><br/>${def}`;
-    tooltip.style.left = `${mouseX + 10}px`;
-    tooltip.style.top = `${mouseY + 10}px`;
-    tooltip.style.display = 'block';
-  };
-
-  const hideTooltip = () => {
-    const tooltip = document.getElementById('tooltip');
-    if (tooltip) tooltip.style.display = 'none';
-  };
 
   /** Initialize and clean up graph **/
   useEffect(() => {
     if (!graphRef.current) return;
-
-    let hoveredIndex: number | undefined;
 
     const config: GraphConfigInterface = {
       spaceSize: initialConfig?.spaceSize ?? 256,
@@ -176,7 +299,7 @@ export function useGraph(
       pointColor: [128, 128, 128, 255],
       pointGreyoutOpacity: 0.1,
       linkWidth: 0.8,
-      linkColor: '#a1a1a1',
+      linkColor: "#a1a1a1",
       linkArrows: true,
       curvedLinks: false,
       renderHoveredPointRing: false,
@@ -187,39 +310,26 @@ export function useGraph(
       simulationDecay: 0,
       onClick: selectNodeByIndex,
 
-      onPointMouseOver: async (index) => {
-        if (index === undefined) return;
-        hoveredIndex = index;
-        try {
-          const data = await fetchNodeData(index);
-          showTooltip(data.name, data.def);
-        } catch {
-          hideTooltip();
-        }
+      // tooltip recompute on zoom/drag
+      onZoom: () => {
+        recomputeTooltipsPositions();
       },
-
-      onPointMouseOut: () => {
-        hideTooltip();
-        hoveredIndex = undefined;
+      onZoomEnd: () => {
+        recomputeTooltipsPositions();
       },
-
-      onDrag: (event) => {
-        if (hoveredIndex === undefined || !event) return;
-        const tooltip = document.getElementById('tooltip');
-        if (!tooltip) return;
-        tooltip.style.left = `${event.sourceEvent.clientX + 10}px`;
-        tooltip.style.top = `${event.sourceEvent.clientY + 10}px`;
+      onDrag: () => {
+        recomputeTooltipsPositions();
       },
-
       onDragEnd: () => {
-        hoveredIndex = undefined;
-      }
+        recomputeTooltipsPositions();
+      },
     };
 
     graphInstance.current?.destroy?.();
     graphInstance.current = new Graph(graphRef.current, config);
 
     return () => {
+      highlightTokenRef.current++;
       graphInstance.current?.destroy?.();
       graphInstance.current = null;
     };
@@ -244,7 +354,15 @@ export function useGraph(
     g.setPointPositions(pointPositions);
     g.setLinks(links);
     g.render();
+
+    // after layout change - update tooltips
+    recomputeTooltipsPositions();
   }, [pointPositions, links]);
 
-  return { fitView, resetView, selectNodeByIndex };
+  return {
+    fitView,
+    resetView,
+    selectNodeByIndex,
+    tooltips,
+  };
 }

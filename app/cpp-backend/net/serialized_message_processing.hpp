@@ -18,7 +18,7 @@ using GraphBuildEntry = std::tuple<size_t, Graph::AdjList, bool>;
 uint16_t readGraphIdFromGraphMessageChunk(const std::string& graphMessageChunk);
 
 // Expects `graphMessageChunk` to be in following form:
-// `graph_id`=<number> `is_final`=<true|fals> `n`=<number> `E`={<n1>:[a1,b1,c1,d1,...] <n2>:[a2,b2,c2,d2,...] ...}
+// `graph_id`=<number> `is_final`=<true|false> `n`=<number> `E`={<n1>:[a1,b1,c1,d1,...] <n2>:[a2,b2,c2,d2,...] ...}
 void updateGraphBuildEntry(const std::string& graphMessageChunk, GraphBuildEntry& graphBuildEntry);
 
 // Returns chunks in following form:

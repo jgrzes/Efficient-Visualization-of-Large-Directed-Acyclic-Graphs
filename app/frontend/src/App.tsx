@@ -1,4 +1,3 @@
-// import React, { useRef, useMemo, useState, ChangeEvent, createContext } from 'react';
 import React, { useRef, useState, ChangeEvent, createContext, useContext } from 'react';
 import './style.css';
 import {
@@ -6,26 +5,16 @@ import {
   initialLinks
 } from './data-gen';
 
-// import Stats from './components/Stats';
-import NodeInfo, { NodeInfoProps } from './components/NodeInfo';
+import { NodeInfoProps } from './components/leftsidebar/NodeInfo';
 import AnalysisPanel from './components/AnalysisPanel';
-import Sidebar from './components/Sidebar';
+import LeftSidebar from './components/leftsidebar/LeftSidebar';
+import ToolTip from './components/ToolTip';
 import OntologyModal from './components/OntologyModal';
 import LoadingModal from './components/LoadingModal';
 import ConfirmModal from './components/ConfirmModal';
-import RightSidebar from './components/RightSidebar';
+import RightSidebar from './components/rightsidebar/RightSidebar';
 
 import { useGraph } from './hooks/useGraph';
-import {
-  Upload,
-  // Settings,
-  Focus,
-  RotateCcw,
-  LineChart,
-  Download,
-  Save,
-  Link as LinkIcon
-} from 'lucide-react';
 
 const API_BASE = 'http://localhost:30301';
 
@@ -69,13 +58,32 @@ const MainAppContext: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [results, setResults] = useState<NodeInfoProps[]>([]);
-  // const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Search filters state
+  type SearchFilter = {
+    id: string;
+    field: string;
+    query: string;
+  };
+
+  const [filters, setFilters] = React.useState<SearchFilter[]>([]);
+
+  // Search options state
+  const [searchOptions, setSearchOptions] = React.useState({
+    matchCase: false,
+    matchWords: false,
+  });
+
+  // RightSidebar state
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<"search" | "favorites" | "comments" | "graph">("search");
 
   // Helpers
   const arrayFromF32 = (f: Float32Array) => Array.from(f);
 
   // Graph controls
-  const { fitView, resetView, selectNodeByIndex } = useGraph(
+  const { fitView, resetView, selectNodeByIndex, tooltips} = useGraph(
     graphRef,
     // canvasRef,
     pointPositions,
@@ -85,12 +93,6 @@ const MainAppContext: React.FC = () => {
   );
 
   React.useEffect(() => {console.log("Current graph uuid: " + currentGraphUUID);}, [currentGraphUUID]);
-
-  // Stats
-  // const stats = useMemo(() => ({
-  //   nodeCount: pointPositions.length / 2,
-  //   edgeCount: links.length / 2
-  // }), [pointPositions, links]);
 
   /** AUTO LOAD GRAPH FROM LINK ?g=... **/
   React.useEffect(() => {
@@ -310,44 +312,83 @@ const MainAppContext: React.FC = () => {
   };
 
   /** SEARCH **/
-  const handleSearch = async (field: string, query: string) => {
+  // wysłanie zapytania na backend na podstawie AKTUALNYCH filtrów
+  const performSearch = async (filtersToApply: SearchFilter[]) => {
+    if (filtersToApply.length === 0) {
+      setResults([]);
+      setError(null);
+      return;
+    }
+
     try {
-      // setError(null);
       setResults([]);
 
       const res = await fetch(`${API_BASE}/search_node/${currentGraphUUID}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ field, query })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filters: filtersToApply.map(({ field, query }) => ({ field, query })),
+          matchCase: searchOptions.matchCase,
+          matchWords: searchOptions.matchWords,
+        }),
       });
 
       if (!res.ok) {
-        // const err = await res.json();
-        // setError(err.message || 'Search failed');
+        const err = await res.json();
+        setError(err.error);
         return;
       }
 
       const data = await res.json();
+      setError(null);
       setResults(Array.isArray(data) ? data : [data]);
     } catch {
-      // setError('Connection error');
+      setError("Connection error");
     }
   };
 
-  /** NODE SELECTION **/
-  const handleSelectNode = async (nodeName: string) => {
-    if (!currentGraphUUID || !nodeName) return;
 
-    try {
-      const encodedName = encodeURIComponent(nodeName);
-      const res = await fetch(`${API_BASE}/node_index/${currentGraphUUID}/${encodedName}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      selectNodeByIndex(data.index);
-    } catch (err) {
-      console.error('Failed to fetch node index:', err);
-    }
+  // wywoływane z SearchBar po Enter – DODANIE FILTRA + nowe zapytanie
+  const handleSearch = (field: string, query: string) => {
+    const q = query.trim();
+    if (!q) return;
+
+    setFilters((prev) => {
+      const alreadyExists = prev.some(
+        (f) => f.field === field && f.query === q
+      );
+
+      if (alreadyExists) {
+        return prev;
+      }
+
+      const newFilter: SearchFilter = {
+        id: crypto.randomUUID(),
+        field,
+        query: q,
+      };
+
+      const updated = [...prev, newFilter];
+      void performSearch(updated);
+      return updated;
+    });
   };
+
+
+  // usunięcie filtra z listy + nowe zapytanie
+  const handleRemoveFilter = (id: string) => {
+    setFilters((prev) => {
+      const updated = prev.filter((f) => f.id !== id);
+      void performSearch(updated);
+      return updated;
+    });
+  };
+
+  // efekt wywołujący zapytanie przy zmianie opcji wyszukiwania
+  React.useEffect(() => {
+    if (filters.length === 0) return;
+    void performSearch(filters);
+  }, [searchOptions, filters]); // gdy zmienią się opcje albo lista filtrów
 
   /** FETCH GRAPH BY HASH **/
   async function fetchGraphByHash(hash: string) {
@@ -365,7 +406,6 @@ const MainAppContext: React.FC = () => {
       };
     }>;
   }
-
 
   /** POST GRAPH TO DB **/
   async function postGraphToDB(canvas_positions: number[], links: number[]) {
@@ -449,14 +489,20 @@ const MainAppContext: React.FC = () => {
     <AppContext.Provider value={{ currentGraphUUID, setCurrentGraphUUID }}>
     <div id="layout" className="bg-black text-gray-200 flex-col">
       <div ref={canvasRef} className="flex-grow" />
-      <div ref={graphRef} id="graph" className="flex-grow" />
-      <div id="tooltip" className="absolute border rounded" />
-
-      {selectedNode && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 p-4 rounded-lg shadow-lg">
-          <NodeInfo {...selectedNode} />
+      <div 
+        ref={graphRef}
+        id="graph"
+        className="relative flex-grow" >
+          {tooltips.map((t) => (
+            <ToolTip
+              key={t.index}
+              visible={true}
+              x={t.x}
+              y={t.y}
+              content={<strong>{t.content}</strong>}
+            />
+          ))}
         </div>
-      )}
 
       {analysisResult && (
         <AnalysisPanel
@@ -465,16 +511,15 @@ const MainAppContext: React.FC = () => {
         />
       )}
 
-      <Sidebar
-        items={[
-          { label: 'Load data', icon: <Upload size={20} />, onClick: handleLoadClick },
-          { label: 'Fit view', icon: <Focus size={20} />, onClick: fitView },
-          { label: 'Reset view', icon: <RotateCcw size={20} />, onClick: resetView },
-          { label: 'Export', icon: <Download size={20} />, onClick: handleExportClick },
-          { label: 'Analyze', icon: <LineChart size={20} />, onClick: handleAnalyzeClick },
-          { label: 'Save to DB', icon: <Save size={20} />, onClick: saveToDb },
-          { label: 'Load from link', icon: <LinkIcon size={20} />, onClick: loadFromLink },
-        ]}
+      <LeftSidebar
+        handleLoadClick={handleLoadClick}
+        fitView={fitView}
+        resetView={resetView}
+        handleExportClick={handleExportClick}
+        handleAnalyzeClick={handleAnalyzeClick}
+        handleSaveLayoutClick={saveToDb}
+        handleLoadFromHashClick={loadFromLink}
+        selectedNode={selectedNode}
       />
 
       <input
@@ -505,21 +550,30 @@ const MainAppContext: React.FC = () => {
       <RightSidebar
         onSearch={handleSearch}
         results={results}
-        onSelectNode={(node) => handleSelectNode(node.name !== undefined ? node.name : "")}
+        onSelectNode={(node) => selectNodeByIndex(node.index)}
+        error={error}
+        expanded={sidebarExpanded}
+        onExpandedChange={setSidebarExpanded}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onOptionsChange={setSearchOptions}
+        filters={filters}
+        onRemoveFilter={handleRemoveFilter}
       />
+
+      {tooltips.map((t) => (
+        <ToolTip
+          key={t.index}
+          visible={true}
+          x={t.x}
+          y={t.y}
+          content={<strong>{t.content}</strong>}
+        />
+      ))}
     </div>
     </AppContext.Provider>
   );
 };
-
-// export default function App() {
-//   const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
-//   return (
-//     <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
-//       <MainAppContext />
-//     </AppContext.Provider>
-//   )
-// }
 
 const App: React.FC = () => {
   const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
