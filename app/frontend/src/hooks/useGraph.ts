@@ -4,9 +4,12 @@ import {
   useEffect,
   useRef,
   useState,
+  useContext,
+  useCallback,
 } from "react";
 import { Graph, GraphConfigInterface } from "@cosmograph/cosmos";
 import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
+import { AppContext } from "../App"
 
 const API_BASE = "http://localhost:30301";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -20,10 +23,14 @@ type NodeTooltip = {
 
 export function useGraph(
   graphRef: React.RefObject<HTMLDivElement | null>,
-  canvasRef: React.RefObject<HTMLDivElement | null>,
+  // canvasRef: React.RefObject<HTMLDivElement | null>, // nadal nieużywany, ale może się przydać później
   pointPositions: Float32Array,
   links: Float32Array,
-  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>
+  setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>,
+  initialConfig?: {
+    spaceSize: number;
+    pointSize: number;
+  }
 ) {
   const graphInstance = useRef<Graph | null>(null);
   const linksRef = useRef<Float32Array>(links);
@@ -43,6 +50,17 @@ export function useGraph(
   // highlight token cancelation
   const highlightTokenRef = useRef(0);
 
+  const appContext = useContext(AppContext);
+  const currentGraphUUID = appContext?.currentGraphUUID;
+  // const setCurrentGraphUUID = appContext?.setCurrentGraphUUID;
+
+  const currentGraphUUIDRef = useRef<string | null>(currentGraphUUID);
+
+  useEffect(() => {
+    currentGraphUUIDRef.current = currentGraphUUID;
+    console.log("useGraph sees new graph uuid: " + currentGraphUUIDRef.current);
+  }, [currentGraphUUID]);
+
   useEffect(() => {
     linksRef.current = links;
   }, [links]);
@@ -53,9 +71,13 @@ export function useGraph(
 
   /** Fetch node info from backend **/
   const fetchNodeData = async (index: number) => {
-    const response = await fetch(`${API_BASE}/node/${index}`);
+    const uuid = currentGraphUUIDRef.current;
+    if (!uuid) throw new Error("No current graph uuid set");
+    const response = await fetch(`${API_BASE}/node/${uuid}/${index}`);
     if (!response.ok) throw new Error(`Node fetch failed: ${response.status}`);
-    return response.json();
+    const responseJson = await response.json();
+    console.log("Node info json: \n" + JSON.stringify(responseJson, null, 2));
+    return responseJson;
   };
 
   /**
@@ -225,7 +247,7 @@ export function useGraph(
   };
 
   /** Select node by index and update UI **/
-  const selectNodeByIndex = async (index?: number) => {
+  const selectNodeByIndex = useCallback(async (index?: number) => {
     if (index === undefined) {
       setSelectedNode(null);
       setTooltips([]);
@@ -247,6 +269,13 @@ export function useGraph(
         is_a: data.is_a,
       });
 
+      console.log("Node info json: \n" + JSON.stringify(data, null, 2));
+
+      const filteredData = Object.fromEntries(
+        Object.entries(data).filter(([_, value]) => value !== null && value !== undefined && value !== '')
+      );
+      // setSelectedNode(filteredData);
+
       selectedIndexRef.current = index;
       namesCacheRef.current.set(index, data.name);
 
@@ -257,16 +286,16 @@ export function useGraph(
     } catch (err) {
       console.error("Node fetch error:", err);
     }
-  };
+  }, [fetchNodeData, setSelectedNode]);
 
   /** Initialize and clean up graph **/
   useEffect(() => {
     if (!graphRef.current) return;
 
     const config: GraphConfigInterface = {
-      spaceSize: 256,
-      backgroundColor: "#000",
-      pointSize: 1,
+      spaceSize: initialConfig?.spaceSize ?? 256,
+      backgroundColor: '#000',
+      pointSize: initialConfig?.pointSize ?? 1,
       pointColor: [128, 128, 128, 255],
       pointGreyoutOpacity: 0.1,
       linkWidth: 0.8,
@@ -275,10 +304,10 @@ export function useGraph(
       curvedLinks: false,
       renderHoveredPointRing: false,
       enableDrag: true,
-      simulationLinkSpring: 0.2,
-      simulationRepulsion: 1.5,
-      simulationGravity: 0.1,
-      simulationDecay: 100,
+      simulationLinkSpring: 0,
+      simulationRepulsion: 0,
+      simulationGravity: 0,
+      simulationDecay: 0,
       onClick: selectNodeByIndex,
 
       // tooltip recompute on zoom/drag
@@ -296,6 +325,7 @@ export function useGraph(
       },
     };
 
+    graphInstance.current?.destroy?.();
     graphInstance.current = new Graph(graphRef.current, config);
 
     return () => {
@@ -307,10 +337,23 @@ export function useGraph(
 
   /** Update graph data on change **/
   useEffect(() => {
-    if (!graphInstance.current || !pointPositions || !links) return;
-    graphInstance.current.setPointPositions(pointPositions);
-    graphInstance.current.setLinks(links);
-    graphInstance.current.render();
+    const g = graphInstance.current;
+    if (!g || !pointPositions || !links) return;
+
+    graphInstance.current!.config.spaceSize = initialConfig?.spaceSize ?? 256;
+    graphInstance.current!.config.pointSize = initialConfig?.pointSize ?? 1;
+
+    console.log(
+      'Updating graph data:',
+      pointPositions.length / 2,
+      'nodes,',
+      links.length / 2,
+      'edges'
+    );
+
+    g.setPointPositions(pointPositions);
+    g.setLinks(links);
+    g.render();
 
     // after layout change - update tooltips
     recomputeTooltipsPositions();

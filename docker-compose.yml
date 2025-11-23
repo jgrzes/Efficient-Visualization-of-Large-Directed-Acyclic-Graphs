@@ -1,14 +1,43 @@
 services:
-  backend:
-    build: ./app/backend
+  mongo:
+    image: mongo:7
+    container_name: mongo_local
+    command: ["--auth", "--wiredTigerCacheSizeGB", "0.75", "--quiet"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpass
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data:/data/db
+      - ./init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks:
+      - dag-app-db-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet -u root -p rootpass --eval 'db.runCommand({ ping: 1 }).ok' | grep 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  python-backend:
+    build: ./app/python-backend
+    environment:
+      MONGODB_URI: "mongodb://inz_user:devpass@mongo:27017/inz?authSource=inz"
+      PORT: "30301"
     ports:
       - "30301-30305:30301-30305"
     volumes:
-      - ./app/backend:/app
+      - ./app/python-backend:/app
     stdin_open: true
     tty: true
     networks:
-      - dag-app-network
+      - dag-app-db-network
+      - dag-app-py-front-network 
+      - dag-app-py-cpp-network
+    depends_on:
+      mongo:
+        condition: service_healthy
 
   frontend:
     build: ./app/frontend
@@ -20,9 +49,22 @@ services:
     stdin_open: true
     tty: true
     networks:
-      - dag-app-network
+      - dag-app-py-front-network
     depends_on:
-      - backend
+      - python-backend 
+
+  cpp-backend: 
+    build: ./app/cpp-backend 
+    ports:
+      - "30311-30315:30311-30315"
+    volumes:      
+      - ./app/cpp-backend:/app
+    stdin_open: true 
+    tty: true 
+    networks:   
+      - dag-app-py-cpp-network    
 
 networks:
-  dag-app-network:
+  dag-app-db-network:
+  dag-app-py-front-network: 
+  dag-app-py-cpp-network:                 

@@ -45,7 +45,7 @@ export const SearchPanel: React.FC<RightSearchPanelProps> = ({
             {filters.map((f) => (
               <FilterChip
                 key={f.id}
-                label={`${f.field === "all" ? "Any" : f.field}: "${f.query}"`}
+                label={`${f.field ? f.field : "Any"}: "${f.query}"`}
                 onRemove={() => onRemoveFilter?.(f.id)}
               />
             ))}

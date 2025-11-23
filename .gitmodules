@@ -1,0 +1,3 @@
+[submodule "app/cpp-backend/qap-solver"]
+	path = app/cpp-backend/qap-solver
+	url = https://github.com/janmast1o/QAPSolver

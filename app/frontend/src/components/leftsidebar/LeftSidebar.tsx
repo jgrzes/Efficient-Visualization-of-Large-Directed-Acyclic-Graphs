@@ -8,6 +8,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  Save,
+  Link,
 } from "lucide-react";
 import NodeInfo, { NodeInfoProps } from "./NodeInfo";
 
@@ -17,6 +19,8 @@ interface LeftSidebarProps {
   resetView: () => void;
   handleExportClick: () => void;
   handleAnalyzeClick: () => void;
+  handleSaveLayoutClick: () => void;
+  handleLoadFromHashClick: () => void;
   selectedNode?: NodeInfoProps | null;
 }
 
@@ -32,6 +36,8 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   resetView,
   handleExportClick,
   handleAnalyzeClick,
+  handleSaveLayoutClick,
+  handleLoadFromHashClick,
   selectedNode,
 }) => {
   const [expanded, setExpanded] = useState(false);
@@ -43,14 +49,12 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
     { label: "Reset view", icon: <RotateCcw size={18} />, onClick: resetView },
     { label: "Export", icon: <Download size={18} />, onClick: handleExportClick },
     { label: "Analyze", icon: <LineChart size={18} />, onClick: handleAnalyzeClick },
+    { label: "Save layout", icon: <Save size={18} />, onClick: handleSaveLayoutClick, },
+    { label: "Load from hash", icon: <Link size={18} />, onClick: handleLoadFromHashClick, },
   ];
 
   const bottom: Item[] = [
-    {
-      label: "Settings",
-      icon: <Settings size={18} />,
-      onClick: () => console.log("Settings"),
-    },
+    {label: "Settings", icon: <Settings size={18} />, onClick: () => console.log("Settings"),},
   ];
 
   const toggleExpanded = () => setExpanded((v) => !v);
