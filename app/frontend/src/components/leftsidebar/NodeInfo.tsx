@@ -267,7 +267,7 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
         open={commentOpen}
         onClose={() => setCommentOpen(false)}
         onSubmit={handleCommentSubmit}
-        title={`Komentarz do: ${name}`}
+  title={`Comment for: ${name}`}
       />
     </section>
   );

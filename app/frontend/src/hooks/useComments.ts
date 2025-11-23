@@ -57,7 +57,7 @@ export const useComments = create<CommentsState>((set, get) => ({
       // tutaj wczytać z API
       set({ comments: [], isLoading: false });
     } catch (e) {
-      set({ isLoading: false, error: "Nie udało się załadować komentarzy" });
+  set({ isLoading: false, error: "Failed to load comments" });
     }
   },
 
@@ -83,7 +83,7 @@ export const useComments = create<CommentsState>((set, get) => ({
       await new Promise((r) => setTimeout(r, 120));
       set({ isSaving: false });
     } catch {
-      set({ isSaving: false, error: "Nie udało się dodać komentarza" });
+  set({ isSaving: false, error: "Failed to add comment" });
     }
   },
 
@@ -102,7 +102,7 @@ export const useComments = create<CommentsState>((set, get) => ({
       await new Promise((r) => setTimeout(r, 120));
       set({ isSaving: false });
     } catch {
-      set({ isSaving: false, error: "Nie udało się edytować komentarza" });
+  set({ isSaving: false, error: "Failed to edit comment" });
     }
   },
 
@@ -114,7 +114,7 @@ export const useComments = create<CommentsState>((set, get) => ({
       await new Promise((r) => setTimeout(r, 120));
       set({ isSaving: false });
     } catch {
-      set({ isSaving: false, error: "Nie udało się usunąć komentarza" });
+  set({ isSaving: false, error: "Failed to remove comment" });
     }
   },
 
@@ -124,7 +124,7 @@ export const useComments = create<CommentsState>((set, get) => ({
       await new Promise((r) => setTimeout(r, 120));
       set({ isSaving: false });
     } catch {
-      set({ isSaving: false, error: "Nie udało się wyczyścić komentarzy" });
+  set({ isSaving: false, error: "Failed to clear comments" });
     }
   },
 

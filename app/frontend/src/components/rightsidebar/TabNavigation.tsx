@@ -12,10 +12,10 @@ interface TabNavigationProps {
 type IconType = React.ComponentType<{ size?: number; className?: string }>;
 
 const TABS: { key: TabKey; label: string; Icon: IconType }[] = [
-  { key: "search",    label: "Szukaj",     Icon: Search },
-  { key: "favorites", label: "Ulubione",   Icon: Star },
-  { key: "comments",  label: "Komentarze", Icon: MessageSquare },
-  { key: "graph",     label: "Graf",       Icon: Info },
+  { key: "search",    label: "Search",     Icon: Search },
+  { key: "favorites", label: "Favorites",   Icon: Star },
+  { key: "comments",  label: "Comments", Icon: MessageSquare },
+  { key: "graph",     label: "Graph",       Icon: Info },
 ];
 
 const baseBtn =
@@ -38,7 +38,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, expanded, onTa
       } pt-4`}
       role="tablist"
       aria-orientation="vertical"
-      aria-label="Pasek aktywności"
+      aria-label="Activity bar"
     >
       {TABS.map(({ key, label, Icon }) => {
         const isActive = activeTab === key;

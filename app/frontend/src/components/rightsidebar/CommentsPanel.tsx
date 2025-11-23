@@ -39,12 +39,12 @@ const CommentsPanel: React.FC = () => {
     return (
       <div className="text-sm text-gray-300">
         <p className="mb-2 text-gray-400 uppercase tracking-wide text-xs">
-          Komentarze
+          Comments
         </p>
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-          <p className="text-gray-400">Brak komentarzy.</p>
+          <p className="text-gray-400">No comments.</p>
           <p className="text-gray-500 text-xs mt-1">
-            Dodaj pierwszy komentarz z panelu wyszukiwania lub panelu informacji o węźle.
+            Add the first comment from the search panel or the node info panel.
           </p>
         </div>
       </div>
@@ -54,7 +54,7 @@ const CommentsPanel: React.FC = () => {
   return (
     <div className="text-sm text-gray-300">
       <p className="mb-2 text-gray-400 uppercase tracking-wide text-xs">
-        Komentarze
+  Comments
       </p>
 
       <ul className="space-y-3">
@@ -124,13 +124,13 @@ const CommentsPanel: React.FC = () => {
                     className="flex items-center gap-1 px-3 py-1 rounded-md bg-blue-500/20 text-blue-300 hover:bg-blue-500/30"
                     onClick={() => saveEdit(c.id)}
                   >
-                    <Save size={14} /> Zapisz
+                    <Save size={14} /> Save
                   </button>
                   <button
                     className="flex items-center gap-1 px-3 py-1 rounded-md bg-gray-500/20 text-gray-300 hover:bg-gray-500/30"
                     onClick={cancelEditing}
                   >
-                    <X size={14} /> Anuluj
+                    <X size={14} /> Cancel
                   </button>
                 </div>
               </div>

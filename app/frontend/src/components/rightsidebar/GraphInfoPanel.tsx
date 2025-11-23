@@ -16,9 +16,9 @@ export const GraphInfoPanel: React.FC<GraphInfoPanelProps> = ({ info }) => {
   if (!info) {
     return (
       <div className="text-sm text-gray-400">
-        <p>Brak informacji o grafie.</p>
+           <p>No graph information available.</p>
         <p className="text-xs text-gray-500 mt-1">
-          Wczytaj dane lub przekaż <code>graphInfo</code> do RightSidebar.
+             Load data or pass <code>graphInfo</code> to RightSidebar.
         </p>
       </div>
     );
@@ -29,7 +29,7 @@ export const GraphInfoPanel: React.FC<GraphInfoPanelProps> = ({ info }) => {
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-        <p className="text-xs uppercase tracking-wide text-gray-400 mb-2">Podsumowanie grafu</p>
+         <p className="text-xs uppercase tracking-wide text-gray-400 mb-2">Graph summary</p>
         <dl className="grid grid-cols-2 gap-2 text-sm">
           {name && (
             <>
@@ -45,19 +45,19 @@ export const GraphInfoPanel: React.FC<GraphInfoPanelProps> = ({ info }) => {
           )}
           {typeof nodesCount === "number" && (
             <>
-              <dt className="text-gray-400">Węzły</dt>
+              <dt className="text-gray-400">Nodes</dt>
               <dd className="text-gray-200">{nodesCount}</dd>
             </>
           )}
           {typeof edgesCount === "number" && (
             <>
-              <dt className="text-gray-400">Krawędzie</dt>
+              <dt className="text-gray-400">Edges</dt>
               <dd className="text-gray-200">{edgesCount}</dd>
             </>
           )}
           {typeof depth === "number" && (
             <>
-              <dt className="text-gray-400">Głębokość DAG</dt>
+              <dt className="text-gray-400">DAG depth</dt>
               <dd className="text-gray-200">{depth}</dd>
             </>
           )}

@@ -40,7 +40,7 @@ export default function ConfirmModal({
                 className="w-28 px-4 py-2 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 
                            focus:outline-none focus:ring-2 focus:ring-white/30 transition"
               >
-                Anuluj
+                Cancel
               </button>
 
               <button
@@ -49,7 +49,7 @@ export default function ConfirmModal({
                            text-white font-medium shadow-md hover:from-blue-600 hover:to-indigo-700
                            focus:outline-none focus:ring-2 focus:ring-blue-400/60 transition"
               >
-                Potwierdź
+                Confirm
               </button>
             </div>
           </motion.div>

@@ -1,10 +1,9 @@
-import React, { useRef, useState, ChangeEvent } from 'react';
+import React, { useRef, useState, ChangeEvent, createContext, useContext } from 'react';
 import './style.css';
 import {
   initialPointPositions,
   initialLinks
 } from './data-gen';
-
 
 import { NodeInfoProps } from './components/leftsidebar/NodeInfo';
 import AnalysisPanel from './components/AnalysisPanel';
@@ -14,12 +13,19 @@ import OntologyModal from './components/OntologyModal';
 import LoadingModal from './components/LoadingModal';
 import ConfirmModal from './components/ConfirmModal';
 import RightSidebar from './components/rightsidebar/RightSidebar';
+import SaveGraphModal from "./components/SaveGraphModal";
+import LoadGraphModal from "./components/LoadGraphModal";
 
 import { useGraph } from './hooks/useGraph';
 
 const API_BASE = 'http://localhost:30301';
 
-const App: React.FC = () => {
+export const AppContext = createContext<{
+  currentGraphUUID: string | null, 
+  setCurrentGraphUUID: React.Dispatch<React.SetStateAction<string | null>>
+} | null>(null);
+
+const MainAppContext: React.FC = () => {
   // Refs
   const graphRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -34,6 +40,16 @@ const App: React.FC = () => {
   );
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+  const [graphConfig, setGraphConfig] = useState<{
+    spaceSize: number;
+    pointSize: number;
+  } | null>({spaceSize: 256, pointSize: 1});
+
+  const appContext = useContext(AppContext);
+  const currentGraphUUID = appContext!.currentGraphUUID;
+  const setCurrentGraphUUID = appContext!.setCurrentGraphUUID;
+
+  const [currentGraphHash, setCurrentGraphHash] = useState<string | null>("");
 
   // UI state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -62,15 +78,61 @@ const App: React.FC = () => {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<"search" | "favorites" | "comments" | "graph">("search");
 
+  // SaveGraphModal state
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveModalHash, setSaveModalHash] = useState<string | null>(null);
+  const [saveModalError, setSaveModalError] = useState<string | null>(null);
+
+  // LoadGraphModal state
+  const [loadModalOpen, setLoadModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadLoading, setLoadLoading] = useState(false);
+
+
+  // Helpers
+  const arrayFromF32 = (f: Float32Array) => Array.from(f);
+
   // Graph controls
   const { fitView, resetView, selectNodeByIndex, tooltips} = useGraph(
     graphRef,
-    canvasRef,
     pointPositions,
     links,
-    setSelectedNode
+    setSelectedNode,
+    graphConfig || undefined
   );
 
+  React.useEffect(() => {console.log("Current graph uuid: " + currentGraphUUID);}, [currentGraphUUID]);
+
+  /** AUTO LOAD GRAPH FROM LINK ?g=... **/
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const byQuery = params.get('g');
+    const byHash = window.location.hash ? window.location.hash.slice(1) : null;
+    const g = byQuery || byHash;
+    if (!g) return;
+
+    setLoading(true);
+    fetchGraphByHash(g)
+      .then((data) => {
+        setPointPositions(new Float32Array(data.canvas_positions));
+        setLinks(new Float32Array(data.links));
+        setSelectedNode(null);
+
+        if (data.config) {
+          setGraphConfig({
+            spaceSize: data.config.space_size || 1000,
+            pointSize: data.config.point_size || 5
+          });
+        } else {
+          setGraphConfig(null);
+        }
+      })
+      .catch((err) => {
+        console.error('Auto-load failed:', err);
+        alert('Failed to load graph from link.');
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   /** FILE HANDLING **/
   const handleLoadClick = () => fileInputRef.current?.click();
@@ -98,6 +160,8 @@ const App: React.FC = () => {
       });
 
       const data = await response.json();
+      console.log("Received graph uuid: " + data.uuid);
+      setCurrentGraphUUID(data.uuid);
       setPointPositions(new Float32Array(data.canvas_positions));
       setLinks(new Float32Array(data.links));
       setSelectedNode(null);
@@ -138,7 +202,7 @@ const App: React.FC = () => {
   const confirmAnalyze = async () => {
     setShowConfirm(false);
     try {
-      const response = await fetch(`${API_BASE}/analyze_graph`, {
+      const response = await fetch(`${API_BASE}/analyze_graph/${currentGraphUUID}`, {
         method: 'POST'
       });
       if (!response.ok) throw new Error('Failed');
@@ -150,7 +214,7 @@ const App: React.FC = () => {
   };
 
   /** SEARCH **/
-  // wysłanie zapytania na backend na podstawie AKTUALNYCH filtrów
+  // sending search request
   const performSearch = async (filtersToApply: SearchFilter[]) => {
     if (filtersToApply.length === 0) {
       setResults([]);
@@ -159,10 +223,9 @@ const App: React.FC = () => {
     }
 
     try {
-      setError(null);
       setResults([]);
 
-      const res = await fetch(`${API_BASE}/search_node`, {
+      const res = await fetch(`${API_BASE}/search_node/${currentGraphUUID}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -174,11 +237,12 @@ const App: React.FC = () => {
 
       if (!res.ok) {
         const err = await res.json();
-        setError(err.message || "Search failed");
+        setError(err.error);
         return;
       }
 
       const data = await res.json();
+      setError(null);
       setResults(Array.isArray(data) ? data : [data]);
     } catch {
       setError("Connection error");
@@ -186,7 +250,7 @@ const App: React.FC = () => {
   };
 
 
-  // wywoływane z SearchBar po Enter – DODANIE FILTRA + nowe zapytanie
+  // sending new search after adding a filter
   const handleSearch = (field: string, query: string) => {
     const q = query.trim();
     if (!q) return;
@@ -213,7 +277,7 @@ const App: React.FC = () => {
   };
 
 
-  // usunięcie filtra z listy + nowe zapytanie
+  // remove filter and re-search
   const handleRemoveFilter = (id: string) => {
     setFilters((prev) => {
       const updated = prev.filter((f) => f.id !== id);
@@ -222,13 +286,114 @@ const App: React.FC = () => {
     });
   };
 
-  // efekt wywołujący zapytanie przy zmianie opcji wyszukiwania
+  // effect to re-search when search options change
   React.useEffect(() => {
     if (filters.length === 0) return;
     void performSearch(filters);
   }, [searchOptions, filters]); // gdy zmienią się opcje albo lista filtrów
 
+  /** FETCH GRAPH BY HASH **/
+  async function fetchGraphByHash(hash: string) {
+    const res = await fetch(`${API_BASE}/load_graph/${hash}`);
+    if (!res.ok) throw new Error(`Graph ${hash} not found`);
+    return res.json() as Promise<{
+      graph_hash: string, 
+      uuid: string, 
+      canvas_positions: number[];
+      links: number[];
+      meta?: Record<string, unknown>;
+      config?: {
+        space_size?: number;
+        point_size?: number;
+      };
+    }>;
+  }
+
+  /** POST GRAPH TO DB **/
+  async function postGraphToDB(canvas_positions: number[], links: number[]) {
+    const res = await fetch(`${API_BASE}/save_graph/${currentGraphUUID}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        canvas_positions, 
+        links, 
+        graph_hash: currentGraphHash, 
+        point_size: graphConfig?.pointSize ?? null, 
+        space_size: graphConfig?.spaceSize ?? null, 
+      }),
+    });
+    if (!res.ok) throw new Error('Save failed');
+    return res.json() as Promise<{ hash: string; }>;
+  }
+
+ /** SAVE GRAPH TO DB (button handler) **/
+  const saveToDb = async () => {
+    try {
+      setLoading(true);
+      setSaveModalError(null);
+      setSaveModalHash(null);
+
+      const payloadPos = arrayFromF32(pointPositions);
+      const payloadLinks = arrayFromF32(links);
+
+      const { hash } = await postGraphToDB(payloadPos, payloadLinks);
+
+      setCurrentGraphHash(hash);
+      setSaveModalHash(hash);
+      setSaveModalOpen(true);
+
+    } catch (e) {
+      console.error(e);
+      setSaveModalError("Failed to save the graph to the database.");
+      setSaveModalOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** LOAD GRAPH FROM HASH (button handler) **/
+  const handleOpenLoadModal = () => {
+    setLoadError(null);
+    setLoadModalOpen(true);
+  };
+
+  const handleLoadByHash = async (hash: string) => {
+    try {
+      setLoadLoading(true);
+      setLoadError(null);
+
+      const data = await fetchGraphByHash(hash.trim());
+      setCurrentGraphUUID(data.uuid);
+      setCurrentGraphHash(data.graph_hash);
+      setPointPositions(new Float32Array(data.canvas_positions));
+      setLinks(new Float32Array(data.links));
+      setSelectedNode(null);
+
+      if (data.config) {
+        setGraphConfig({
+          spaceSize: data.config.space_size || 1000,
+          pointSize: data.config.point_size || 5,
+        });
+      }
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("g", hash.trim());
+      window.history.replaceState({}, "", url.toString());
+
+      setLoadModalOpen(false);
+      setTimeout(() => fitView(), 100);
+    } catch (e) {
+      console.error(e);
+      setLoadError("Graph not found for the given hash.");
+    } finally {
+      setLoadLoading(false);
+    }
+  };
+
+
+
   return (
+    <AppContext.Provider value={{ currentGraphUUID, setCurrentGraphUUID }}>
     <div id="layout" className="bg-black text-gray-200 flex-col">
       <div ref={canvasRef} className="flex-grow" />
       <div 
@@ -259,12 +424,14 @@ const App: React.FC = () => {
         resetView={resetView}
         handleExportClick={handleExportClick}
         handleAnalyzeClick={handleAnalyzeClick}
+        handleSaveLayoutClick={saveToDb}
+        handleLoadFromHashClick={handleOpenLoadModal}
         selectedNode={selectedNode}
       />
 
       <input
         type="file"
-        accept=".txt,.obo"
+        accept=".txt,.obo,.json"
         ref={fileInputRef}
         onChange={handleFileUpload}
         className="hidden"
@@ -301,17 +468,36 @@ const App: React.FC = () => {
         onRemoveFilter={handleRemoveFilter}
       />
 
-      {tooltips.map((t) => (
-        <ToolTip
-          key={t.index}
-          visible={true}
-          x={t.x}
-          y={t.y}
-          content={<strong>{t.content}</strong>}
-        />
-      ))}
+      <SaveGraphModal
+        open={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        hash={saveModalHash}
+        error={saveModalError}
+      />
+
+      <LoadGraphModal
+        open={loadModalOpen}
+        onClose={() => {
+          setLoadModalOpen(false);
+          setLoadError(null);
+        }}
+        onSubmit={handleLoadByHash}
+        loading={loadLoading}
+        error={loadError}
+      />
+
     </div>
+    </AppContext.Provider>
   );
 };
+
+const App: React.FC = () => {
+  const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
+  return (
+    <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
+      <MainAppContext />
+    </AppContext.Provider>
+  )
+}
 
 export default App;

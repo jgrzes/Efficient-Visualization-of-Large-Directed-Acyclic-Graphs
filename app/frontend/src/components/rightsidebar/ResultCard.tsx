@@ -69,8 +69,8 @@ const ResultCard: React.FC<ResultCardProps> = ({ node, onSelect }) => {
               className="p-1.5 rounded-lg transition shrink-0
                          text-gray-400 hover:text-blue-400 hover:bg-blue-400/10
                          focus:outline-none focus:ring-2 focus:ring-blue-700"
-              aria-label="Dodaj komentarz"
-              title="Dodaj komentarz"
+              aria-label="Add comment"
+              title="Add comment"
             >
               <MessageCirclePlus size={18} className="block" />
             </button>
@@ -85,8 +85,8 @@ const ResultCard: React.FC<ResultCardProps> = ({ node, onSelect }) => {
                               ? "text-yellow-400 hover:bg-yellow-400/10"
                               : "text-gray-400 hover:bg-gray-800/80 group-hover:text-gray-200"
                           }`}
-              aria-label={isFav ? "Usuń z ulubionych" : "Dodaj do ulubionych"}
-              title={isFav ? "Usuń z ulubionych" : "Dodaj do ulubionych"}
+              aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+              title={isFav ? "Remove from favorites" : "Add to favorites"}
             >
               <Star
                 size={18}
@@ -104,7 +104,7 @@ const ResultCard: React.FC<ResultCardProps> = ({ node, onSelect }) => {
         open={commentOpen}
         onClose={() => setCommentOpen(false)}
         onSubmit={handleSubmitComment}
-        title={`Komentarz do: ${node.name}`}
+  title={`Comment for: ${node.name}`}
         // jeśli masz jakieś domyślne imię użytkownika, możesz dodać:
         // initialName={defaultAuthorName}
       />

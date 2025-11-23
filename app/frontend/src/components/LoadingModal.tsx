@@ -23,7 +23,7 @@ export default function LoadingModal() {
 
           {/* Text */}
           <p className="text-gray-100 text-center font-semibold text-base tracking-wide">
-            Ładowanie grafu...
+            Loading graph...
           </p>
         </motion.div>
       </motion.div>
