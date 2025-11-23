@@ -173,8 +173,6 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-*.html
-
 # ==================
 # NODE / FRONTEND
 # ==================
@@ -205,6 +203,11 @@ app/backend/**/*.pyc
 app/backend/.venv/
 app/backend/venv/
 app/backend/.env
+
+# ==================
+# MONGO DB
+# ==================
+data/
 
 # ==================
 # RESEARCH SCRIPTS

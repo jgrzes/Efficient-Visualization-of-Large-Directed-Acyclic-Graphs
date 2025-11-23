@@ -7,6 +7,7 @@ WORKDIR /app
 COPY . .
 
 RUN npm install
+RUN npm run build
 
 EXPOSE 30306
 EXPOSE 30307
