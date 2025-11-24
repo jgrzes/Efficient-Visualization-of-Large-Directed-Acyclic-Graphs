@@ -13,31 +13,34 @@ import CopyChip from "./CopyChip";
 import FieldRow from "./FieldRow";
 
 export interface NodeInfoProps {
-  index: number;
-  id: string;
   name: string;
-  namespace: string;
-  def: string;
-  synonym?: string[];
-  is_a?: string[];
+  index?: number;
+  node_index?: number;
   isFavorite?: boolean;
   onToggleFavorite?: (node: NodeInfoProps) => void;
-  onAddComment?: (node: NodeInfoProps, data: { name: string; text: string }) => void;
+  onAddComment?: (
+    node: NodeInfoProps,
+    data: { name: string; text: string }
+  ) => void;
+  [key: string]: any;
 }
 
 const VISIBLE_SYNONYMS = 3;
 
 const NodeInfo: React.FC<NodeInfoProps> = (props) => {
   const {
-    id,
     name,
-    namespace,
-    def,
-    synonym,
-    is_a,
     isFavorite: isFavoriteProp,
     onAddComment,
+    onToggleFavorite,
+    ...restProps
   } = props;
+
+  const id = restProps.id as string | undefined;
+  const namespace = restProps.namespace as string | undefined;
+  const def = restProps.def as string | undefined;
+  const synonym = restProps.synonym as string[] | undefined;
+  const is_a = restProps.is_a as string[] | undefined;
 
   const [copied, setCopied] = useState(false);
   const [synExpanded, setSynExpanded] = useState(false);
@@ -94,6 +97,65 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
     [addComment, id, name, namespace, onAddComment, props]
   );
 
+  const SPECIAL_KEYS = new Set([
+    "id",
+    "name",
+    "namespace",
+    "def",
+    "synonym",
+    "is_a",
+    "isFavorite",
+    "onToggleFavorite",
+    "onAddComment",
+    "index",
+    "node_index",
+  ]);
+
+  const renderValue = (value: any) => {
+    if (value == null) return null;
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return <span className="text-xs text-gray-400">[]</span>;
+      }
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {value.map((v, i) => (
+            <CopyChip
+              key={i}
+              text={typeof v === "string" ? v : JSON.stringify(v)}
+              title="Value"
+              className="text-xs"
+              onCopied={showCopied}
+              mono={false}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    if (typeof value === "object") {
+      return (
+        <pre className="text-xs whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto bg-white/5 rounded-md p-2">
+          {JSON.stringify(value, null, 2)}
+        </pre>
+      );
+    }
+
+    return (
+      <span className="text-sm break-all">
+        {String(value)}
+      </span>
+    );
+  };
+
+  const additionalFields = Object.entries(restProps)
+    .filter(
+      ([key, value]) =>
+        !SPECIAL_KEYS.has(key) && value !== undefined && value !== null
+    )
+    .sort(([a], [b]) => a.localeCompare(b));
+
   return (
     <section
       id="info-panel"
@@ -125,22 +187,28 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
             mono={false}
           />
 
-          {/* ID + Namespace */}
-          <div className="mt-1 flex items-center gap-2 flex-wrap">
-            <CopyChip
-              text={id}
-              title="ID"
-              className="font-mono"
-              onCopied={showCopied}
-            />
-            <CopyChip
-              text={namespace}
-              title="Namespace"
-              className="text-[11px]"
-              onCopied={showCopied}
-              mono={false}
-            />
-          </div>
+          {/* ID + Namespace (GO Specific) */}
+          {(id || namespace) && (
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
+              {id && (
+                <CopyChip
+                  text={id}
+                  title="ID"
+                  className="font-mono"
+                  onCopied={showCopied}
+                />
+              )}
+              {namespace && (
+                <CopyChip
+                  text={namespace}
+                  title="Namespace"
+                  className="text-[11px]"
+                  onCopied={showCopied}
+                  mono={false}
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {/* Buttons */}
@@ -188,19 +256,22 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
       {/* Body */}
       <div className="p-4 cursor-default">
         <dl className="grid grid-cols-1 gap-4">
-          {/* Definition */}
-          <FieldRow label="Definition">
-            <div
-              onClick={copyDefinition}
-              className="text-sm whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto pr-1
-                         hover:bg-white/[0.02] rounded-md p-1 cursor-copy transition"
-              title="Click to copy definition"
-            >
-              {def}
-            </div>
-          </FieldRow>
+          {/* Definition (GO Specific) */}
+          {def && (
+            <FieldRow label="Definition">
+              <div
+                onClick={copyDefinition}
+                className="text-sm whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto pr-1
+                 hover:bg-white/[0.02] rounded-md p-1 cursor-copy transition"
+                title="Click to copy definition"
+              >
+                {def}
+              </div>
+            </FieldRow>
+          )}
 
-          {/* Synonyms */}
+
+          {/* Synonyms (GO Specific) */}
           {syns.length > 0 && (
             <FieldRow label="Synonyms">
               <div
@@ -242,7 +313,7 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
             </FieldRow>
           )}
 
-          {/* is_a */}
+          {/* is_a (GO Specific) */}
           {is_a && is_a.length > 0 && (
             <FieldRow label="is_a">
               <div className="flex flex-wrap gap-1.5">
@@ -259,6 +330,13 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
               </div>
             </FieldRow>
           )}
+
+          {/* Other properties for custom graphs */}
+          {additionalFields.map(([key, value]) => (
+            <FieldRow key={key} label={key}>
+              {renderValue(value)}
+            </FieldRow>
+          ))}
         </dl>
       </div>
 

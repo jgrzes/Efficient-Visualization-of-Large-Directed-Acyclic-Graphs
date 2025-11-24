@@ -183,124 +183,107 @@ def analyze_graph(graph_uuid: str):
     return jsonify({"hierarchy_levels": hierarchy_levels}), 200
 
 
-# TODO: Merge with @tmsyda's solution and make it support any set of properties, not just this narrow set
 @app.route("/search_node/<string:graph_uuid>", methods=["POST"])
 def search_node(graph_uuid: str):
-    """Search nodes by field(s) and query string(s)."""
+    """
+    Received from the frontend a JSON with the following structure:
+    {
+      "filters": [{ "field": "name" | "all" | "<vertex_prop>", "query": "<text>" }, ...],
+      "matchCase": bool,
+      "matchWords": bool
+    }
+    """
     logger.info(f"Received call on endpoint /search_node/<graph_uuid={graph_uuid}>")
-    G_gt: gt.Graph = None 
+
     try:
         graph_data = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
-        G_gt: gt.Graph = graph_data["graph"]
     except RuntimeError:
         return jsonify({"error": "Graph not found"}), 404
 
-    data = request.get_json() or {}
+    G_gt: gt.Graph = graph_data["graph"]
+    all_props = G_gt.vertex_properties
 
+    data = request.get_json(force=True)
+    filters = data.get("filters")
     match_case = bool(data.get("matchCase", False))
     match_words = bool(data.get("matchWords", False))
 
-    filters = data.get("filters")
-    field = data.get("field")
-    query = data.get("query")
+    cleaned_filters = [] # we use .strip() to clean up field and query strings
+    for f in filters:
+        field = (f.get("field") or "").strip()
+        query = (str(f.get("query") or "")).strip()
+        if not field or not query:
+            return jsonify({"error": "Each filter must have non-empty field and query"}), 400
+        cleaned_filters.append({"field": field, "query": query})
 
-    prop_map = {
-        "id": G_gt.vertex_properties["id"],
-        "name": G_gt.vertex_properties["name"],
-        "namespace": G_gt.vertex_properties["namespace"],
-        "def": G_gt.vertex_properties["def"],
-        "synonym": G_gt.vertex_properties["synonym"],
-        "is_a": G_gt.vertex_properties["is_a"],
-    }
+    def normalize(s: str) -> str:
+        # Helper function to normalize strings based on match_case
+        return s if match_case else s.lower()
 
-    # Helper functions
-    def string_matches(text: str, q: str) -> bool:
-        if not match_case:
-            text_cmp = text.lower()
-            query_cmp = q.lower()
-        else:
-            text_cmp = text
-            query_cmp = q
+    def value_matches(value: Any, query_str: str) -> bool:
+        if value is None:
+            return False
+
+        if isinstance(value, (list, tuple, set)):
+            return any(value_matches(v, query_str) for v in value)
+
+        val_s = str(value)
+        query_normalized = normalize(query_str)
+        value_normalized = normalize(val_s)
 
         if match_words:
-            pattern = r"\b{}\b".format(re.escape(query_cmp))
-            return re.search(pattern, text_cmp) is not None
-        else:
-            return query_cmp in text_cmp
+            import re
+            tokens = [t for t in re.split(r"\W+", value_normalized) if t]
+            return query_normalized in tokens
 
-    def value_matches(value, q: str) -> bool:
-        if isinstance(value, (list, tuple)):
-            return any(string_matches(str(item), q) for item in value)
-        else:
-            return string_matches(str(value), q)
+        return query_normalized in value_normalized
 
-    normalized_filters: list[tuple[Optional[str], str]] = []
-
-    if filters and isinstance(filters, list):
-        for f in filters:
-            raw_field = f.get("field")
-            raw_query = f.get("query")
-
-            if raw_query is None:
-                return jsonify({"error": "Each filter requires 'query'"}), 400
-
-            f_query = str(raw_query).strip()
-
-            # if field is None or empty after strip -> search all fields
-            if raw_field is None or not str(raw_field).strip():
-                f_field: Optional[str] = None
-            else:
-                f_field = str(raw_field).strip().lower()
-
-            normalized_filters.append((f_field, f_query))
-
-
-    results = []
+    results: list[dict[str, Any]] = []
 
     for v in G_gt.vertices():
-        vertex_ok = True
+        v_idx = int(v)
 
-        for filt_field, filt_query in normalized_filters:
-            # None -> all fields
-            if filt_field is None:
-                matched_any = False
-                for prop_name, prop in prop_map.items():
-                    value = prop[v]
-                    if value_matches(value, filt_query):
-                        matched_any = True
+        matches_all = True
+        for f in cleaned_filters:
+            field = f["field"]
+            query = f["query"]
+
+            if field == "all":
+                matched_this = False
+                for prop in all_props.values():
+                    if value_matches(prop[v], query):
+                        matched_this = True
                         break
-                if not matched_any:
-                    vertex_ok = False
-                    break
             else:
-                if filt_field not in prop_map:
-                    return jsonify({"error": f"Invalid field: {filt_field}"}), 400
+                if field not in all_props:
+                    return jsonify({"error": f"Invalid field: {field}"}), 400
+                matched_this = value_matches(all_props[field][v], query)
 
-                value = prop_map[filt_field][v]
-                if not value_matches(value, filt_query):
-                    vertex_ok = False
-                    break
+            if not matched_this:
+                matches_all = False
+                break
 
-
-        if not vertex_ok:
+        if not matches_all:
             continue
 
-        results.append(
-            {
-                "index": int(v),
-                "id": G_gt.vertex_properties["id"][v],
-                "name": G_gt.vertex_properties["name"][v],
-                "namespace": G_gt.vertex_properties["namespace"][v],
-                "def": G_gt.vertex_properties["def"][v].replace('"', ""),
-                "synonym": list(G_gt.vertex_properties["synonym"][v]) if G_gt.vertex_properties["synonym"][v] else [],
-                "is_a": list(G_gt.vertex_properties["is_a"][v]) if G_gt.vertex_properties["is_a"][v] else [],
-            }
-        )
+        node_entry: dict[str, Any] = {"index": v_idx}
+        for prop_name, prop in all_props.items():
+            val = prop[v]
+            if val == EMPTY_PROPERTY_FIELD:
+                continue
+            try:
+                parsed = json.loads(val)
+                node_entry[prop_name] = parsed
+            except (json.JSONDecodeError, TypeError):
+                node_entry[prop_name] = convert_to_json_parsable_representation(val)
+
+        results.append(node_entry)
 
     if not results:
         return jsonify({"error": "No matching nodes found"}), 404
 
-    return jsonify(results)
+    logger.info(f"Successful node search for graph with uuid as follows: {graph_uuid}")
+    return jsonify(results), 200
 
 
 @app.route("/save_graph/<string:graph_uuid>", methods=["POST"])

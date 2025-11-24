@@ -260,18 +260,11 @@ export function useGraph(
       const data = await fetchNodeData(index);
 
       setSelectedNode({
-        index: data.index,
-        id: data.id,
-        name: data.name,
-        namespace: data.namespace,
-        def: data.def,
-        synonym: data.synonym,
-        is_a: data.is_a,
+        index,
+        ...data,  // every field from fetched data, e.g. name, type, attributes, etc.
       });
 
       console.log("Node info json: \n" + JSON.stringify(data, null, 2));
-
-      // setSelectedNode(filteredData);
 
       selectedIndexRef.current = index;
       namesCacheRef.current.set(index, data.name);

@@ -167,8 +167,8 @@ const MainAppContext: React.FC = () => {
 
       if (data.config) {
         setGraphConfig({
-          spaceSize: data.config.space_size ?? 1000,
-          pointSize: data.config.point_size ?? 5,
+          spaceSize: data.config.space_size ?? 256,
+          pointSize: data.config.point_size ?? 1,
         });
       } else {
         setGraphConfig(null);
