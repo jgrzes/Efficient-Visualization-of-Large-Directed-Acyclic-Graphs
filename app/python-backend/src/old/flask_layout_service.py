@@ -212,8 +212,8 @@ def search_node(graph_uuid: str):
     for f in filters:
         field = (f.get("field") or "").strip()
         query = (str(f.get("query") or "")).strip()
-        if not field or not query:
-            return jsonify({"error": "Each filter must have non-empty field and query"}), 400
+        if not query:
+            return jsonify({"error": "Empty query in filters"}), 400
         cleaned_filters.append({"field": field, "query": query})
 
     def normalize(s: str) -> str:
@@ -248,7 +248,7 @@ def search_node(graph_uuid: str):
             field = f["field"]
             query = f["query"]
 
-            if field == "all":
+            if field == "": # empty field means search in all fields
                 matched_this = False
                 for prop in all_props.values():
                     if value_matches(prop[v], query):
