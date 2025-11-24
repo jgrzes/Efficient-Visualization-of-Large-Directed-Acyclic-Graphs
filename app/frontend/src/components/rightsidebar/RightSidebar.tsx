@@ -1,4 +1,3 @@
-// components/right/RightSidebar.tsx
 import React from "react";
 import TabNavigation from "./TabNavigation";
 import { NodeInfoProps } from "../leftsidebar/NodeInfo";
@@ -93,7 +92,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
     <div
       className={`fixed top-0 z-40 right-0 h-screen text-gray-200 flex transition-[width] duration-200 ${
         expanded ? "w-96" : "w-16"
-      } bg-black/90 shadow-2xl shadow-black/40 overflow-visible`}
+      } bg-black/90 shadow-2xl shadow-black/40 overflow-visible py-4 bg-black/90 backdrop-blur-xl`}
       aria-expanded={expanded}
     >
       <TabNavigation activeTab={activeTab} expanded={expanded} onTabClick={handleTabClick} />

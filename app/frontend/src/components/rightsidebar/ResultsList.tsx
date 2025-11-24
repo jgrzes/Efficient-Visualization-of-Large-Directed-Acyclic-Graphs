@@ -18,7 +18,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
     return <EmptyState type={type} />;
   }
 
-  const label = type === "search" ? "znaleziono" : "ulubione";
+  const label = type === "search" ? "found" : "favorites";
 
   return (
     <div className="space-y-2">

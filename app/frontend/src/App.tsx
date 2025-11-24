@@ -13,6 +13,8 @@ import OntologyModal from './components/OntologyModal';
 import LoadingModal from './components/LoadingModal';
 import ConfirmModal from './components/ConfirmModal';
 import RightSidebar from './components/rightsidebar/RightSidebar';
+import SaveGraphModal from "./components/SaveGraphModal";
+import LoadGraphModal from "./components/LoadGraphModal";
 
 import { useGraph } from './hooks/useGraph';
 
@@ -24,7 +26,6 @@ export const AppContext = createContext<{
 } | null>(null);
 
 const MainAppContext: React.FC = () => {
-// const MainAppContext: React.FC = () => {
   // Refs
   const graphRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -43,8 +44,6 @@ const MainAppContext: React.FC = () => {
     spaceSize: number;
     pointSize: number;
   } | null>({spaceSize: 256, pointSize: 1});
-
-  // const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext!.currentGraphUUID;
@@ -79,13 +78,23 @@ const MainAppContext: React.FC = () => {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<"search" | "favorites" | "comments" | "graph">("search");
 
+  // SaveGraphModal state
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveModalHash, setSaveModalHash] = useState<string | null>(null);
+  const [saveModalError, setSaveModalError] = useState<string | null>(null);
+
+  // LoadGraphModal state
+  const [loadModalOpen, setLoadModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadLoading, setLoadLoading] = useState(false);
+
+
   // Helpers
   const arrayFromF32 = (f: Float32Array) => Array.from(f);
 
   // Graph controls
   const { fitView, resetView, selectNodeByIndex, tooltips} = useGraph(
     graphRef,
-    // canvasRef,
     pointPositions,
     links,
     setSelectedNode,
@@ -227,7 +236,6 @@ const MainAppContext: React.FC = () => {
       const data = await response.json();
       console.log("Received graph uuid: " + data.uuid);
       setCurrentGraphUUID(data.uuid);
-      // console.log("Graph uuid set on frontend: " + currentGraphUUID);
       setPointPositions(new Float32Array(data.canvas_positions));
       setLinks(new Float32Array(data.links));
       setSelectedNode(null);
@@ -312,7 +320,7 @@ const MainAppContext: React.FC = () => {
   };
 
   /** SEARCH **/
-  // wysłanie zapytania na backend na podstawie AKTUALNYCH filtrów
+  // sending search request
   const performSearch = async (filtersToApply: SearchFilter[]) => {
     if (filtersToApply.length === 0) {
       setResults([]);
@@ -348,7 +356,7 @@ const MainAppContext: React.FC = () => {
   };
 
 
-  // wywoływane z SearchBar po Enter – DODANIE FILTRA + nowe zapytanie
+  // sending new search after adding a filter
   const handleSearch = (field: string, query: string) => {
     const q = query.trim();
     if (!q) return;
@@ -375,7 +383,7 @@ const MainAppContext: React.FC = () => {
   };
 
 
-  // usunięcie filtra z listy + nowe zapytanie
+  // remove filter and re-search
   const handleRemoveFilter = (id: string) => {
     setFilters((prev) => {
       const updated = prev.filter((f) => f.id !== id);
@@ -384,7 +392,7 @@ const MainAppContext: React.FC = () => {
     });
   };
 
-  // efekt wywołujący zapytanie przy zmianie opcji wyszukiwania
+  // effect to re-search when search options change
   React.useEffect(() => {
     if (filters.length === 0) return;
     void performSearch(filters);
@@ -424,39 +432,42 @@ const MainAppContext: React.FC = () => {
     return res.json() as Promise<{ hash: string; }>;
   }
 
-  /** SAVE GRAPH TO DB (button handler) **/
+ /** SAVE GRAPH TO DB (button handler) **/
   const saveToDb = async () => {
     try {
       setLoading(true);
+      setSaveModalError(null);
+      setSaveModalHash(null);
 
       const payloadPos = arrayFromF32(pointPositions);
       const payloadLinks = arrayFromF32(links);
 
       const { hash } = await postGraphToDB(payloadPos, payloadLinks);
+
       setCurrentGraphHash(hash);
-      const share = `${window.location.origin}/?g=${hash}`;
+      setSaveModalHash(hash);
+      setSaveModalOpen(true);
 
-      const url = new URL(window.location.href);
-      url.searchParams.set('g', hash);
-      window.history.replaceState({}, '', url.toString());
-
-      await navigator.clipboard.writeText(share);
-      alert(`Saved! Link copied to clipboard:\n${share}`);
     } catch (e) {
       console.error(e);
-      alert('Failed to save the graph to the database.');
+      setSaveModalError("Failed to save the graph to the database.");
+      setSaveModalOpen(true);
     } finally {
       setLoading(false);
     }
   };
 
-  /** LOAD GRAPH FROM DB BY HASH (button handler) **/
-  const loadFromLink = async () => {
-    const hash = window.prompt('Pass hash of the graph:');
-    if (!hash) return;
+  /** LOAD GRAPH FROM HASH (button handler) **/
+  const handleOpenLoadModal = () => {
+    setLoadError(null);
+    setLoadModalOpen(true);
+  };
 
+  const handleLoadByHash = async (hash: string) => {
     try {
-      setLoading(true);
+      setLoadLoading(true);
+      setLoadError(null);
+
       const data = await fetchGraphByHash(hash.trim());
       setCurrentGraphUUID(data.uuid);
       setCurrentGraphHash(data.graph_hash);
@@ -472,17 +483,19 @@ const MainAppContext: React.FC = () => {
       }
 
       const url = new URL(window.location.href);
-      url.searchParams.set('g', hash.trim());
-      window.history.replaceState({}, '', url.toString());
+      url.searchParams.set("g", hash.trim());
+      window.history.replaceState({}, "", url.toString());
 
+      setLoadModalOpen(false);
       setTimeout(() => fitView(), 100);
     } catch (e) {
       console.error(e);
-      alert('Graph not found for the given hash!');
+      setLoadError("Graph not found for the given hash.");
     } finally {
-      setLoading(false);
+      setLoadLoading(false);
     }
   };
+
 
 
   return (
@@ -518,7 +531,7 @@ const MainAppContext: React.FC = () => {
         handleExportClick={handleExportClick}
         handleAnalyzeClick={handleAnalyzeClick}
         handleSaveLayoutClick={saveToDb}
-        handleLoadFromHashClick={loadFromLink}
+        handleLoadFromHashClick={handleOpenLoadModal}
         selectedNode={selectedNode}
       />
 
@@ -561,15 +574,24 @@ const MainAppContext: React.FC = () => {
         onRemoveFilter={handleRemoveFilter}
       />
 
-      {tooltips.map((t) => (
-        <ToolTip
-          key={t.index}
-          visible={true}
-          x={t.x}
-          y={t.y}
-          content={<strong>{t.content}</strong>}
-        />
-      ))}
+      <SaveGraphModal
+        open={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        hash={saveModalHash}
+        error={saveModalError}
+      />
+
+      <LoadGraphModal
+        open={loadModalOpen}
+        onClose={() => {
+          setLoadModalOpen(false);
+          setLoadError(null);
+        }}
+        onSubmit={handleLoadByHash}
+        loading={loadLoading}
+        error={loadError}
+      />
+
     </div>
     </AppContext.Provider>
   );

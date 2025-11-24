@@ -41,7 +41,6 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   selectedNode,
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const [active, setActive] = useState<string | null>("Load data");
 
   const items: Item[] = [
     { label: "Load data", icon: <Upload size={18} />, onClick: handleLoadClick },
@@ -106,30 +105,23 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
           aria-label="Sidebar actions"
         >
           {items.map((item) => {
-            const isActive = active === item.label;
             return (
               <button
                 key={item.label}
                 type="button"
                 onClick={() => {
-                  setActive(item.label);
                   item.onClick?.();
                 }}
                 className={[
                   "group w-full flex items-center px-2.5 py-2 rounded-lg",
                   "transition-colors duration-150 ease-in-out",
                   "focus:outline-none focus-visible:outline-none",
-                  isActive
-                    ? "bg-white/10 text-white shadow-inner"
-                    : "hover:bg-white/5 text-gray-300 hover:text-white",
+                  "hover:bg-white/5 text-gray-300 hover:text-white",
                 ].join(" ")}
               >
                 <span
                   className={[
-                    "flex h-8 w-8 items-center justify-center rounded-lg",
-                    isActive
-                      ? "bg-blue-500/20 text-blue-300"
-                      : "bg-white/5 text-gray-300 group-hover:bg-white/10",
+                    "flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-gray-300 group-hover:bg-white/10",
                   ].join(" ")}
                 >
                   {item.icon}

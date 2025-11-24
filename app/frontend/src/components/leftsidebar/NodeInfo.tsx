@@ -42,7 +42,7 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
     useFavorites();
   const { addComment } = useComments();
 
-  const fav = isLoading ? !!isFavoriteProp : isFavHook(id);
+  const fav = isLoading ? !!isFavoriteProp : (id ? isFavHook(id) : false);
 
   useEffect(() => {
     return () => {
@@ -69,7 +69,10 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
   const handleCommentSubmit = useCallback(
     (data: { name: string; text: string }) => {
       setCommentOpen(false);
-      addComment({ id: id ?? "", name }, data);
+      addComment({
+        id: id ?? "", name,
+        namespace: undefined
+      }, data);
       onAddComment?.(props, data);
     },
     [addComment, id, name, onAddComment, props]
@@ -235,7 +238,7 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
         open={commentOpen}
         onClose={() => setCommentOpen(false)}
         onSubmit={handleCommentSubmit}
-        title={`Komentarz do: ${name}`}
+  title={`Comment for: ${name}`}
       />
     </section>
   );

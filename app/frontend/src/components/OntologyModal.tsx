@@ -34,7 +34,7 @@ export default function OntologyModal({
                      rounded-2xl border border-white/10 shadow-2xl shadow-black/50 backdrop-blur-md"
         >
           <p className="text-gray-300 text-base font-medium mb-6 text-center leading-relaxed">
-            Wybierz kategorię <span className="text-gray-100 font-semibold">{fileName}</span>
+            Choose category <span className="text-gray-100 font-semibold">{fileName}</span>
           </p>
 
           <div className="flex flex-col gap-3">
@@ -56,7 +56,7 @@ export default function OntologyModal({
             className="mt-6 w-full px-4 py-2 rounded-lg bg-red-600/90 text-white font-semibold
                        hover:bg-red-700 transition focus:outline-none focus:ring-2 focus:ring-red-500/50"
           >
-            Anuluj
+            Cancel
           </button>
         </motion.div>
       </motion.div>

@@ -11,7 +11,7 @@ interface CommentModalProps {
 
 const CommentModal: React.FC<CommentModalProps> = ({
   open,
-  title = "Dodaj komentarz",
+  title = "Add comment",
   initialText = "",
   initialName = "",
   onClose,
@@ -59,7 +59,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
           {/* COMMENT NAME / TITLE FIELD */}
           <div>
             <label htmlFor="comment-name" className="text-sm text-gray-300">
-              Nazwa komentarza
+              Comment title
             </label>
             <input
               id="comment-name"
@@ -74,7 +74,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
           {/* COMMENT TEXTAREA */}
           <div>
             <label htmlFor="comment-textarea" className="sr-only">
-              Treść komentarza
+              Comment content
             </label>
             <textarea
               id="comment-textarea"
@@ -83,7 +83,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
               onChange={(e) => setText(e.target.value)}
               rows={6}
               className="w-full resize-y rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
-              placeholder="Wpisz treść komentarza…"
+              placeholder="Enter comment text…"
             />
           </div>
         </div>
@@ -94,7 +94,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
             onClick={onClose}
             className="px-3 py-2 text-sm rounded-md border border-white/10 text-gray-300 hover:bg-white/[0.06] transition"
           >
-            Anuluj
+            Cancel
           </button>
 
           <button
@@ -114,7 +114,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 : "bg-white/[0.06] text-gray-400 cursor-not-allowed"
             }`}
           >
-            Zapisz komentarz
+            Save comment
           </button>
         </div>
       </div>

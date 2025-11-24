@@ -7,10 +7,10 @@ interface EmptyStateProps {
 
 const EmptyState: React.FC<EmptyStateProps> = ({ type }) => {
   const Icon = type === "search" ? Search : Star;
-  const title = type === "search" ? "Brak wyników" : "Brak ulubionych";
+  const title = type === "search" ? "No results" : "No favorites";
   const subtitle = type === "search" 
-    ? "Spróbuj innego zapytania" 
-    : "Dodaj elementy z zakładki Szukaj";
+    ? "Try a different query" 
+    : "Add items from the Search tab";
 
   return (
     <div className="text-center mt-10 text-gray-500">

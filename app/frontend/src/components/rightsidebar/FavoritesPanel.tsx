@@ -12,7 +12,7 @@ export const FavoritesPanel: React.FC<FavoritesPanelProps> = ({ favorites, isLoa
   if (isLoading) {
     return (
       <div className="text-sm text-gray-400">
-        <p>Ładowanie ulubionych…</p>
+  <p>Loading favorites…</p>
       </div>
     );
   }
@@ -20,8 +20,8 @@ export const FavoritesPanel: React.FC<FavoritesPanelProps> = ({ favorites, isLoa
   if (!favorites || favorites.length === 0) {
     return (
       <div className="text-sm text-gray-400">
-        <p>Brak ulubionych.</p>
-        <p className="text-xs text-gray-500 mt-1">Dodaj węzeł do ulubionych, aby pojawił się tutaj.</p>
+  <p>No favorites.</p>
+  <p className="text-xs text-gray-500 mt-1">Add a node to favorites to see it here.</p>
       </div>
     );
   }
