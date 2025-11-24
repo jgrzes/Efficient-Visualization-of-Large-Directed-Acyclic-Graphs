@@ -2,6 +2,7 @@ from typing import List, Tuple, Dict, Any, Optional, Union
 import pymongo
 from utils import VertexMetadataT
 import datetime
+import hashlib
 import numpy as np
 from bson.objectid import ObjectId
 
@@ -25,6 +26,7 @@ Database stores graph data in following format:
 
 class MongoDatabaseManager:
     GRAPH_DATA_COLLECTION = "graph_data"
+    GRAPH_GROUPS_COLLECTION = "graph_groups"
 
     def __init__(self, db_uri: str, db_name: str):
         self.client_handle = pymongo.MongoClient(db_uri)
@@ -125,7 +127,72 @@ class MongoDatabaseManager:
                     
                     update_dict["$set"][f"vertices.{vertex_index}.{field}"] = new_val
 
-        return update_dict       
+        return update_dict
+
+    # Groups
+    def get_group(self, group_name: str) -> Optional[Dict]:
+        return self.db[self.GRAPH_GROUPS_COLLECTION].find_one({"group_name": group_name})
+
+    def create_graph_group(self, group_name: str, password: str) -> Dict:
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        doc = {
+            "group_name": group_name,
+            "password_hash": password_hash,
+            "created_at": datetime.datetime.utcnow()
+        }
+        self.db[self.GRAPH_GROUPS_COLLECTION].insert_one(doc)
+        return doc
+    
+    def verify_group_password(self, name: str, password_plain: str) -> bool:
+        group = self.get_group(name)
+        if group is None:
+            return False
+        pwd_hash = hashlib.sha256(password_plain.encode("utf-8")).hexdigest()
+        return group.get("password_hash") == pwd_hash
+    
+    def add_graph_to_group(self, graph_id: Union[ObjectId, str], group_name: str) -> None:
+        if isinstance(graph_id, str):
+            graph_id = self._convert_to_object_id(graph_id)
+
+        self.db[self.GRAPH_DATA_COLLECTION].update_one(
+            {"_id": graph_id},
+            {"$set": {"group": group_name}}
+        )
+    
+    def list_graphs_for_group(self, group_name: str) -> List[Dict[str, Any]]:
+        """
+        Returns list of graphs in given group with following fields:
+        - id (string)
+        - name
+        - num_of_vertices
+        - last_entry_update (ISO string or None)
+        """
+        cursor = self.db[self.GRAPH_DATA_COLLECTION].find(
+            {"group": group_name},
+            {
+                "_id": 1,
+                "name": 1,
+                "num_of_vertices": 1,
+                "last_entry_update": 1,
+            },
+        ).sort("last_entry_update", pymongo.DESCENDING)
+
+        result: List[Dict[str, Any]] = []
+        for doc in cursor:
+            result.append(
+                {
+                    "id": str(doc["_id"]),
+                    "name": doc.get("name"),
+                    "num_of_vertices": doc.get("num_of_vertices"),
+                    "last_entry_update": (
+                        doc.get("last_entry_update").isoformat()
+                        if doc.get("last_entry_update") is not None
+                        else None
+                    ),
+                }
+            )
+
+        return result
 
     # Will return a mock object id if an error occurs
     @staticmethod
