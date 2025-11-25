@@ -21,6 +21,7 @@ interface LeftSidebarProps {
   handleAnalyzeClick: () => void;
   handleSaveLayoutClick: () => void;
   handleLoadFromHashClick: () => void;
+  handleOpenSettings: () => void;
   selectedNode?: NodeInfoProps | null;
 }
 
