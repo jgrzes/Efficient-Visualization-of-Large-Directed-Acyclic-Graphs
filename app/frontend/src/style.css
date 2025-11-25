@@ -2,16 +2,12 @@
 
 html,
 body {
-  display: flex;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
   height: 100%;
-  overflow: hidden;
+  box-sizing: border-box;
 }
 
-#layout {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+*, *::before, *::after {
+  box-sizing: inherit;
 }

@@ -7,6 +7,10 @@ interface ResultsListProps {
   type: "search" | "favorites";
   items: NodeInfoProps[];
   onSelectNode: (node: NodeInfoProps) => void;
+  onItemHover?: (node: NodeInfoProps | null) => void;
+
+  scrollContainerRef?: React.RefObject<HTMLDivElement>;
+  onVisibleNodesChange?: (nodes: NodeInfoProps[]) => void;
 }
 
 const ResultsList: React.FC<ResultsListProps> = ({

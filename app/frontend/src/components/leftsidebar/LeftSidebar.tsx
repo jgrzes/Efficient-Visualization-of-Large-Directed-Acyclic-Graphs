@@ -138,7 +138,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
         </nav>
 
         {/* NODE INFO */}
-        <div className="flex-1 px-3 py-3 overflow-y-auto overflow-x-auto [scrollbar-gutter:stable]">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
           {expanded ? (
             <>
               <p className="mb-2 text-[11px] uppercase tracking-wide text-gray-400">

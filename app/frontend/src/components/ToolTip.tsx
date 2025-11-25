@@ -13,7 +13,7 @@ const ToolTip: React.FC<ToolTipProps> = ({ visible, x, y, content }) => {
   return (
     <div
       className="
-        absolute pointer-events-none
+        absolute pointer-events-none   <────── TU
         z-10
         px-3 py-2 
         text-sm text-gray-100 font-medium

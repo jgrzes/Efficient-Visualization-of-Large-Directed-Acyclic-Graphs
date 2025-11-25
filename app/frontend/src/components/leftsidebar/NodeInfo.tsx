@@ -155,8 +155,9 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
     <section
       id="info-panel"
       aria-labelledby="info-title"
-      className="relative inline-block w-[400px] max-w-[92vw] bg-black/70 backdrop-blur-md
-                 rounded-xl shadow-lg text-gray-200 border border-gray-900/60"
+      className="relative inline-block w-[400px] max-w-[92vw] max-h-[70vh]
+                bg-black/70 backdrop-blur-md rounded-xl shadow-lg text-gray-200
+                border border-gray-900/60 flex flex-col"
     >
       <span
         role="status"
@@ -224,7 +225,7 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
         </div>
       </header>
 
-      <div className="p-4 cursor-default">
+      <div className="pt-0 px-4 pb-4 cursor-default overflow-y-auto overflow-x-hidden flex-1">
         <dl className="grid grid-cols-1 gap-4">
           {fields.map(([key, value]) => (
             <FieldRow key={key} label={key}>

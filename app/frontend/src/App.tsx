@@ -45,6 +45,8 @@ const MainAppContext: React.FC = () => {
     pointSize: number;
   } | null>({spaceSize: 256, pointSize: 1});
 
+  const [nodeNames, setNodeNames] = useState<string[] | null>(null);
+
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext!.currentGraphUUID;
   const setCurrentGraphUUID = appContext!.setCurrentGraphUUID;
@@ -93,13 +95,29 @@ const MainAppContext: React.FC = () => {
   const arrayFromF32 = (f: Float32Array) => Array.from(f);
 
   // Graph controls
-  const { fitView, resetView, selectNodeByIndex, tooltips} = useGraph(
+  const {
+    fitView,
+    resetView,
+    selectNodeByIndex,
+    tooltips,
+    hoverTooltip,
+    highlightSearchResults,
+  } = useGraph(
     graphRef,
     pointPositions,
     links,
     setSelectedNode,
-    graphConfig || undefined
+    graphConfig || undefined,
+    nodeNames || undefined
   );
+
+  React.useEffect(() => {
+    const indices = results
+      .map(r => r.index)
+      .filter((x): x is number => x !== undefined);
+
+    highlightSearchResults(indices);
+  }, [results]);
 
   React.useEffect(() => {console.log("Current graph uuid: " + currentGraphUUID);}, [currentGraphUUID]);
 
@@ -117,6 +135,12 @@ const MainAppContext: React.FC = () => {
         setPointPositions(new Float32Array(data.canvas_positions));
         setLinks(new Float32Array(data.links));
         setSelectedNode(null);
+
+        if (data.names) {
+          setNodeNames(data.names);
+        } else {
+          setNodeNames(null);
+        }
 
         if (data.config) {
           setGraphConfig({
@@ -173,6 +197,12 @@ const MainAppContext: React.FC = () => {
       setPointPositions(new Float32Array(data.canvas_positions));
       setLinks(new Float32Array(data.links));
       setSelectedNode(null);
+
+      if (data.names) {
+        setNodeNames(data.names);
+      } else {
+        setNodeNames(null);
+      }
 
       if (data.config) {
         setGraphConfig({
@@ -239,6 +269,13 @@ const MainAppContext: React.FC = () => {
       setPointPositions(new Float32Array(data.canvas_positions));
       setLinks(new Float32Array(data.links));
       setSelectedNode(null);
+
+      if (data.names) {
+        setNodeNames(data.names);
+      } else {
+        setNodeNames(null);
+      }
+
       setSelectedFile(null);
     } catch (err) {
       console.error('Upload error:', err);
@@ -348,8 +385,16 @@ const MainAppContext: React.FC = () => {
       }
 
       const data = await res.json();
+      const arr = Array.isArray(data) ? data : [data];
+
       setError(null);
-      setResults(Array.isArray(data) ? data : [data]);
+      setResults(arr);
+
+      const indices = arr
+        .map((n: NodeInfoProps) => n.index)
+        .filter((idx): idx is number => typeof idx === "number");
+
+      highlightSearchResults(indices);
     } catch {
       setError("Connection error");
     }
@@ -407,6 +452,7 @@ const MainAppContext: React.FC = () => {
       uuid: string, 
       canvas_positions: number[];
       links: number[];
+      names?: string[];
       meta?: Record<string, unknown>;
       config?: {
         space_size?: number;
@@ -475,6 +521,12 @@ const MainAppContext: React.FC = () => {
       setLinks(new Float32Array(data.links));
       setSelectedNode(null);
 
+      if (data.names) {
+        setNodeNames(data.names);
+      } else {
+        setNodeNames(null);
+      }
+
       if (data.config) {
         setGraphConfig({
           spaceSize: data.config.space_size || 256,
@@ -500,22 +552,34 @@ const MainAppContext: React.FC = () => {
 
   return (
     <AppContext.Provider value={{ currentGraphUUID, setCurrentGraphUUID }}>
-    <div id="layout" className="bg-black text-gray-200 flex-col">
-      <div ref={canvasRef} className="flex-grow" />
-      <div 
-        ref={graphRef}
-        id="graph"
-        className="relative flex-grow" >
+    <div id="layout" className="flex h-screen flex-col overflow-hidden">
+      <div ref={canvasRef} className="flex-1" />
+        <div 
+          ref={graphRef}
+          id="graph"
+          className="relative flex-grow"
+        >
           {tooltips.map((t) => (
             <ToolTip
-              key={t.index}
+              key={`click-${t.index}`}
               visible={true}
               x={t.x}
               y={t.y}
               content={<strong>{t.content}</strong>}
             />
           ))}
+
+          {hoverTooltip && (
+            <ToolTip
+              key={`hover-${hoverTooltip.index}`}
+              visible={true}
+              x={hoverTooltip.x}
+              y={hoverTooltip.y}
+              content={<strong>{hoverTooltip.content}</strong>}
+            />
+          )}
         </div>
+
 
       {analysisResult && (
         <AnalysisPanel

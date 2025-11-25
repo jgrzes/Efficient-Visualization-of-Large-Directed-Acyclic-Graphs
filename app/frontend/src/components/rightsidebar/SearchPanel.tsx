@@ -54,7 +54,11 @@ export const SearchPanel: React.FC<RightSearchPanelProps> = ({
       </div>
 
       <div className="px-4 py-4">
-        <ResultsList type="search" items={results} onSelectNode={onSelectNode} />
+        <ResultsList
+          type="search"
+          items={results}
+          onSelectNode={onSelectNode}
+        />
       </div>
     </div>
   );

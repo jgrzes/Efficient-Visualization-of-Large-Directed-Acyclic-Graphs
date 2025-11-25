@@ -104,9 +104,7 @@ const ResultCard: React.FC<ResultCardProps> = ({ node, onSelect }) => {
         open={commentOpen}
         onClose={() => setCommentOpen(false)}
         onSubmit={handleSubmitComment}
-  title={`Comment for: ${node.name}`}
-        // jeśli masz jakieś domyślne imię użytkownika, możesz dodać:
-        // initialName={defaultAuthorName}
+        title={`Comment for: ${node.name}`}
       />
     </>
   );
