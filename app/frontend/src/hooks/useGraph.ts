@@ -30,7 +30,8 @@ export function useGraph(
   initialConfig?: {
     spaceSize: number;
     pointSize: number;
-  }
+  },
+  names?: string[]
 ) {
   const graphInstance = useRef<Graph | null>(null);
   const linksRef = useRef<Float32Array>(links);
@@ -50,11 +51,25 @@ export function useGraph(
   // highlight token cancelation
   const highlightTokenRef = useRef(0);
 
+  const [hoverTooltip, setHoverTooltip] = useState<NodeTooltip | null>(null);
+
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext?.currentGraphUUID;
   // const setCurrentGraphUUID = appContext?.setCurrentGraphUUID;
 
   const currentGraphUUIDRef = useRef<string | null>(currentGraphUUID);
+
+  useEffect(() => {
+    const cache = namesCacheRef.current;
+    cache.clear();
+
+    if (names && names.length > 0) {
+      names.forEach((name, idx) => {
+        cache.set(idx, name);
+      });
+    }
+  }, [names]);
+
 
   useEffect(() => {
     currentGraphUUIDRef.current = currentGraphUUID;

@@ -35,6 +35,17 @@ EMPTY_PROPERTY_FIELD = "$N/A$"
 logger: logging.Logger = None
 
 
+def extract_vertex_names(G_gt: gt.Graph) -> list[str]:
+    """
+    Returns the list of vertex names from the graph G_gt. If the "name" property does not exist,
+    returns the vertex indices as strings.
+    """
+    name_prop = G_gt.vertex_properties.get("name")
+    if name_prop is None:
+        return [str(int(v)) for v in G_gt.vertices()]
+    return [str(name_prop[v]) for v in G_gt.vertices()]
+
+
 def build_reponse_json_string_for_make_graph_structure_req(
     G_gt: gt.Graph, canvas_positions: list[tuple[float, float]]
 ) -> Tuple[List[int], List[int]]:
@@ -153,6 +164,8 @@ def flask_make_graph_structure():
         }
     )
 
+    names = extract_vertex_names(G_gt)
+
     logger.info(f"Computed layout for {file.filename}, as well as generated new uuid for it, which is as follows {graph_uuid}")
 
     return (
@@ -161,6 +174,7 @@ def flask_make_graph_structure():
                 "uuid": graph_uuid,
                 "canvas_positions": transformed_canvas_positions,
                 "links": links,
+                "names": names,
             }
         ),
         200,
@@ -574,6 +588,8 @@ def load_graph_from_json():
     ]
     config = {key: graph_data[key] for key in config_keys}
 
+    names = extract_vertex_names(G_gt)
+
     return (
         jsonify(
             {
@@ -582,6 +598,7 @@ def load_graph_from_json():
                 "canvas_positions": linearized_canvas_positions,
                 "links": linearized_links,
                 "config": config,
+                "names": names,
             }
         ),
         200,
