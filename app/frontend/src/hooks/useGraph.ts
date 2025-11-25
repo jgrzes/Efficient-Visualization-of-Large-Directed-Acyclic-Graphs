@@ -347,7 +347,7 @@ export function useGraph(
 
     // after layout change - update tooltips
     recomputeTooltipsPositions();
-  }, [pointPositions, links]);
+  }, [pointPositions, links, initialConfig?.spaceSize, initialConfig?.pointSize]);
 
   return {
     fitView,

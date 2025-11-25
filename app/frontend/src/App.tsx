@@ -17,6 +17,7 @@ import SaveGraphModal from "./components/SaveGraphModal";
 import LoadGraphModal from "./components/LoadGraphModal";
 import GraphListModal from "./components/GraphListModal";
 import LoadSourceModal from "./components/LoadSourceModal";
+import SettingsModal from './components/SettingsModal';
 
 import { useGraph } from './hooks/useGraph';
 
@@ -106,6 +107,14 @@ const MainAppContext: React.FC = () => {
 
   // LoadSourceModal state
   const [loadSourceModalOpen, setLoadSourceModalOpen] = useState(false);
+
+  // Settings modal state
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+
+  const handleOpenSettings = () => {
+    console.log("Opening settings modal");
+    setSettingsModalOpen(true);
+  };
 
   // Helpers
   const arrayFromF32 = (f: Float32Array) => Array.from(f);
@@ -469,7 +478,7 @@ const MainAppContext: React.FC = () => {
   React.useEffect(() => {
     if (filters.length === 0) return;
     void performSearch(filters);
-  }, [searchOptions, filters]); // gdy zmienią się opcje albo lista filtrów
+  }, [searchOptions, filters]);
 
   /** FETCH GRAPH BY HASH / ID **/
   async function fetchGraphByHash(hash: string) {
@@ -520,7 +529,6 @@ const MainAppContext: React.FC = () => {
 
   /** SAVE GRAPH TO DB (button handler) **/
   const saveToDb = () => {
-    // tylko otwieramy modal; faktyczny zapis obsłuży handler modala
     setSaveModalError(null);
     setSaveModalHash(null);
     setSaveModalOpen(true);
@@ -662,6 +670,7 @@ const MainAppContext: React.FC = () => {
           handleAnalyzeClick={handleAnalyzeClick}
           handleSaveLayoutClick={saveToDb}
           handleLoadFromHashClick={handleOpenLoadModal}
+          handleOpenSettings={handleOpenSettings}
           selectedNode={selectedNode}
         />
 
@@ -743,6 +752,17 @@ const MainAppContext: React.FC = () => {
             onClose={() => setGraphListOpen(false)}
           />
         )}
+
+        <SettingsModal
+          open={settingsModalOpen}
+          onClose={() => setSettingsModalOpen(false)}
+          spaceSize={graphConfig?.spaceSize || 256}
+          pointSize={graphConfig?.pointSize || 1}
+          onApply={(spaceSize, pointSize) => {
+            setGraphConfig({ spaceSize, pointSize });
+            setSettingsModalOpen(false);
+          }}
+        />
       </div>
     </AppContext.Provider>
   );
