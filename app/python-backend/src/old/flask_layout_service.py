@@ -304,6 +304,20 @@ def save_graph_to_db(graph_uuid: str):
 
     graph_hash = data.get("graph_hash", "")
 
+    # Groups
+    group_name = data.get("group_name", None)
+    group_password = data.get("group_password", None)
+
+    if group_name is not None and group_password is not None:
+        group = db_manager.get_group(group_name)
+        if group is None:
+            # Create new group
+            db_manager.create_graph_group(group_name, group_password)
+        else:
+            # Verify password
+            if not db_manager.verify_group_password(group_name, group_password):
+                return jsonify({"error": "Invalid group password"}), 403
+
     linearized_layout = data["canvas_positions"]
 
     layout = [None for _ in range(int(len(linearized_layout) // 2))]
@@ -331,6 +345,8 @@ def save_graph_to_db(graph_uuid: str):
         additional_config["point_size"] = point_size
     if space_size is not None:
         additional_config["space_size"] = space_size
+    if group_name is not None:
+        additional_config["group_name"] = group_name
 
     if not db_manager.check_if_contains_graph_with_hash(graph_hash):
         graph_hash = db_manager.push_new_entry(
@@ -353,6 +369,9 @@ def save_graph_to_db(graph_uuid: str):
             vertices_metadata=vertices_metadata,
             additional_config=additional_config,  # TODO: Should probably contain point sizes and space sizes
         )
+
+    if group_name is not None:
+        db_manager.add_graph_to_group(graph_hash, group_name)
 
     return (
         jsonify(
@@ -567,6 +586,37 @@ def load_graph_from_json():
         ),
         200,
     )
+
+
+@app.route("/groups/<string:group_name>/graphs", methods=["POST"])
+def list_graphs_for_group(group_name: str):
+    """
+    Body:
+    {"password": "secret_pass"}
+
+    Response 200:
+    [
+      { "id": "...", "name": "...", "num_of_vertices": 123, "last_entry_update": "..." },
+      ...
+    ]
+    """
+    data = request.get_json(force=True)
+    password = data.get("password")
+
+    if not password:
+        return jsonify({"error": "Password is required"}), 400
+
+    if not db_manager.verify_group_password(group_name, password):
+        return jsonify({"error": "Invalid group or password"}), 403
+
+    graphs = db_manager.list_graphs_for_group(group_name)
+    return jsonify(graphs), 200
+
+
+@app.route("/groups", methods=["GET"])
+def list_groups():
+    groups = db_manager.list_groups()
+    return jsonify(groups), 200
 
 
 if __name__ == "__main__":

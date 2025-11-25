@@ -15,13 +15,16 @@ import ConfirmModal from './components/ConfirmModal';
 import RightSidebar from './components/rightsidebar/RightSidebar';
 import SaveGraphModal from "./components/SaveGraphModal";
 import LoadGraphModal from "./components/LoadGraphModal";
+import GraphListModal from "./components/GraphListModal";
+import LoadSourceModal from "./components/LoadSourceModal";
+import SettingsModal from './components/SettingsModal';
 
 import { useGraph } from './hooks/useGraph';
 
 const API_BASE = 'http://localhost:30301';
 
 export const AppContext = createContext<{
-  currentGraphUUID: string | null, 
+  currentGraphUUID: string | null,
   setCurrentGraphUUID: React.Dispatch<React.SetStateAction<string | null>>
 } | null>(null);
 
@@ -43,7 +46,7 @@ const MainAppContext: React.FC = () => {
   const [graphConfig, setGraphConfig] = useState<{
     spaceSize: number;
     pointSize: number;
-  } | null>({spaceSize: 256, pointSize: 1});
+  } | null>({ spaceSize: 256, pointSize: 1 });
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext!.currentGraphUUID;
@@ -58,7 +61,7 @@ const MainAppContext: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [results, setResults] = useState<NodeInfoProps[]>([]);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Search filters state
   type SearchFilter = {
     id: string;
@@ -82,18 +85,73 @@ const MainAppContext: React.FC = () => {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveModalHash, setSaveModalHash] = useState<string | null>(null);
   const [saveModalError, setSaveModalError] = useState<string | null>(null);
+  const [saveModalLoading, setSaveModalLoading] = useState(false);
 
-  // LoadGraphModal state
+  // LoadGraphModal state (load by hash)
   const [loadModalOpen, setLoadModalOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadLoading, setLoadLoading] = useState(false);
 
+  // DB loading (groups + GraphListModal)
+  type GraphListItem = {
+    id: string;
+    name?: string;
+    num_of_vertices?: number;
+    last_entry_update?: string;
+  };
+
+  const [graphList, setGraphList] = useState<GraphListItem[]>([]);
+  const [graphListOpen, setGraphListOpen] = useState(false);
+  const [loadFromDbError, setLoadFromDbError] = useState<string | null>(null);
+  const [loadFromDbLoading, setLoadFromDbLoading] = useState(false);
+
+
+  type GroupInfo = {
+    group_name: string;
+    created_at?: string;
+  };
+
+  const [groups, setGroups] = useState<GroupInfo[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [groupsError, setGroupsError] = useState<string | null>(null);
+
+  const fetchGroups = async () => {
+    try {
+      setGroupsLoading(true);
+      setGroupsError(null);
+
+      const res = await fetch(`${API_BASE}/groups`);
+      if (!res.ok) {
+        setGroupsError("Failed to load groups list.");
+        return;
+      }
+
+      const data = await res.json() as GroupInfo[];
+      setGroups(data);
+    } catch (e) {
+      console.error("Error fetching groups:", e);
+      setGroupsError("Unexpected error while loading groups.");
+    } finally {
+      setGroupsLoading(false);
+    }
+  };
+
+  // LoadSourceModal state
+  const [loadSourceModalOpen, setLoadSourceModalOpen] = useState(false);
+
+  // Settings modal state
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+
+  const handleOpenSettings = () => {
+    console.log("Opening settings modal");
+    setSettingsModalOpen(true);
+  };
 
   // Helpers
   const arrayFromF32 = (f: Float32Array) => Array.from(f);
 
   // Graph controls
-  const { fitView, resetView, selectNodeByIndex, tooltips} = useGraph(
+  const { fitView, resetView, selectNodeByIndex, tooltips } = useGraph(
     graphRef,
     pointPositions,
     links,
@@ -101,7 +159,9 @@ const MainAppContext: React.FC = () => {
     graphConfig || undefined
   );
 
-  React.useEffect(() => {console.log("Current graph uuid: " + currentGraphUUID);}, [currentGraphUUID]);
+  React.useEffect(() => {
+    console.log("Current graph uuid: " + currentGraphUUID);
+  }, [currentGraphUUID]);
 
   /** AUTO LOAD GRAPH FROM LINK ?g=... **/
   React.useEffect(() => {
@@ -194,10 +254,64 @@ const MainAppContext: React.FC = () => {
     }
   };
 
+  /** FILE / DB HANDLING (load_data) **/
+  const handleLoadClick = () => {
+    setLoadFromDbError(null);
+    setLoadSourceModalOpen(true);
+    void fetchGroups();
+  };
 
-  /** FILE HANDLING **/
-  const handleLoadClick = () => fileInputRef.current?.click();
+  const handleLoadFromFile = () => {
+    setLoadSourceModalOpen(false);
+    fileInputRef.current?.click();
+  };
 
+  const handleLoadFromDbSubmit = async (groupName: string, password: string) => {
+    try {
+      setLoadFromDbLoading(true);
+      setLoadFromDbError(null);
+
+      const res = await fetch(
+        `${API_BASE}/groups/${encodeURIComponent(groupName)}/graphs`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        }
+      );
+
+      if (!res.ok) {
+        let errMsg = 'Failed to load graphs from database.';
+        try {
+          const errBody = await res.json();
+          if (errBody?.error) errMsg = errBody.error;
+        } catch {
+          // ignore
+        }
+        setLoadFromDbError(errMsg);
+        return;
+      }
+
+      const list = await res.json() as GraphListItem[];
+
+      if (!list.length) {
+        setLoadFromDbError('No graphs in this group.');
+        return;
+      }
+
+      setGraphList(list);
+      setGraphListOpen(true);
+      setLoadSourceModalOpen(false);
+    } catch (err) {
+      console.error('Error while loading graphs from DB:', err);
+      const msg = 'Unexpected error while loading graphs from DB.';
+      setLoadFromDbError(msg);
+    } finally {
+      setLoadFromDbLoading(false);
+    }
+  };
+
+  /** FILE HANDLING (input onChange) **/
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -396,15 +510,15 @@ const MainAppContext: React.FC = () => {
   React.useEffect(() => {
     if (filters.length === 0) return;
     void performSearch(filters);
-  }, [searchOptions, filters]); // gdy zmienią się opcje albo lista filtrów
+  }, [searchOptions, filters]);
 
-  /** FETCH GRAPH BY HASH **/
+  /** FETCH GRAPH BY HASH / ID **/
   async function fetchGraphByHash(hash: string) {
     const res = await fetch(`${API_BASE}/load_graph/${hash}`);
     if (!res.ok) throw new Error(`Graph ${hash} not found`);
     return res.json() as Promise<{
-      graph_hash: string, 
-      uuid: string, 
+      graph_hash: string,
+      uuid: string,
       canvas_positions: number[];
       links: number[];
       meta?: Record<string, unknown>;
@@ -416,44 +530,66 @@ const MainAppContext: React.FC = () => {
   }
 
   /** POST GRAPH TO DB **/
-  async function postGraphToDB(canvas_positions: number[], links: number[]) {
+  async function postGraphToDB(
+    canvas_positions: number[],
+    links: number[],
+    group?: string,
+    password?: string
+  ) {
+    const body: any = {
+      canvas_positions,
+      links,
+      graph_hash: currentGraphHash,
+      point_size: graphConfig?.pointSize ?? null,
+      space_size: graphConfig?.spaceSize ?? null,
+    };
+
+    if (group && password) {
+      body.group_name = group;
+      body.group_password = password;
+    }
+
     const res = await fetch(`${API_BASE}/save_graph/${currentGraphUUID}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        canvas_positions, 
-        links, 
-        graph_hash: currentGraphHash, 
-        point_size: graphConfig?.pointSize ?? null, 
-        space_size: graphConfig?.spaceSize ?? null, 
-      }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error('Save failed');
     return res.json() as Promise<{ hash: string; }>;
   }
 
- /** SAVE GRAPH TO DB (button handler) **/
-  const saveToDb = async () => {
+  /** SAVE GRAPH TO DB (button handler) **/
+  const saveToDb = () => {
+    setSaveModalError(null);
+    setSaveModalHash(null);
+    setSaveModalOpen(true);
+    void fetchGroups();
+  };
+
+  /** SAVE GRAPH MODAL SUBMIT HANDLER **/
+  const handleSaveModalSubmit = async (groupName: string | null, password: string | null) => {
     try {
-      setLoading(true);
+      setSaveModalLoading(true);
       setSaveModalError(null);
       setSaveModalHash(null);
 
       const payloadPos = arrayFromF32(pointPositions);
       const payloadLinks = arrayFromF32(links);
 
-      const { hash } = await postGraphToDB(payloadPos, payloadLinks);
+      const { hash } = await postGraphToDB(
+        payloadPos,
+        payloadLinks,
+        groupName ?? undefined,
+        password ?? undefined
+      );
 
       setCurrentGraphHash(hash);
       setSaveModalHash(hash);
-      setSaveModalOpen(true);
-
     } catch (e) {
       console.error(e);
       setSaveModalError("Failed to save the graph to the database.");
-      setSaveModalOpen(true);
     } finally {
-      setLoading(false);
+      setSaveModalLoading(false);
     }
   };
 
@@ -480,6 +616,8 @@ const MainAppContext: React.FC = () => {
           spaceSize: data.config.space_size || 256,
           pointSize: data.config.point_size || 1
         });
+      } else {
+        setGraphConfig(null);
       }
 
       const url = new URL(window.location.href);
@@ -496,16 +634,48 @@ const MainAppContext: React.FC = () => {
     }
   };
 
+  /** LOAD GRAPH FROM DB LIST (GraphListModal selection) **/
+  const handleSelectGraphFromDb = async (graphId: string) => {
+    try {
+      setLoadFromDbLoading(true);
+      setLoadFromDbError(null);
 
+      const data = await fetchGraphByHash(graphId.trim());
+      setCurrentGraphUUID(data.uuid);
+      setCurrentGraphHash(data.graph_hash);
+      setPointPositions(new Float32Array(data.canvas_positions));
+      setLinks(new Float32Array(data.links));
+      setSelectedNode(null);
+
+      if (data.config) {
+        setGraphConfig({
+          spaceSize: data.config.space_size || 256,
+          pointSize: data.config.point_size || 1
+        });
+      } else {
+        setGraphConfig(null);
+      }
+
+      setGraphListOpen(false);
+      setTimeout(() => fitView(), 100);
+    } catch (e) {
+      console.error(e);
+      const msg = 'Failed to load graph from database.';
+      setLoadFromDbError(msg);
+      alert(msg);
+    } finally {
+      setLoadFromDbLoading(false);
+    }
+  };
 
   return (
     <AppContext.Provider value={{ currentGraphUUID, setCurrentGraphUUID }}>
-    <div id="layout" className="bg-black text-gray-200 flex-col">
-      <div ref={canvasRef} className="flex-grow" />
-      <div 
-        ref={graphRef}
-        id="graph"
-        className="relative flex-grow" >
+      <div id="layout" className="bg-black text-gray-200 flex-col">
+        <div ref={canvasRef} className="flex-grow" />
+        <div
+          ref={graphRef}
+          id="graph"
+          className="relative flex-grow" >
           {tooltips.map((t) => (
             <ToolTip
               key={t.index}
@@ -517,82 +687,120 @@ const MainAppContext: React.FC = () => {
           ))}
         </div>
 
-      {analysisResult && (
-        <AnalysisPanel
-          result={analysisResult}
-          onClose={() => setAnalysisResult(null)}
+        {analysisResult && (
+          <AnalysisPanel
+            result={analysisResult}
+            onClose={() => setAnalysisResult(null)}
+          />
+        )}
+
+        <LeftSidebar
+          handleLoadClick={handleLoadClick}
+          fitView={fitView}
+          resetView={resetView}
+          handleExportClick={handleExportClick}
+          handleAnalyzeClick={handleAnalyzeClick}
+          handleSaveLayoutClick={saveToDb}
+          handleLoadFromHashClick={handleOpenLoadModal}
+          handleOpenSettings={handleOpenSettings}
+          selectedNode={selectedNode}
         />
-      )}
 
-      <LeftSidebar
-        handleLoadClick={handleLoadClick}
-        fitView={fitView}
-        resetView={resetView}
-        handleExportClick={handleExportClick}
-        handleAnalyzeClick={handleAnalyzeClick}
-        handleSaveLayoutClick={saveToDb}
-        handleLoadFromHashClick={handleOpenLoadModal}
-        selectedNode={selectedNode}
-      />
-
-      <input
-        type="file"
-        accept=".txt,.obo,.json"
-        ref={fileInputRef}
-        onChange={handleFileUpload}
-        className="hidden"
-      />
-
-      {showOntologyOptions && selectedFile && (
-        <OntologyModal
-          fileName={selectedFile.name}
-          onSelect={uploadFileWithNamespace}
-          onCancel={() => setShowOntologyOptions(false)}
+        <input
+          type="file"
+          accept=".txt,.obo,.json"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          className="hidden"
         />
-      )}
 
-      {loading && <LoadingModal />}
-      {showConfirm && (
-        <ConfirmModal
-          message="This will analyze the graph and may take a while. Do you want to continue?"
-          onConfirm={confirmAnalyze}
-          onCancel={() => setShowConfirm(false)}
+        {showOntologyOptions && selectedFile && (
+          <OntologyModal
+            fileName={selectedFile.name}
+            onSelect={uploadFileWithNamespace}
+            onCancel={() => setShowOntologyOptions(false)}
+          />
+        )}
+
+        {loading && <LoadingModal />}
+        {showConfirm && (
+          <ConfirmModal
+            message="This will analyze the graph and may take a while. Do you want to continue?"
+            onConfirm={confirmAnalyze}
+            onCancel={() => setShowConfirm(false)}
+          />
+        )}
+
+        <RightSidebar
+          onSearch={handleSearch}
+          results={results}
+          onSelectNode={(node) => selectNodeByIndex(node.index)}
+          error={error}
+          expanded={sidebarExpanded}
+          onExpandedChange={setSidebarExpanded}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onOptionsChange={setSearchOptions}
+          filters={filters}
+          onRemoveFilter={handleRemoveFilter}
         />
-      )}
 
-      <RightSidebar
-        onSearch={handleSearch}
-        results={results}
-        onSelectNode={(node) => selectNodeByIndex(node.index)}
-        error={error}
-        expanded={sidebarExpanded}
-        onExpandedChange={setSidebarExpanded}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onOptionsChange={setSearchOptions}
-        filters={filters}
-        onRemoveFilter={handleRemoveFilter}
-      />
+        <SaveGraphModal
+          open={saveModalOpen}
+          onClose={() => setSaveModalOpen(false)}
+          onSubmit={handleSaveModalSubmit}
+          loading={saveModalLoading}
+          hash={saveModalHash}
+          error={saveModalError}
+          groups={groups}
+          groupsLoading={groupsLoading}
+          onRefreshGroups={fetchGroups}
+        />
 
-      <SaveGraphModal
-        open={saveModalOpen}
-        onClose={() => setSaveModalOpen(false)}
-        hash={saveModalHash}
-        error={saveModalError}
-      />
+        <LoadGraphModal
+          open={loadModalOpen}
+          onClose={() => {
+            setLoadModalOpen(false);
+            setLoadError(null);
+          }}
+          onSubmit={handleLoadByHash}
+          loading={loadLoading}
+          error={loadError}
+        />
 
-      <LoadGraphModal
-        open={loadModalOpen}
-        onClose={() => {
-          setLoadModalOpen(false);
-          setLoadError(null);
-        }}
-        onSubmit={handleLoadByHash}
-        loading={loadLoading}
-        error={loadError}
-      />
+        <LoadSourceModal
+          open={loadSourceModalOpen}
+          onClose={() => {
+            setLoadSourceModalOpen(false);
+            setLoadFromDbError(null);
+          }}
+          onSelectFile={handleLoadFromFile}
+          onSelectDb={handleLoadFromDbSubmit}
+          loading={loadFromDbLoading || groupsLoading}
+          error={loadFromDbError || groupsError}
+          groups={groups}
+          onRefreshGroups={fetchGroups}
+        />
 
-    </div>
+        {graphListOpen && (
+          <GraphListModal
+            list={graphList}
+            onSelect={handleSelectGraphFromDb}
+            onClose={() => setGraphListOpen(false)}
+          />
+        )}
+
+        <SettingsModal
+          open={settingsModalOpen}
+          onClose={() => setSettingsModalOpen(false)}
+          spaceSize={graphConfig?.spaceSize || 256}
+          pointSize={graphConfig?.pointSize || 1}
+          onApply={(spaceSize, pointSize) => {
+            setGraphConfig({ spaceSize, pointSize });
+            setSettingsModalOpen(false);
+          }}
+        />
+      </div>
     </AppContext.Provider>
   );
 };
@@ -600,10 +808,10 @@ const MainAppContext: React.FC = () => {
 const App: React.FC = () => {
   const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
   return (
-    <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
+    <AppContext.Provider value={{ currentGraphUUID, setCurrentGraphUUID }}>
       <MainAppContext />
     </AppContext.Provider>
-  )
-}
+  );
+};
 
 export default App;

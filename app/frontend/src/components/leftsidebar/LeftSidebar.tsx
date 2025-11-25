@@ -38,6 +38,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   handleAnalyzeClick,
   handleSaveLayoutClick,
   handleLoadFromHashClick,
+  handleOpenSettings,
   selectedNode,
 }) => {
   const [expanded, setExpanded] = useState(false);
@@ -53,7 +54,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   ];
 
   const bottom: Item[] = [
-    {label: "Settings", icon: <Settings size={18} />, onClick: () => console.log("Settings"),},
+    {label: "Settings", icon: <Settings size={18} />, onClick: handleOpenSettings,},
   ];
 
   const toggleExpanded = () => setExpanded((v) => !v);
