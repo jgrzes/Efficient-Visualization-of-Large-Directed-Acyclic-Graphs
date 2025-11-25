@@ -129,8 +129,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 type="number"
                                 value={pointSizeInput}
                                 onChange={(e) => setPointSizeInput(e.target.value)}
-                                min={0.1}
-                                step={0.1}
+                                min={1}
+                                step={1}
                                 className="
                   w-full rounded-lg
                   bg-black/60 border border-white/10
