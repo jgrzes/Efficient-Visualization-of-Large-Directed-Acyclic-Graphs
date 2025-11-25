@@ -193,6 +193,20 @@ class MongoDatabaseManager:
             )
 
         return result
+    
+    def list_groups(self) -> List[Dict[str, Any]]:
+        cursor = self.db[self.GRAPH_GROUPS_COLLECTION].find({}).sort("created_at", pymongo.DESCENDING)
+        result: List[Dict[str, Any]] = []
+        for doc in cursor:
+            result.append(
+                {
+                    "group_name": doc.get("group_name"),
+                    "created_at": doc.get("created_at").isoformat()
+                    if doc.get("created_at") is not None
+                    else None,
+                }
+            )
+        return result
 
     # Will return a mock object id if an error occurs
     @staticmethod

@@ -613,6 +613,12 @@ def list_graphs_for_group(group_name: str):
     return jsonify(graphs), 200
 
 
+@app.route("/groups", methods=["GET"])
+def list_groups():
+    groups = db_manager.list_groups()
+    return jsonify(groups), 200
+
+
 if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     temp_graph_data_storage = GraphDataStorage()

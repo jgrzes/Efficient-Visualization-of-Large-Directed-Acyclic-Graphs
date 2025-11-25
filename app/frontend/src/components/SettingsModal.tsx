@@ -165,7 +165,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   transition
                 "
                             >
-                                Anuluj
+                                Cancel
                             </button>
                             <button
                                 type="submit"

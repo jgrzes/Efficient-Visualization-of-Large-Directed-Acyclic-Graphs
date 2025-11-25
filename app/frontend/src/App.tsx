@@ -105,6 +105,37 @@ const MainAppContext: React.FC = () => {
   const [loadFromDbError, setLoadFromDbError] = useState<string | null>(null);
   const [loadFromDbLoading, setLoadFromDbLoading] = useState(false);
 
+
+  type GroupInfo = {
+    group_name: string;
+    created_at?: string;
+  };
+
+  const [groups, setGroups] = useState<GroupInfo[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [groupsError, setGroupsError] = useState<string | null>(null);
+
+  const fetchGroups = async () => {
+    try {
+      setGroupsLoading(true);
+      setGroupsError(null);
+
+      const res = await fetch(`${API_BASE}/groups`);
+      if (!res.ok) {
+        setGroupsError("Failed to load groups list.");
+        return;
+      }
+
+      const data = await res.json() as GroupInfo[];
+      setGroups(data);
+    } catch (e) {
+      console.error("Error fetching groups:", e);
+      setGroupsError("Unexpected error while loading groups.");
+    } finally {
+      setGroupsLoading(false);
+    }
+  };
+
   // LoadSourceModal state
   const [loadSourceModalOpen, setLoadSourceModalOpen] = useState(false);
 
@@ -227,6 +258,7 @@ const MainAppContext: React.FC = () => {
   const handleLoadClick = () => {
     setLoadFromDbError(null);
     setLoadSourceModalOpen(true);
+    void fetchGroups();
   };
 
   const handleLoadFromFile = () => {
@@ -531,6 +563,7 @@ const MainAppContext: React.FC = () => {
     setSaveModalError(null);
     setSaveModalHash(null);
     setSaveModalOpen(true);
+    void fetchGroups();
   };
 
   /** SAVE GRAPH MODAL SUBMIT HANDLER **/
@@ -719,6 +752,9 @@ const MainAppContext: React.FC = () => {
           loading={saveModalLoading}
           hash={saveModalHash}
           error={saveModalError}
+          groups={groups}
+          groupsLoading={groupsLoading}
+          onRefreshGroups={fetchGroups}
         />
 
         <LoadGraphModal
@@ -740,8 +776,10 @@ const MainAppContext: React.FC = () => {
           }}
           onSelectFile={handleLoadFromFile}
           onSelectDb={handleLoadFromDbSubmit}
-          loading={loadFromDbLoading}
-          error={loadFromDbError}
+          loading={loadFromDbLoading || groupsLoading}
+          error={loadFromDbError || groupsError}
+          groups={groups}
+          onRefreshGroups={fetchGroups}
         />
 
         {graphListOpen && (
