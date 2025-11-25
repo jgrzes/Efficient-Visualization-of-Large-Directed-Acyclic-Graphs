@@ -512,7 +512,6 @@ const MainAppContext: React.FC = () => {
       space_size: graphConfig?.spaceSize ?? null,
     };
 
-    // IMPORTANT: match backend keys: group_name / group_password
     if (group && password) {
       body.group_name = group;
       body.group_password = password;
