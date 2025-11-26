@@ -153,7 +153,7 @@ const MainAppContext: React.FC = () => {
   const arrayFromF32 = (f: Float32Array) => Array.from(f);
 
   // Graph controls
-  const { fitView, resetView, selectNodeByIndex, tooltips } = useGraph(
+  const { fitView, resetView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults } = useGraph(
     graphRef,
     pointPositions,
     links,
@@ -162,13 +162,13 @@ const MainAppContext: React.FC = () => {
     nodeNames || undefined
   );
 
-  // React.useEffect(() => {
-  //   const indices = results
-  //     .map(r => r.index)
-  //     .filter((x): x is number => x !== undefined);
+  React.useEffect(() => {
+    const indices = results
+      .map(r => r.index)
+      .filter((x): x is number => x !== undefined);
 
-  //   highlightSearchResults(indices);
-  // }, [results, highlightSearchResults]);
+    highlightSearchResults(indices);
+  }, [results, highlightSearchResults]);
 
 
   React.useEffect(() => {
@@ -730,7 +730,7 @@ const MainAppContext: React.FC = () => {
             />
           ))}
 
-          {/* {hoverTooltip && (
+          {hoverTooltip && (
             <ToolTip
               key={`hover-${hoverTooltip.index}`}
               visible={true}
@@ -738,7 +738,7 @@ const MainAppContext: React.FC = () => {
               y={hoverTooltip.y}
               content={<strong>{hoverTooltip.content}</strong>}
             />
-          )} */}
+          )}
         </div>
 
 

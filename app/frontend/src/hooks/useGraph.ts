@@ -9,7 +9,7 @@ import {
 } from "react";
 import { Graph, GraphConfigInterface } from "@cosmograph/cosmos";
 import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
-import { AppContext } from "../App"
+import { AppContext } from "../App";
 
 const API_BASE = "http://localhost:30301";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -21,97 +21,145 @@ type NodeTooltip = {
   content: string;
 };
 
+type RGBA = [number, number, number, number];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Colors & defaults
+// ─────────────────────────────────────────────────────────────────────────────
+const COLOR_DEFAULT_POINT: RGBA = [0.8, 0.8, 0.8, 0.5];
+const COLOR_SELECTED_POINT: RGBA = [0.15, 0.3, 0.9, 0.9]; // blue
+const COLOR_PARENT_POINT: RGBA = [0.9, 0.2, 0.2, 0.9];    // red
+const COLOR_CHILD_POINT: RGBA = [0.2, 0.9, 0.2, 0.9];     // green
+const COLOR_SEARCH_POINT: RGBA = [0.0, 0.9, 0.9, 0.9];    // turquoise
+
+const COLOR_DEFAULT_LINK: RGBA = [0.6, 0.6, 0.6, 0.4];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+const fetchNodeData = async (uuid: string, index: number) => {
+  const response = await fetch(`${API_BASE}/node/${uuid}/${index}`);
+
+  if (!response.ok) {
+    throw new Error(`Node fetch failed: ${response.status}`);
+  }
+
+  const responseJson = await response.json();
+  console.log("Node info json:\n", JSON.stringify(responseJson, null, 2));
+
+  return responseJson;
+};
+
+/**
+ * Compute parents & children for selected nodes.
+ */
+const computeParentsChildren = (
+  selectedIndices: number[],
+  flatLinks: Float32Array
+) => {
+  const parents: number[] = [];
+  const children: number[] = [];
+  const selectedSet = new Set<number>(selectedIndices);
+
+  for (let i = 0; i < flatLinks.length; i += 2) {
+    const source = flatLinks[i];
+    const target = flatLinks[i + 1];
+
+    if (selectedSet.has(target)) {
+      parents.push(source);
+    } else if (selectedSet.has(source)) {
+      children.push(target);
+    }
+  }
+
+  return { parents, children };
+};
+
+type UseGraphInitialConfig = {
+  spaceSize?: number;
+  pointSize?: number;
+};
+
 export function useGraph(
   graphRef: React.RefObject<HTMLDivElement | null>,
-  // canvasRef: React.RefObject<HTMLDivElement | null>, // nadal nieużywany, ale może się przydać później
   pointPositions: Float32Array,
   links: Float32Array,
   setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>,
-  initialConfig?: {
-    spaceSize: number;
-    pointSize: number;
-  },
+  initialConfig?: UseGraphInitialConfig,
   names?: string[]
 ) {
   const graphInstance = useRef<Graph | null>(null);
   const linksRef = useRef<Float32Array>(links);
 
-  // currently selected index
+  // Currently selected index
   const selectedIndexRef = useRef<number | null>(null);
 
-  // currently highlighted indices
+  // Currently highlighted indices (for selection tooltips)
   const highlightedIndicesRef = useRef<number[]>([]);
 
-  // cache index -> name
+  // Cache index -> name
   const namesCacheRef = useRef<Map<number, string>>(new Map());
 
-  // tooltips state
+  // Tooltips state (selection + relationships)
   const [tooltips, setTooltips] = useState<NodeTooltip[]>([]);
 
-  // highlight token cancelation
+  // Hover tooltip for point under mouse
+  const [hoverTooltip, setHoverTooltip] = useState<NodeTooltip | null>(null);
+  const hoverIndexRef = useRef<number | null>(null);
+
+  // Highlight token cancellation
   const highlightTokenRef = useRef(0);
 
-  const [hoverTooltip, setHoverTooltip] = useState<NodeTooltip | null>(null);
+  // Searched vertices
+  const searchIndicesRef = useRef<Set<number>>(new Set());
+
+  // Are we currently dragging a vertex
+  const isDraggingRef = useRef(false);
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext?.currentGraphUUID;
-  // const setCurrentGraphUUID = appContext?.setCurrentGraphUUID;
+  const currentGraphUUIDRef = useRef<string | null>(currentGraphUUID ?? null);
 
-  const currentGraphUUIDRef = useRef<string | null>(currentGraphUUID);
-
-  useEffect(() => {
-    const cache = namesCacheRef.current;
-    cache.clear();
-
-    if (names && names.length > 0) {
-      names.forEach((name, idx) => {
-        cache.set(idx, name);
-      });
-    }
-  }, [names]);
-
+  // ───────────────────────────────────────────────────────────────────────────
+  // Effects: UUID / links / names
+  // ───────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    currentGraphUUIDRef.current = currentGraphUUID;
-    console.log("useGraph sees new graph uuid: " + currentGraphUUIDRef.current);
+    currentGraphUUIDRef.current = currentGraphUUID ?? null;
+    console.log("useGraph sees new graph uuid:", currentGraphUUIDRef.current);
   }, [currentGraphUUID]);
 
   useEffect(() => {
     linksRef.current = links;
   }, [links]);
 
-  /** Graph view controls **/
-  const fitView = () => graphInstance.current?.fitView();
-  const resetView = () => graphInstance.current?.restart();
+  // ───────────────────────────────────────────────────────────────────────────
+  // Tooltip recomputation for selection tooltips
+  // ───────────────────────────────────────────────────────────────────────────
 
-  /** Fetch node info from backend **/
-  const fetchNodeData = async (index: number) => {
-    const uuid = currentGraphUUIDRef.current;
-    if (!uuid) throw new Error("No current graph uuid set");
-    const response = await fetch(`${API_BASE}/node/${uuid}/${index}`);
-    if (!response.ok) throw new Error(`Node fetch failed: ${response.status}`);
-    const responseJson = await response.json();
-    console.log("Node info json: \n" + JSON.stringify(responseJson, null, 2));
-    return responseJson;
-  };
-
-  /**
-    Recompute tooltip positions based on highlighted indices
-  **/
-  const recomputeTooltipsPositions = () => {
+  const recomputeTooltipsPositions = useCallback(() => {
     const g = graphInstance.current;
     const el = graphRef.current;
     const indices = highlightedIndicesRef.current;
 
-    if (!g || !el || indices.length === 0) return;
+    if (!g || !el || indices.length === 0) {
+      setTooltips([]);
+      return;
+    }
 
     const positions = g.getPointPositions();
-    if (!positions || positions.length === 0) return;
+    if (!positions || positions.length === 0) {
+      setTooltips([]);
+      return;
+    }
 
     const rect = el.getBoundingClientRect();
     const next: NodeTooltip[] = [];
 
     indices.forEach((idx) => {
+      if (idx < 0 || idx * 2 + 1 >= positions.length) return;
+
       const xSpace = positions[2 * idx];
       const ySpace = positions[2 * idx + 1];
 
@@ -126,180 +174,251 @@ export function useGraph(
     });
 
     setTooltips(next);
-  };
+  }, [graphRef]);
 
-  /** Highlight selected node and its relationships + tooltipy **/
-  const highlightNodes = (
-    selectedIndices: number[],
-    pointCount: number,
-    linkCount: number,
-    options?: {
-      colors?: {
-        defaultColor?: [number, number, number, number];
-        selectedColor?: [number, number, number, number];
-        childColor?: [number, number, number, number];
-        parentColor?: [number, number, number, number];
-        defaultLinkColor?: [number, number, number, number];
-        childLinkColor?: [number, number, number, number];
-        parentLinkColor?: [number, number, number, number];
-      };
-      linkWidths?: {
-        default?: number;
-        related?: number;
-      };
-      links?: number[];
-      zoom?: {
-        enabled?: boolean;
-        duration?: number;
-        scale?: number;
-      };
+  useEffect(() => {
+    const cache = namesCacheRef.current;
+    cache.clear();
+
+    if (names?.length) {
+      names.forEach((name, idx) => {
+        cache.set(idx, name);
+      });
     }
-  ) => {
-    const pointColors = new Float32Array(pointCount * 4);
-    const linkColors = new Float32Array(linkCount * 4);
-    const linkWidths = new Float32Array(linkCount);
 
-    const defaultColor =
-      options?.colors?.defaultColor ??
-      ([0.8, 0.8, 0.8, 0.5] as [number, number, number, number]);
-    const providedAnyColors = !!options?.colors;
+    recomputeTooltipsPositions();
+  }, [names, recomputeTooltipsPositions]);
 
-    const useSelected = providedAnyColors ? !!options!.colors!.selectedColor : true;
-    const useChild = providedAnyColors ? !!options!.colors!.childColor : true;
-    const useParent = providedAnyColors ? !!options!.colors!.parentColor : true;
+  // ───────────────────────────────────────────────────────────────────────────
+  // Graph view controls
+  // ───────────────────────────────────────────────────────────────────────────
 
-    const selectedColor =
-      options?.colors?.selectedColor ??
-      ([0.15, 0.3, 0.9, 0.9] as [number, number, number, number]);
-    const childColor =
-      options?.colors?.childColor ??
-      ([0.2, 0.9, 0.2, 0.9] as [number, number, number, number]);
-    const parentColor =
-      options?.colors?.parentColor ??
-      ([0.9, 0.2, 0.2, 0.9] as [number, number, number, number]);
+  const fitView = useCallback(() => {
+    graphInstance.current?.fitView();
+  }, []);
 
-    const defaultLinkColor = options?.colors?.defaultLinkColor ?? defaultColor;
-    const childLinkColor = options?.colors?.childLinkColor ?? childColor;
-    const parentLinkColor = options?.colors?.parentLinkColor ?? parentColor;
+  const resetView = useCallback(() => {
+    graphInstance.current?.restart();
+  }, []);
 
-    const defaultWidth = options?.linkWidths?.default ?? 1;
-    const relatedWidth = options?.linkWidths?.related ?? 3;
+  // ───────────────────────────────────────────────────────────────────────────
+  // Hover tooltip position: also used to follow node while dragging
+  // ───────────────────────────────────────────────────────────────────────────
 
-    const parents: number[] = [];
-    const children: number[] = [];
+  const updateHoverTooltipPosition = useCallback(
+    (index: number, pointPos?: [number, number]) => {
+      const g = graphInstance.current;
+      const el = graphRef.current;
+      if (!g || !el) return;
 
-    const flatLinks = options?.links ?? linksRef.current;
-    const selectedSet = new Set<number>(selectedIndices);
+      let spacePos: [number, number];
 
-    // link colors / widths
-    for (let i = 0; i < flatLinks.length; i += 2) {
-      const source = flatLinks[i];
-      const target = flatLinks[i + 1];
-      let color = defaultLinkColor;
-      let width = defaultWidth;
+      if (pointPos) {
+        spacePos = pointPos;
+      } else {
+        const positions = g.getPointPositions();
+        if (!positions || index * 2 + 1 >= positions.length) return;
 
-      if (selectedSet.has(target)) {
-        parents.push(source);
-        if (useParent) {
-          color = parentLinkColor;
-          width = relatedWidth;
-        }
-      } else if (selectedSet.has(source)) {
-        children.push(target);
-        if (useChild) {
-          color = childLinkColor;
-          width = relatedWidth;
-        }
+        spacePos = [positions[2 * index], positions[2 * index + 1]];
       }
 
-      linkColors.set(color, i * 2);
-      linkWidths[i / 2] = width;
-    }
+      const [sx, sy] = g.spaceToScreenPosition(spacePos);
+      const rect = el.getBoundingClientRect();
 
-    // point colors
-    for (let i = 0; i < pointCount; i++) {
-      let color = defaultColor;
-      if (selectedSet.has(i) && useSelected) color = selectedColor;
-      else if (children.includes(i) && useChild) color = childColor;
-      else if (parents.includes(i) && useParent) color = parentColor;
-      pointColors.set(color, i * 4);
-    }
-
-    const graph = graphInstance.current;
-    if (!graph) return;
-
-    graph.setPointColors(pointColors);
-    graph.setLinkColors(linkColors);
-    graph.setLinkWidths(linkWidths);
-
-    const zoomEnabled = options?.zoom?.enabled ?? true;
-    const zoomDuration = options?.zoom?.duration ?? 700;
-    const zoomScale = options?.zoom?.scale ?? 30;
-
-    if (zoomEnabled && selectedIndices.length > 0) {
-      graph.zoomToPointByIndex(selectedIndices[0], zoomDuration, zoomScale);
-    }
-
-    graph.render();
-
-    // indices to highlight
-    const indicesSet = new Set<number>([
-      ...selectedIndices,
-      ...parents,
-      ...children,
-    ]);
-    highlightedIndicesRef.current = Array.from(indicesSet);
-
-    // hide previous tooltips immediately
-    setTooltips([]);
-    const token = ++highlightTokenRef.current;
-
-    // after zoom - recalculate tooltip positions
-    void sleep(zoomEnabled ? zoomDuration : 0).then(() => {
-      if (token !== highlightTokenRef.current) return;
-      recomputeTooltipsPositions();
-    });
-  };
-
-  /** Select node by index and update UI **/
-  const selectNodeByIndex = useCallback(async (index?: number) => {
-    if (index === undefined) {
-      setSelectedNode(null);
-      setTooltips([]);
-      selectedIndexRef.current = null;
-      highlightedIndicesRef.current = [];
-      return;
-    }
-
-    try {
-      const data = await fetchNodeData(index);
-
-      setSelectedNode({
+      setHoverTooltip({
         index,
-        ...data,  // every field from fetched data, e.g. name, type, attributes, etc.
+        content: namesCacheRef.current.get(index) ?? `Node ${index}`,
+        x: rect.left + sx + 8,
+        y: rect.top + sy + 8,
       });
+    },
+    [graphRef]
+  );
 
-      console.log("Node info json: \n" + JSON.stringify(data, null, 2));
+  // ───────────────────────────────────────────────────────────────────────────
+  // Coloring logic
+  // ───────────────────────────────────────────────────────────────────────────
 
-      selectedIndexRef.current = index;
-      namesCacheRef.current.set(index, data.name);
+  const applyColors = useCallback(
+    (
+      selectedIndices: number[],
+      parents: number[],
+      children: number[],
+      opts?: { zoomToSelected?: boolean }
+    ) => {
+      const g = graphInstance.current;
+      if (!g) return;
 
-      const pointCount =
-        (graphInstance.current?.getPointPositions()?.length ?? 0) / 2;
+      const positions = g.getPointPositions();
+      if (!positions || positions.length === 0) return;
 
-      highlightNodes([index], pointCount, linksRef.current.length / 2);
-    } catch (err) {
-      console.error("Node fetch error:", err);
-    }
-  }, [fetchNodeData, setSelectedNode]);
+      const pointCount = positions.length / 2;
+      const flatLinks = linksRef.current;
+      const linkCount = flatLinks.length / 2;
 
-  /** Initialize and clean up graph **/
+      const pointColors = new Float32Array(pointCount * 4);
+      const linkColors = new Float32Array(linkCount * 4);
+      const linkWidths = new Float32Array(linkCount);
+
+      const selectedSet = new Set<number>(selectedIndices);
+      const parentsSet = new Set<number>(parents);
+      const childrenSet = new Set<number>(children);
+      const searchSet = searchIndicesRef.current;
+
+      // Links
+      for (let i = 0; i < flatLinks.length; i += 2) {
+        const edgeIndex = i / 2;
+        const source = flatLinks[i];
+        const target = flatLinks[i + 1];
+
+        let color = COLOR_DEFAULT_LINK;
+        let width = 1;
+
+        if (selectedSet.size > 0) {
+          if (selectedSet.has(target)) {
+            // Edge from parent to selected
+            color = COLOR_PARENT_POINT;
+            width = 3;
+          } else if (selectedSet.has(source)) {
+            // Edge from selected to child
+            color = COLOR_CHILD_POINT;
+            width = 3;
+          }
+        }
+
+        linkColors.set(color, edgeIndex * 4);
+        linkWidths[edgeIndex] = width;
+      }
+
+      // Points (priority):
+      // selected > parent > child > searched > default
+      for (let i = 0; i < pointCount; i++) {
+        let color: RGBA = COLOR_DEFAULT_POINT;
+
+        if (selectedSet.has(i)) {
+          color = COLOR_SELECTED_POINT;
+        } else if (parentsSet.has(i)) {
+          color = COLOR_PARENT_POINT;
+        } else if (childrenSet.has(i)) {
+          color = COLOR_CHILD_POINT;
+        } else if (searchSet.has(i)) {
+          color = COLOR_SEARCH_POINT;
+        }
+
+        pointColors.set(color, i * 4);
+      }
+
+      g.setPointColors(pointColors);
+      g.setLinkColors(linkColors);
+      g.setLinkWidths(linkWidths);
+
+      // Always update which nodes have selection tooltips
+      const indicesSet = new Set<number>([
+        ...selectedIndices,
+        ...parents,
+        ...children,
+      ]);
+      highlightedIndicesRef.current = Array.from(indicesSet);
+
+      const zoomToSelected = opts?.zoomToSelected ?? false;
+
+      if (zoomToSelected && selectedIndices.length > 0) {
+        const zoomDuration = 700;
+        const zoomScale = 30;
+
+        // Clear tooltips while zoom animates
+        setTooltips([]);
+
+        const token = ++highlightTokenRef.current;
+
+        g.zoomToPointByIndex(selectedIndices[0], zoomDuration, zoomScale);
+        g.render();
+
+        void sleep(zoomDuration).then(() => {
+          if (token !== highlightTokenRef.current) return;
+          recomputeTooltipsPositions();
+        });
+      } else {
+        g.render();
+        // Instant recompute when not zooming
+        recomputeTooltipsPositions();
+      }
+    },
+    [recomputeTooltipsPositions]
+  );
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Node selection
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const clearSelection = useCallback(() => {
+    setSelectedNode(null);
+    selectedIndexRef.current = null;
+    highlightedIndicesRef.current = [];
+    setTooltips([]);
+
+    const g = graphInstance.current;
+    if (!g) return;
+
+    const positions = g.getPointPositions();
+    if (!positions || positions.length === 0) return;
+
+    const { parents, children } = computeParentsChildren([], linksRef.current);
+    applyColors([], parents, children, { zoomToSelected: false });
+  }, [applyColors, setSelectedNode]);
+
+  const selectNodeByIndex = useCallback(
+    async (index?: number, options?: { zoom?: boolean }) => {
+      // default zoom = true
+      const zoom = options?.zoom ?? true;
+
+      if (index === undefined || index === null) {
+        clearSelection();
+        return;
+      }
+
+      const uuid = currentGraphUUIDRef.current;
+      if (!uuid) {
+        console.error("No current graph uuid set");
+        return;
+      }
+
+      try {
+        const data = await fetchNodeData(uuid, index);
+
+        setSelectedNode({
+          index,
+          ...data, // e.g. name, type, attributes, etc.
+        });
+
+        selectedIndexRef.current = index;
+
+        if (data.name) {
+          namesCacheRef.current.set(index, data.name);
+        }
+
+        const flatLinks = linksRef.current;
+        const { parents, children } = computeParentsChildren([index], flatLinks);
+        applyColors([index], parents, children, {
+          zoomToSelected: zoom,
+        });
+      } catch (err) {
+        console.error("Node fetch error:", err);
+      }
+    },
+    [applyColors, clearSelection, setSelectedNode]
+  );
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Graph init & cleanup
+  // ───────────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!graphRef.current) return;
 
     const config: GraphConfigInterface = {
       spaceSize: initialConfig?.spaceSize ?? 256,
-      backgroundColor: '#000',
+      backgroundColor: "#000",
       pointSize: initialConfig?.pointSize ?? 1,
       pointColor: [128, 128, 128, 255],
       pointGreyoutOpacity: 0.1,
@@ -313,19 +432,64 @@ export function useGraph(
       simulationRepulsion: 0,
       simulationGravity: 0,
       simulationDecay: 0,
-      onClick: selectNodeByIndex,
 
-      // tooltip recompute on zoom/drag
+      // CLICK ON NODE: select but DO NOT zoom (tooltips still appear)
+      onClick: (index) => {
+        if (index === null || index === undefined) {
+          selectNodeByIndex(undefined);
+        } else {
+          selectNodeByIndex(index, { zoom: false });
+        }
+      },
+
+      // Hover tooltip – allowed during drag
+      onPointMouseOver: (index, pointPos) => {
+        const g = graphInstance.current;
+        const el = graphRef.current;
+        if (!g || !el) return;
+
+        if (index == null || !pointPos) {
+          hoverIndexRef.current = null;
+          setHoverTooltip(null);
+          return;
+        }
+
+        if (hoverIndexRef.current === index) return;
+        hoverIndexRef.current = index;
+
+        updateHoverTooltipPosition(index, pointPos as [number, number]);
+      },
+
+      onPointMouseOut: () => {
+        hoverIndexRef.current = null;
+        setHoverTooltip(null);
+      },
+
+      // Selection tooltips on zoom
       onZoom: () => {
         recomputeTooltipsPositions();
       },
       onZoomEnd: () => {
         recomputeTooltipsPositions();
       },
+
+      // Drag: keep ALL tooltips attached to their nodes
       onDrag: () => {
+        isDraggingRef.current = true;
+
+        // 1. Move selection tooltips (parents/children/selected)
         recomputeTooltipsPositions();
+
+        // 2. Move hover tooltip if applicable
+        const index = hoverIndexRef.current ?? selectedIndexRef.current;
+        if (index == null) return;
+
+        updateHoverTooltipPosition(index);
       },
+
       onDragEnd: () => {
+        isDraggingRef.current = false;
+        // One more recompute in case positions changed at the very end
         recomputeTooltipsPositions();
       },
     };
@@ -338,36 +502,83 @@ export function useGraph(
       graphInstance.current?.destroy?.();
       graphInstance.current = null;
     };
-  }, [graphRef, setSelectedNode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // init only once
 
-  /** Update graph data on change **/
+  // ───────────────────────────────────────────────────────────────────────────
+  // Update graph data when positions / links / config change
+  // ───────────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     const g = graphInstance.current;
     if (!g || !pointPositions || !links) return;
 
-    graphInstance.current!.config.spaceSize = initialConfig?.spaceSize ?? 256;
-    graphInstance.current!.config.pointSize = initialConfig?.pointSize ?? 1;
+    // Update basic config from props
+    g.config.spaceSize = initialConfig?.spaceSize ?? 256;
+    g.config.pointSize = initialConfig?.pointSize ?? 1;
 
     console.log(
-      'Updating graph data:',
+      "Updating graph data:",
       pointPositions.length / 2,
-      'nodes,',
+      "nodes,",
       links.length / 2,
-      'edges'
+      "edges"
     );
 
     g.setPointPositions(pointPositions);
     g.setLinks(links);
     g.render();
 
-    // after layout change - update tooltips
-    recomputeTooltipsPositions();
-  }, [pointPositions, links, initialConfig?.spaceSize, initialConfig?.pointSize]);
+    fitView();
+
+    // Refresh colors for current selection + search
+    const selectedIndex = selectedIndexRef.current;
+    const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
+    const { parents, children } = computeParentsChildren(
+      selectedIndices,
+      linksRef.current
+    );
+    applyColors(selectedIndices, parents, children, { zoomToSelected: false });
+  }, [
+    pointPositions,
+    links,
+    initialConfig?.spaceSize,
+    initialConfig?.pointSize,
+    fitView,
+    applyColors,
+  ]);
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Highlight search results
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const highlightSearchResults = useCallback(
+    (indices: number[]) => {
+      const g = graphInstance.current;
+      if (!g) return;
+
+      searchIndicesRef.current = new Set(indices);
+
+      const selectedIndex = selectedIndexRef.current;
+      const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
+      const { parents, children } = computeParentsChildren(
+        selectedIndices,
+        linksRef.current
+      );
+
+      applyColors(selectedIndices, parents, children, {
+        zoomToSelected: false,
+      });
+    },
+    [applyColors]
+  );
 
   return {
     fitView,
     resetView,
     selectNodeByIndex,
     tooltips,
+    hoverTooltip,
+    highlightSearchResults,
   };
 }
