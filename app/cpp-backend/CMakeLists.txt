@@ -27,6 +27,12 @@ target_link_libraries(
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
+    grpc++
+    grpc 
+    protobuf 
+    gpr 
+    pthread 
+    dl
 )
 
 # Adding libraries to the same executable

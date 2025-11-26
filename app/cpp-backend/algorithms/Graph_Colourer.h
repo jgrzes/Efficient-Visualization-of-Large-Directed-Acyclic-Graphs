@@ -61,18 +61,29 @@ public:
 
     };
 
+    // Move assignment only allowed for nodes with the same parent to allow sorting with std::sort
     struct ColourHierarchyNode {
 
         ColourHierarchyNode() : ColourHierarchyNode{0} {}
+        ColourHierarchyNode(const ColourHierarchyNode& otherColourHierarchyNode) = delete;
+        ColourHierarchyNode(ColourHierarchyNode&& otherColourHierarchyNode) = default;
+
         explicit ColourHierarchyNode(uint32_t colour) : colour{colour}, parent{nullptr}, depth{0} {}
         ColourHierarchyNode(uint32_t colour, const ColourHierarchyNode* parent) : 
             colour{colour}, parent{parent}, depth{(parent != nullptr) ? (parent->depth)+1 : 0} {}
 
-        void addChild(uint32_t childColour) {children.emplace_back(childColour, this);}
+        ColourHierarchyNode& operator=(const ColourHierarchyNode& otherColourHierarchyNode) = delete;
+        ColourHierarchyNode& operator=(ColourHierarchyNode&& otherColourHierarchyNode);    
+
+        void addChild(uint32_t childColour) {
+            childrenPtrs.emplace_back(std::make_unique<ColourHierarchyNode>(
+                childColour, const_cast<const ColourHierarchyNode* const>(this)
+            ));
+        }
 
         uint32_t colour;
         const ColourHierarchyNode* const parent;
-        std::vector<ColourHierarchyNode> children;
+        std::vector<std::unique_ptr<ColourHierarchyNode>> childrenPtrs;
         std::vector<uint32_t> verticesOfColour;
         uint32_t depth;
     };

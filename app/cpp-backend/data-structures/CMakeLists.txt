@@ -12,7 +12,7 @@ target_sources(
     # Other data structure classes
     Cartesian_Surface_Grid.cpp Cartesian_Surface_Grid.h
     Sparse_Matrix.cpp Sparse_Matrix.h
-    Sparse_Array.cpp Sparse_Array.h
+    Sparse_Array.cpp Sparse_Array.hpp
 )
 
 target_include_directories(

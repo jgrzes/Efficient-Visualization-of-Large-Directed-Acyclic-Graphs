@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+message Edge {
+    uint32 srcVertexIndex = 1;
+    uint32 destVertexIndex = 2;
+}
+
+message EdgeList {
+    repeated Edge edges = 1;
+}
+
+message CartesianCoord {
+    float x = 1;
+    float y = 2;
+}
+
+message GraphLayout {
+    repeated CartesianCoord layoutPositions = 1;
+}
+
+service GraphLayoutService {
+    rpc computeGraphLayout(EdgeList) returns (GraphLayout) {};
+}

@@ -7,8 +7,8 @@ namespace algorithms {
 
 GraphColourer::AlgorithmParams createDefaultGraphColourerAlgParams() {
     return GraphColourer::AlgorithmParams(
-        [dEdgesThresholdCoeff = 1.8](uint32_t level, uint32_t cumDisputableEdgesAtLevel, uint32_t cumVerticesAtLevel) -> bool {
-            return level >= 2 && (cumDisputableEdgesAtLevel * dEdgesThresholdCoeff) > cumVerticesAtLevel;
+        [dEdgesThresholdCoeff = 3](uint32_t level, uint32_t cumDisputableEdgesAtLevel, uint32_t cumVerticesAtLevel) -> bool {
+            return level >= 1 && (cumDisputableEdgesAtLevel * dEdgesThresholdCoeff) > cumVerticesAtLevel;
         }, 
         [](uint32_t level, uint32_t commonVerticesCount) -> bool {
             return commonVerticesCount >= 3;
@@ -38,11 +38,11 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
         return {p.first * 0.75, 0};
     };
 
-    layoutAlgorithmParams.epsilonForColourRootCalculator = [boxWidthCoeff = 1.75](uint32_t maxWidth) -> double {
+    layoutAlgorithmParams.epsilonForColourRootCalculator = [boxWidthCoeff = 2.1](uint32_t maxWidth) -> double {
         return static_cast<double>(maxWidth) * boxWidthCoeff;
     };
 
-    layoutAlgorithmParams.maxVertexCountFromEpsilonCalculator = [inverseBoxWidthCoeff = 1.0 / 1.75](double epsilon) -> uint32_t {
+    layoutAlgorithmParams.maxVertexCountFromEpsilonCalculator = [inverseBoxWidthCoeff = 1.0 / 2.1](double epsilon) -> uint32_t {
         return static_cast<uint32_t>(epsilon * inverseBoxWidthCoeff);
     };
 
@@ -51,6 +51,7 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
     layoutAlgorithmParams.baseVerexWeight = 1.0;
     layoutAlgorithmParams.addWeightFromChildrenCoeff = 0.04;
     layoutAlgorithmParams.kInitialLayoutCoeff = 1.8;
+    layoutAlgorithmParams.nextLevelDownCoeff = 0.45;
 
     layoutAlgorithmParams.sCoeff = 1.05; 
     layoutAlgorithmParams.defaultAlphaP = 0.5;
@@ -113,7 +114,7 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
     layoutAlgorithmParams.maxRadiusOfRepulsionField = 6;
     layoutAlgorithmParams.fineTuningForceMoveCoeff = 0.1;
     layoutAlgorithmParams.minBoxWidthForUncoloured = 40;
-    layoutAlgorithmParams.yDistanceBetweenUncolouredLevels = 4;
+    layoutAlgorithmParams.minYDistanceBetweenUncolouredLevels = 4;
 
     return layoutAlgorithmParams;
 }

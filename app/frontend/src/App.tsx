@@ -16,6 +16,7 @@ import ConfirmModal from './components/ConfirmModal';
 import RightSidebar from './components/RightSidebar';
 
 import { useGraph } from './hooks/useGraph';
+import { startKeepAlive } from './session_management/keepalive';
 import {
   Upload,
   // Settings,
@@ -53,7 +54,7 @@ const MainAppContext: React.FC = () => {
   const [graphConfig, setGraphConfig] = useState<{
     spaceSize: number;
     pointSize: number;
-  } | null>({spaceSize: 256, pointSize: 1});
+  } | null>({spaceSize: 256, pointSize: 0.8});
 
   // const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
 
@@ -101,16 +102,18 @@ const MainAppContext: React.FC = () => {
     if (!g) return;
 
     setLoading(true);
-    fetchGraphByHash(g)
+    fetchGraphByHash(g) // Remember to set graph hash and uuid
       .then((data) => {
         setPointPositions(new Float32Array(data.canvas_positions));
         setLinks(new Float32Array(data.links));
         setSelectedNode(null);
+        setCurrentGraphHash(data.graph_hash);
+        setCurrentGraphUUID(data.uuid);
 
         if (data.config) {
           setGraphConfig({
             spaceSize: data.config.space_size || 1000,
-            pointSize: data.config.point_size || 5
+            pointSize: data.config.point_size || 0.8
           });
         } else {
           setGraphConfig(null);
@@ -153,6 +156,10 @@ const MainAppContext: React.FC = () => {
       setCurrentGraphUUID(data.uuid);
       // console.log("Graph uuid set on frontend: " + currentGraphUUID);
       setPointPositions(new Float32Array(data.canvas_positions));
+      setGraphConfig({
+        spaceSize: data.space_size || 1000, 
+        pointSize: data.point_size || 0.8
+      });
       setLinks(new Float32Array(data.links));
       setSelectedNode(null);
       setSelectedFile(null);
@@ -318,7 +325,7 @@ const MainAppContext: React.FC = () => {
       if (data.config) {
         setGraphConfig({
           spaceSize: data.config.space_size || 1000,
-          pointSize: data.config.point_size || 5
+          pointSize: data.config.point_size || 0.8
         });
       }
 
@@ -414,6 +421,8 @@ const MainAppContext: React.FC = () => {
 
 const App: React.FC = () => {
   const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
+  // TODO: Tweak the keepalive interval, probably should be something like 1 every 2/3 minutes
+  startKeepAlive("${API_BASE}/session_keepalive", 10_000); 
   return (
     <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
       <MainAppContext />

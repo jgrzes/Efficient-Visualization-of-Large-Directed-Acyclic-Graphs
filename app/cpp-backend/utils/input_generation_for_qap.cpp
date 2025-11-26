@@ -4,10 +4,10 @@ namespace utils {
 
 uint32_t findMaxColourIndexInColourHierarchy(const ColouringHierarchyNode& colourNode) {
     uint32_t maxColourIndexInSubtree = colourNode.colour;
-    for (const auto& childColourNode : colourNode.children) {
+    for (const auto& childColourNodePtr : colourNode.childrenPtrs) {
         maxColourIndexInSubtree = std::max(
             maxColourIndexInSubtree, 
-            findMaxColourIndexInColourHierarchy(childColourNode)
+            findMaxColourIndexInColourHierarchy(*childColourNodePtr)
         );
     }
     return maxColourIndexInSubtree;
@@ -50,18 +50,18 @@ uint64_t fillFPrimMatrixCell(
     }
 
     uint32_t fnrr = 0;
-    for (const auto& rNodeChild : rNode.children) {
-        fnrr += fillFPrimMatrixCell(nrNode, rNodeChild, interColourNR, FPrim);
+    for (const auto& rNodeChildPtr : rNode.childrenPtrs) {
+        fnrr += fillFPrimMatrixCell(nrNode, *rNodeChildPtr, interColourNR, FPrim);
     }
 
     fnrr += interColourNR.dataAtOr(cnr, cr, 0);
     FPrim.at(cnr, cr) = fnrr;
 
-    std::cout << "FPrim: " << nrNode.colour << ", " << rNode.colour << ": (" << fnrr << ")\n";
-    for (const uint32_t uIndex : nrNode.verticesOfColour) std::cout << uIndex << " ";
-    std::cout << "\n";
-    for (const uint32_t uIndex : rNode.verticesOfColour) std::cout << uIndex << " ";
-    std::cout << "\n\n";
+    // std::cout << "FPrim: " << nrNode.colour << ", " << rNode.colour << ": (" << fnrr << ")\n";
+    // for (const uint32_t uIndex : nrNode.verticesOfColour) std::cout << uIndex << " ";
+    // std::cout << "\n";
+    // for (const uint32_t uIndex : rNode.verticesOfColour) std::cout << uIndex << " ";
+    // std::cout << "\n\n";
 
     return fnrr;
 }
@@ -82,52 +82,52 @@ uint64_t fillFMatrixCell(
 
     size_t n, m;
 
-    n = xNode.children.size();
+    n = xNode.childrenPtrs.size();
     for (uint32_t i=0; i<n; ++i) {
         for (uint32_t j=i+1; j<n; ++j) {
             fillFMatrixCell(
-                xNode.children[i], xNode.children[j], 
+                *xNode.childrenPtrs[i], *xNode.childrenPtrs[j], 
                 interColourNR, F, FPrim
             );
         }
     }
 
-    m = yNode.children.size();
+    m = yNode.childrenPtrs.size();
     for (uint32_t i=0; i<m; ++i) {
         for (uint32_t j=i+1; j<m; ++j) {
             fillFMatrixCell(
-                yNode.children[i], yNode.children[j], 
+                *yNode.childrenPtrs[i], *yNode.childrenPtrs[j], 
                 interColourNR, F, FPrim
             );
         }
     }
 
     uint64_t fxy = 0;
-    for (const auto& xNodeChild : xNode.children) {
-        for (const auto& yNodeChild : yNode.children) {
+    for (const auto& xNodeChild : xNode.childrenPtrs) {
+        for (const auto& yNodeChild : yNode.childrenPtrs) {
             fxy += fillFMatrixCell(
-                xNodeChild, yNodeChild, 
+                *xNodeChild, *yNodeChild, 
                 interColourNR, F, FPrim
             );
         }
     }
 
-    for (const auto& xNodeChild : xNode.children) {
-        fxy += fillFPrimMatrixCell(yNode, xNodeChild, interColourNR, FPrim);
+    for (const auto& xNodeChild : xNode.childrenPtrs) {
+        fxy += fillFPrimMatrixCell(yNode, *xNodeChild, interColourNR, FPrim);
     }
 
-    for (const auto& yNodeChild : yNode.children) {
-        fxy += fillFPrimMatrixCell(xNode, yNodeChild, interColourNR, FPrim);
+    for (const auto& yNodeChild : yNode.childrenPtrs) {
+        fxy += fillFPrimMatrixCell(xNode, *yNodeChild, interColourNR, FPrim);
     }
 
     fxy += interColourNR.dataAtOr(cx, cy, 0);
     F.at(cx, cy) = fxy;
 
-    std::cout << "F: " << xNode.colour << ", " << yNode.colour << ": (" << fxy << ")\n";
-    for (const uint32_t uIndex : xNode.verticesOfColour) std::cout << uIndex << " ";
-    std::cout << "\n";
-    for (const uint32_t uIndex : yNode.verticesOfColour) std::cout << uIndex << " ";
-    std::cout << "\n\n";
+    // std::cout << "F: " << xNode.colour << ", " << yNode.colour << ": (" << fxy << ")\n";
+    // for (const uint32_t uIndex : xNode.verticesOfColour) std::cout << uIndex << " ";
+    // std::cout << "\n";
+    // for (const uint32_t uIndex : yNode.verticesOfColour) std::cout << uIndex << " ";
+    // std::cout << "\n\n";
 
     return fxy;
 }
@@ -149,12 +149,12 @@ FMatricesForQAPTuple createFMatricesForColoursQAP(
     SparseMatrix<uint64_t, false> FPrim(maxColourIndex+1);
 
     if (optInterColourNR.has_value()) {
-        n = rootColourNode.children.size();
+        n = rootColourNode.childrenPtrs.size();
         for (size_t i=0; i<n; ++i) {
             for (size_t j=i+1; j<n; ++j) {
                 fillFMatrixCell(
-                    rootColourNode.children[i], 
-                    rootColourNode.children[j], 
+                    *rootColourNode.childrenPtrs[i], 
+                    *rootColourNode.childrenPtrs[j], 
                     optInterColourNR.value(), F, FPrim
                 );
             }
@@ -163,12 +163,12 @@ FMatricesForQAPTuple createFMatricesForColoursQAP(
         SparseMatrix<uint64_t, true> interColourNR = createInterColourNonRecursive(
             graph, rootColourNode, maxColourIndex
         );
-        n = rootColourNode.children.size();
+        n = rootColourNode.childrenPtrs.size();
         for (size_t i=0; i<n; ++i) {
             for (size_t j=i+1; j<n; ++j) {
                 fillFMatrixCell(
-                    rootColourNode.children[i], 
-                    rootColourNode.children[j], 
+                    *rootColourNode.childrenPtrs[i], 
+                    *rootColourNode.childrenPtrs[j], 
                     interColourNR, F, FPrim
                 );
             }

@@ -2,6 +2,8 @@
 #include <cmath>
 #include <boost/program_options.hpp>
 #include <signal.h>
+#include <thread>
+#include <grpcpp/server_builder.h>
 
 #include "data-structures/Graph.h"
 #include "data-structures/Coloured_Graph.h"
@@ -10,7 +12,7 @@
 #include "algorithms/Graph_Colourer.h"
 #include "algorithms/Layout_Drawer.h"
 #include "utils/input_generation_for_qap.h"
-#include "net/Layout_Service.hpp"
+#include "net/Grpc_Layout_Service.hpp"
 #include "algorithms/algorithm_params_creation.hpp"
 
 #define EPS_FOR_SIGNUM 1e-6
@@ -20,11 +22,11 @@ using namespace data_structures;
 using namespace graph_preprocessing;
 using namespace algorithms;
 using namespace utils;
-using namespace concurrency;
 using namespace net;
 
 namespace po = boost::program_options;
 
+grpc::Server* grpcLayoutServicePtr;
 bool* mainProcessRunningPtr;
 
 po::options_description createOptionsDescription() {
@@ -33,8 +35,8 @@ po::options_description createOptionsDescription() {
     ("help", "produce help message")
     ("ls_ip_addr", po::value<std::string>(), "ip address to use for layout service socket")
     ("ls_port", po::value<int>(), "port to use for layout service socket")
-    ("layout_tp_size", po::value<int>(), "size of thread pool responsible for creating layouts")
-    ("ls_ch_thread_count", po::value<int>(), "number of threads layout service will use to process client requests on sockets")
+    ("ls_min_tp_size", po::value<int>(), "min size of grpc layout service thread pool")
+    ("ls_max_tp_size", po::value<int>(), "max size of grpc layout service thread pool")
     ("console_logging_level", po::value<std::string>(), "severity logging level on std output")
     ("file_logging_level", po::value<std::string>(), "severity logging level in file");
 
@@ -53,13 +55,13 @@ bool checkIfRequiredParamMissing(const po::variables_map& vm) {
     return true;
   }
 
-  if (vm.count("layout_tp_size") != 1) {
-    std::cerr << "Size of layout thread pool not specified\n";
+  if (vm.count("ls_min_tp_size") != 1) {
+    std::cerr << "Min size of grpc layout service pool not specified\n";
     return true;
   }
 
-  if (vm.count("ls_ch_thread_count") != 1) {
-    std::cerr << "Number of client handling threads in layout service not specified\n";
+  if (vm.count("ls_max_tp_size") != 1) {
+    std::cerr << "Max size of grpc layout service pool not specified\n";
     return true;
   }
 
@@ -77,8 +79,18 @@ bool checkIfRequiredParamMissing(const po::variables_map& vm) {
 }
 
 
+
+
 void handleSigTStp(int sigtstp) {
   logging::log_info("Received SIGTSTP, will attempt to close the service...");
+  // grpcLayoutServicePtr->Shutdown();
+  *mainProcessRunningPtr = false;
+}
+
+
+void handleSigint(int sigint) {
+  logging::log_info("Received SIGINT, will attempt to close the service...");
+  // grpcLayoutServicePtr->Shutdown();
   *mainProcessRunningPtr = false;
 }
 
@@ -98,42 +110,87 @@ int main(int argc, char** argv) {
 
   std::string layoutServiceIpAddress;
   int layoutServicePort;
-  size_t layoutThreadPoolSize;
-  size_t layoutServiceClientHandlingThreadCount;
+  size_t minLayoutServiceThreadPoolSize;
+  size_t maxLayoutServiceThreadPoolSize;
 
   layoutServiceIpAddress = vm["ls_ip_addr"].as<std::string>();
   layoutServicePort = vm["ls_port"].as<int>();
-  layoutThreadPoolSize = vm["layout_tp_size"].as<int>();
-  layoutServiceClientHandlingThreadCount = vm["ls_ch_thread_count"].as<int>();
+  minLayoutServiceThreadPoolSize = vm["ls_min_tp_size"].as<int>();
+  maxLayoutServiceThreadPoolSize = vm["ls_max_tp_size"].as<int>();
+
+  if (minLayoutServiceThreadPoolSize > maxLayoutServiceThreadPoolSize) {
+    std::cerr << "Invalid values for thread pool size specification: min cannot be greater than max";
+    return 1;
+  }
 
   logging::initLogging(
-    "/app/log_data",
+    "/app/old_log_data/",
     logging::convertStrToTrivialSeverity(vm["console_logging_level"].as<std::string>()), 
     logging::convertStrToTrivialSeverity(vm["file_logging_level"].as<std::string>())
   );
 
-  LayoutService layoutService(
-    layoutServiceIpAddress, layoutServicePort, 
-    layoutServiceClientHandlingThreadCount, 
-    layoutThreadPoolSize, 
-    createTimeval(1, 0), std::nullopt, false
+  logging::log_info(
+    "Starting grpc server on " + layoutServiceIpAddress + ":"
+    + std::to_string(layoutServicePort) + "..." 
   );
-  layoutService.setColouringParams(
-    createDefaultGraphColourerAlgParams()
-  );
-  layoutService.setLayoutFindingParams(
-    createDefaultLayoutDrawerAlgParams()  
-  );
-  layoutService.setDefaultEpsilonInLayoutDrawing(2.5);
-
-  layoutService.start();
-  bool mainProcessRunning = true;
-  mainProcessRunningPtr = &mainProcessRunning;
 
   signal(SIGTSTP, handleSigTStp);
-  while (mainProcessRunning) {;}
+  signal(SIGINT, handleSigint);
 
-  layoutService.shutDown();
+  GrpcLayoutService grpcLayoutService(
+    createDefaultGraphColourerAlgParams(), 
+    createDefaultLayoutDrawerAlgParams(), 
+    1, 2.0
+  );
+  grpc::ServerBuilder builder;
+  builder.AddListeningPort(
+    layoutServiceIpAddress + ":" + std::to_string(layoutServicePort), 
+    grpc::InsecureServerCredentials()
+  );
+  builder.SetSyncServerOption(
+    grpc::ServerBuilder::SyncServerOption::NUM_CQS, 1
+  );
+  if (minLayoutServiceThreadPoolSize > 0) {
+    builder.SetSyncServerOption(
+        grpc::ServerBuilder::SyncServerOption::MIN_POLLERS, minLayoutServiceThreadPoolSize
+    );
+  }
+  if (maxLayoutServiceThreadPoolSize > 0) {
+    builder.SetSyncServerOption(
+        grpc::ServerBuilder::SyncServerOption::MAX_POLLERS, maxLayoutServiceThreadPoolSize
+    );
+  }
+  builder.RegisterService(&grpcLayoutService);
+  std::unique_ptr<grpc::Server> grpcServer(builder.BuildAndStart());
+  grpcLayoutServicePtr = grpcServer.get();
+  logging::log_info(
+    "Started grpc server on " + layoutServiceIpAddress + ":"
+    + std::to_string(layoutServicePort) + "." 
+  );
+  // grpcServer->Wait();
+  std::thread grpcServerThread([&grpcServer]() -> void {
+    grpcServer->Wait();
+  });
+  
+  bool grpcServerRunning = true;
+  mainProcessRunningPtr = &grpcServerRunning;
+  while (grpcServerRunning) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+
+  grpcServer->Shutdown();
+  grpcServerThread.join();
+
+  logging::log_info(
+    "Shutting down grpc server on " + layoutServiceIpAddress + ":"
+    + std::to_string(layoutServicePort) + "..." 
+  );
+
+  logging::log_info(
+    "Shut down grpc server on " + layoutServiceIpAddress + ":"
+    + std::to_string(layoutServicePort) + "." 
+  );
+
   return 0;
 }
 

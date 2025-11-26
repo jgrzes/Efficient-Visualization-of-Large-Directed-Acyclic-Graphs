@@ -8,6 +8,25 @@
 
 namespace algorithms {
 
+
+GraphColourer::ColourHierarchyNode& GraphColourer::ColourHierarchyNode::operator=(
+    GraphColourer::ColourHierarchyNode&& otherColourHierarchyNode
+) {
+    if (this == &otherColourHierarchyNode) return *this;
+    if (parent != otherColourHierarchyNode.parent) {
+        throw std::runtime_error{
+            "Colour Hierarchy Node move assignment error: move assignment valid only if parents match"
+        };
+    }
+
+    colour = otherColourHierarchyNode.colour;
+    childrenPtrs = std::move(otherColourHierarchyNode.childrenPtrs);
+    verticesOfColour = std::move(otherColourHierarchyNode.verticesOfColour);
+    depth = otherColourHierarchyNode.depth;
+    return *this;
+}
+
+
 void GraphColourer::resetForNewRun() {
     m_disputableEdgesPerLevel.value().reset(nullptr);
     m_verticesPerLevel.value().reset(nullptr);
@@ -21,6 +40,15 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
     m_graph = &graph;
     computeDisputableEdgesPerLevel(forceRecomputation);
     computeVerticesPerLevel(forceRecomputation);
+    // uint32_t numberOfLevels = m_verticesPerLevel.value()->getNumberOfNestedArrays();
+    // for (uint32_t level=0; level<numberOfLevels; ++level) {
+    //     std::cout << "Level: " << level << ": ";
+    //     auto verticesAtLevel = m_verticesPerLevel.value()->getNestedArrayView(level);
+    //     for (auto uIndex : verticesAtLevel) {
+    //         std::cout << uIndex << " ";
+    //     }
+    //     std::cout << "\n";
+    // }
 
     bool startingLevelValid;
     uint32_t startingLevel;
@@ -95,7 +123,7 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
 
     size_t numberOfColoursM1 = maxC - minC;
     ColourHierarchyNode colourHierarchyRoot = ColourHierarchyNode();
-    colourHierarchyRoot.children.reserve(numberOfColoursM1);
+    colourHierarchyRoot.childrenPtrs.reserve(numberOfColoursM1);
     uint32_t c = minC;
     for (uint32_t i=0; i<=numberOfColoursM1; ++i) {
         colourHierarchyRoot.addChild(c++);
@@ -148,7 +176,7 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
                 colouredGraph, m_algorithmParams, 
                 verticesPerLevelInC, 
                 disputableEdgesPerLevelInC,
-                colourHierarchyRoot.children[i], 
+                *colourHierarchyRoot.childrenPtrs[i], 
                 vertexColours, 
                 maxRecursion,
                 std::forward<ColourAcquireFunctionT>(colourAcquireFunction)
@@ -204,7 +232,7 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
         colourHierarchyNodes[colouredGraph.getVertexColour(uIndex)]->verticesOfColour.emplace_back(uIndex);
     }
 
-    return {colouredGraph, colourHierarchyRoot};
+    return {colouredGraph, std::move(colourHierarchyRoot)};
 }    
 
 
@@ -674,7 +702,7 @@ void GraphColourer::buildColourHierarchyRecursivelyRootedAtColour(
             algorithmParams, 
             verticesPerLevelInC, 
             disputableEdgesPerLevelInC,
-            colourHierarchyRoot.children[i], 
+            *colourHierarchyRoot.childrenPtrs[i], 
             vertexColours, 
             leftRecursionLevels,
             std::forward<ColourAcquireFunctionT>(colourAcquireFunction)
@@ -734,8 +762,8 @@ void GraphColourer::fillColourHierarchyNodesVector(
 
     // std::cout << colourNode.colour << "\n";
     colourHierarchyNodes[colourNode.colour] = &colourNode;
-    for (auto& childColourNode : colourNode.children) {
-        fillColourHierarchyNodesVector(childColourNode, colourHierarchyNodes);
+    for (auto& childColourNodePtr : colourNode.childrenPtrs) {
+        fillColourHierarchyNodesVector(*childColourNodePtr, colourHierarchyNodes);
     }
 }
 

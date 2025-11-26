@@ -1,9 +1,14 @@
 import socket 
 import graph_tool as gt 
-from typing import List, Tuple 
+from typing import List, Tuple, Optional
 from random import uniform
 from copy import copy
 import threading
+import logging
+import grpc 
+import py_to_cpp_backend_pb2
+import py_to_cpp_backend_pb2_grpc
+
 
 LayoutPositionsT = List[Tuple[float, float]]
 MAX_CHUNK_LENGTH = 900 # For now
@@ -16,8 +21,8 @@ class ThinStringWrapper:
         self.string = ""
         self.mutex = threading.Lock()
 
-    def append_to_string(self, new_data: str):    
-        self.
+    # def append_to_string(self, new_data: str):    
+        # self.
 
 class ThinBoolWrapper:
     def __init__(self, initial_val: bool):
@@ -29,21 +34,23 @@ def generate_random_graph_id_between(low: int = 0, high: int = MAX_UINT16_T_IN_C
     return random_graph_id
 
 
+# TODO: Finish
 def continuously_read_from_socket(server_socket: socket.socket, dest: ThinStringWrapper, keep_receiving: ThinBoolWrapper):
     default_wait_time_in_sec = 2
     server_socket.settimeout(default_wait_time_in_sec)
     while True:
         recv_bytes = server_socket.recv(1024)
-        dest.    
+        # dest.    
 
 
+# TODO: Finish
 def create_layout_position_array(server_socket: socket.socket, n: int) -> LayoutPositionsT:
     layout_positions: LayoutPositionsT = [None for _ in range (n)]
-    extraction_function = 
+    # extraction_function = 
 
 
 def request_graph_layout_computation(
-    G_gt: gt.Graph, server_ip_addr: str, server_port: int
+    G_gt: gt.Graph, server_ip_addr: str, server_port: int, logger: Optional[logging.Logger] = None
 ) -> LayoutPositionsT:
     
     global MAX_CHUNK_LENGTH
@@ -78,6 +85,39 @@ def request_graph_layout_computation(
         current_message_tail += "}"
         message_to_be_sent = f"|{current_message_head}| is_final=true {current_message_tail}|"
         server_socket.sendall(message_to_be_sent)
-            
+
+
+def send_layout_computation_request_to_grpc_server(
+    G_gt: gt.Graph, server_ip_addr: str, server_port: int, logger: Optional[logging.Logger] = None
+) -> LayoutPositionsT:
+
+    if logger is not None:
+        logger.debug(f"Preparing to call layout computation rpc on grpc server at {server_ip_addr}:{server_port}")
+
+    print(f"{server_ip_addr}:{server_port}")    
+
+    edges = []
+    for u in range(G_gt.num_vertices()):
+        Nu = G_gt.get_out_neighbors(u)
+        for v in Nu:
+            edges.append(py_to_cpp_backend_pb2.Edge(srcVertexIndex=u, destVertexIndex=v))
+
+    response = None
+    edge_list = py_to_cpp_backend_pb2.EdgeList(edges=edges)
+    with grpc.insecure_channel(f"{server_ip_addr}:{server_port}") as channel:
+        stub = py_to_cpp_backend_pb2_grpc.GraphLayoutServiceStub(channel)
+        response = stub.computeGraphLayout(edge_list)
+
+    if logger is not None:
+        logger.debug(f"GRPC server at {server_ip_addr}:{server_port} computed layout for requested graph")    
+
+    layout_positions: LayoutPositionsT = []
+    for coord in response.layoutPositions:   
+        layout_positions.append((coord.x, coord.y))
+
+    if logger is not None:
+        logger.info(f"Layout computation request on grpc server at {server_ip_addr}:{server_port} ended in success")    
+
+    return layout_positions    
 
 

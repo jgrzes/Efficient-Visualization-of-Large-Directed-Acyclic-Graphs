@@ -8,6 +8,7 @@
 #include <variant>
 
 #include "../utils/Counting_Allocator.h"
+#include "../logging/boost_logging.hpp"
 
 namespace data_structures {
 
@@ -34,18 +35,29 @@ public:
         BaseClass{MemCountingMap<T>()}, m_logicalN{n}, m_defaultValue{defaultValue} {}
 
     template <bool OtherAutoOptimizing>
+    SparseArray(const SparseArray<T, OtherAutoOptimizing>& otherSparseArray) :
+        BaseClass{otherSparseArray}, m_logicalN{otherSparseArray.m_logicalN}, m_defaultValue{otherSparseArray.m_defaultValue} {}
+
+    template <bool OtherAutoOptimizing>
+    SparseArray(SparseArray<T, OtherAutoOptimizing>&& otherSparseArray) :
+        BaseClass{std::move(otherSparseArray)}, m_logicalN{otherSparseArray.m_logicalN}, m_defaultValue{otherSparseArray.m_defaultValue} {}    
+
+    template <bool OtherAutoOptimizing>
     SparseArray<T, AutoOptimizing>& operator=(const SparseArray<T, OtherAutoOptimizing>& otherSparseArray) {
-        BaseClass::operator=(static_cast<const BaseClass&>(otherSparseArray));
+        BaseClass::operator=(otherSparseArray);
         m_defaultValue = otherSparseArray.m_defaultValue;
-        const_cast<size_t&>(m_logicalN) = otherSparseArray.m_logicalN;
+        m_logicalN = otherSparseArray.m_logicalN;
+        return *this;
     }    
 
     template <bool OtherAutoOptimizing>
     SparseArray<T, AutoOptimizing>& operator=(SparseArray<T, OtherAutoOptimizing>&& otherSparseArray) {
-        BaseClass::operator=(static_cast<const BaseClass&>(std::move(otherSparseArray)));
+        if (this == &otherSparseArray) return *this;
+        BaseClass::operator=(std::move(otherSparseArray));
         m_defaultValue = std::move(otherSparseArray.m_defaultValue);
-        const_cast<size_t&>(m_logicalN) = otherSparseArray.m_logicalN;
-        const_cast<size_t&>(otherSparseArray.m_logicalN) = 0UL;
+        m_logicalN = otherSparseArray.m_logicalN;
+        otherSparseArray.m_logicalN = 0UL;
+        return *this;
     } 
 
     size_t size() const {return m_logicalN;}
@@ -57,7 +69,7 @@ public:
     }
 
     T& operator[](size_t i) {
-        if (MemCountingMap<T>* castedToMapPtr = std::get_if<MemCountingMap<T>>(static_cast<BaseClass*>(this));
+        if (MemCountingMap<T>* castedToMapPtr = std::get_if<MemCountingMap<T>>(this);
             castedToMapPtr != nullptr) {
 
             auto& castedToMap = *castedToMapPtr;
@@ -76,6 +88,16 @@ public:
 
         // std::cout << "Underlying type is vector " << std::holds_alternative<std::vector<std::optional<T>>>(*this) << "\n";
         // std::cout << i << ", while logical n is " << m_logicalN << "\n";
+
+        std::string underlyingAlternative = "unknown";
+        if (std::holds_alternative<std::vector<std::optional<T>>>(*this)) underlyingAlternative = "vector";
+        else if (std::holds_alternative<MemCountingMap<T>>(*this)) underlyingAlternative = "map";
+        logging::log_trace(
+            "(In " + std::to_string((size_t) (this)) + ") Underlying type is " 
+            + underlyingAlternative + " and i = " + std::to_string(i)
+            + " while m_logicalN = " + std::to_string(m_logicalN) + "."
+        );
+
         auto& castedToVector = std::get<std::vector<std::optional<T>>>(static_cast<BaseClass&>(*this));
         if (!castedToVector[i].has_value()) castedToVector[i] = m_defaultValue;
         return castedToVector[i].value();
@@ -110,10 +132,10 @@ public:
     }
 
     void optimize() {
-        if (std::holds_alternative<std::vector<std::optional<T>>>(static_cast<BaseClass&>(*this))) {
+        if (std::holds_alternative<std::vector<std::optional<T>>>(*this)) {
             return;
         }
-        auto& castedToMap = std::get<MemCountingMap<T>>(static_cast<BaseClass&>(*this));
+        auto& castedToMap = std::get<MemCountingMap<T>>(*this);
         size_t bytesAllocated = getAllocatedBytesInCaseOfMap();
         if (bytesAllocated >= m_logicalN * sizeof(std::optional<T>)) {
             transformFromMapToVector();
@@ -129,7 +151,7 @@ private:
     }
 
     void transformFromMapToVector() {
-        // std::cout << "Transforming from map to vector...\n";
+        logging::log_debug("Transforming map to vector in sparse array object...");
         std::vector<std::optional<T>> rowDataAsVector(m_logicalN, std::nullopt);
         auto& castedToMap = std::get<MemCountingMap<T>>(
             static_cast<BaseClass&>(*this)
@@ -137,12 +159,16 @@ private:
         for (const auto& [i, t] : castedToMap) {
             rowDataAsVector[i] = std::move(t);
         }
-        BaseClass::operator=(std::move(rowDataAsVector));
-        auto castedToVectorPtr = std::get_if<std::vector<std::optional<T>>>(static_cast<BaseClass*>(this));
-        // std::cout << "Transforming " << (castedToVectorPtr != nullptr ? "succeeded" : "failed") << "\n";
+        // BaseClass::operator=(std::move(rowDataAsVector));
+        BaseClass::template emplace<std::vector<std::optional<T>>>(std::move(rowDataAsVector));
+        auto castedToVectorPtr = std::get_if<std::vector<std::optional<T>>>(this);
+        logging::log_debug(
+            std::string("Transforming map to vector in sparse array object ")
+            + (castedToVectorPtr != nullptr ? "succeeded." : "failed.")
+        );
     }
 
-    const size_t m_logicalN; 
+    size_t m_logicalN; 
     T m_defaultValue;
 
 };
