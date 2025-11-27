@@ -57,11 +57,13 @@ def build_reponse_json_string_for_make_graph_structure_req(
 @app.route("/session_keepalive", methods=["POST"])
 def session_keepalive():
     data = request.get_json()
+    print(data)
     datetime = data.get("date", "")
     graph_uuid = data.get("uuid", "nothing")
     if graph_uuid != "nothing":
-        logger.debug(f"Keepalive received for {graph_uuid}")
+        print(f"Keepalive received for {graph_uuid}")
     temp_graph_data_storage.keepalive_message_queue.put((graph_uuid, datetime))
+    return jsonify({"status": "ok"}), 200
 
 
 @app.route("/node/<string:graph_uuid>/<int:node_id>", methods=["GET"])
@@ -147,7 +149,7 @@ def flask_make_graph_structure():
             G_gt = build_graph_from_txt(file.read().decode("utf-8"))   
 
     except Exception as e:    
-        ... 
+        print(e)
 
     logger.debug(
         f"Successfully extracted graph from {file.filename} and created a graph tool object based on it"

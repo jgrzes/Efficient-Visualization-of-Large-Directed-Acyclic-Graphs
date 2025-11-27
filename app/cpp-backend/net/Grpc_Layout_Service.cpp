@@ -37,10 +37,12 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                     const Edge& edgeI = edgeList->edges(i);
                     uint32_t u = edgeI.srcvertexindex();
                     uint32_t v = edgeI.destvertexindex();
+                    std::cout << "(" << u << ", " << v << ") ";
                     numberOfVertices = std::max(numberOfVertices, u+1);
                     numberOfVertices = std::max(numberOfVertices, v+1);
                     edgeListInGraphCompatibleForm.emplace_back(u, v);
                 }
+                std::cout << "\n";
 
                 logging::log_info(
                     "Layout service received new rpc call for a graph with "

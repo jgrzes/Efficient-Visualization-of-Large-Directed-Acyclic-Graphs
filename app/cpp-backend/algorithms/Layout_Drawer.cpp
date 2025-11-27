@@ -250,7 +250,7 @@ void LayoutDrawer::findVerticesWithCustomEpsilonsAndFixColourRoots(
                 NrForNewColourRootStr += (NrForNewColourRootStr.size() > 1 ? ", " : "") + std::to_string(vIndex);
                 graph.addNewEdge(vIndex, newColourRootIndex);
             }
-            NForNewColourRootStr += (NrForNewColourRootStr.size() > 1 ? ", " : "") + std::to_string(rcIndex);
+            NForNewColourRootStr += (NForNewColourRootStr.size() > 1 ? ", " : "") + std::to_string(rcIndex);
             graph.addNewEdge(newColourRootIndex, rcIndex);
         }
 

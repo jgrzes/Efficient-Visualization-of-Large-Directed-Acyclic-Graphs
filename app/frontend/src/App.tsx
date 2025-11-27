@@ -16,7 +16,7 @@ import ConfirmModal from './components/ConfirmModal';
 import RightSidebar from './components/RightSidebar';
 
 import { useGraph } from './hooks/useGraph';
-import { startKeepAlive } from './session_management/keepalive';
+import { useStartKeepAlive } from './hooks/useKeepalive';
 import {
   Upload,
   // Settings,
@@ -134,6 +134,8 @@ const MainAppContext: React.FC = () => {
     if (!file) return;
     setSelectedFile(file);
     setShowOntologyOptions(true);
+    // const n = file.name.split(".").length;
+    // setShowOntologyOptions(file.name.split(".")[n-1] == "obo");
   };
 
   const uploadFileWithNamespace = async (namespace: string) => {
@@ -419,13 +421,25 @@ const MainAppContext: React.FC = () => {
 //   )
 // }
 
+const AppKeepAliveComponent = () => {
+  useStartKeepAlive(`${API_BASE}/session_keepalive`, 10_000); 
+  return <MainAppContext />;
+}
+
+
 const App: React.FC = () => {
   const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
   // TODO: Tweak the keepalive interval, probably should be something like 1 every 2/3 minutes
-  startKeepAlive("${API_BASE}/session_keepalive", 10_000); 
+  // useStartKeepAlive(`${API_BASE}/session_keepalive`, 10_000); 
+  // return (
+  //   <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
+  //     <MainAppContext />
+  //   </AppContext.Provider>
+  // )
+
   return (
     <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
-      <MainAppContext />
+      <AppKeepAliveComponent />
     </AppContext.Provider>
   )
 }

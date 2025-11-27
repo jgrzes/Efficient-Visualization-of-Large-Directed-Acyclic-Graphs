@@ -19,11 +19,11 @@ def read_colour_hierarchy_from_file(file: TextIOWrapper) -> Tuple[ColourHierarch
     current_indent = 0
     max_colour_index = -1
     while True:
-        line = file.readline()
+        line = file.readline().strip()
         if len(line) == 0:
             break 
 
-        print("RCH line: ", line)
+        print("RCH line: ", line, len(line))
         indent_part, colour = line.split(sep=" ")
         new_indent = len(indent_part)
         colour = colour.strip()
@@ -62,7 +62,7 @@ def build_F_matrix(file: TextIOWrapper) -> Tuple[sparse.csr_matrix, int, int]:
     print(line)
     row_count, col_count = line.split(sep=" ")
     row_count = int(row_count.strip())
-    col_count = int(row_count.strip())
+    col_count = int(col_count.strip())
     file.readline() # Reading empty seperator line
     
     F_dense_matrix = np.zeros((row_count, col_count))
@@ -70,7 +70,7 @@ def build_F_matrix(file: TextIOWrapper) -> Tuple[sparse.csr_matrix, int, int]:
         line = file.readline()
         if line == "":
             break
-        c1, c2, val = line.split(sep=" ")
+        unused_F_letter, c1, c2, val = line.split(sep=" ")
         c1 = int(c1)
         c2 = int(c2)
         val = int(val.strip())
@@ -105,11 +105,7 @@ def fill_colour_remapping_by_performing_qap(
                 a = node.children_nodes.colour
                 for j in range(number_of_children):
                     b = node.children_nodes.colour
-                    F_for_subquestion[i, j] = F_matrix[a, b]
-
-            # D_for_subquestion = np.array(
-            #     [[abs(i-j) for i in range(number_of_children)] for j in range(number_of_children)]
-            # )    
+                    F_for_subquestion[i, j] = F_matrix[a, b]   
 
             D_for_subquestion = PretendMatrix(
                 mode=PretendMatrixMode.DYNAMIC_CALCULATION, 
@@ -289,6 +285,6 @@ if __name__ == "__main__":
     log_file.close()
     sys.stdout = console_stdout
 
-    for i in range(colour_remapping):
+    for i in range(len(colour_remapping)):
         print(f"{i}>{colour_remapping[i]}", sep=" ")
     print("")    

@@ -37,6 +37,7 @@ class GraphDataStorage:
         while self.data_storage_running:
             while not self.keepalive_message_queue.empty():
                 graph_uuid, datetime = self.keepalive_message_queue.get()
+                print(f"From queue: {graph_uuid}")
                 if graph_uuid in self.graph_cycles_without_keepalive_hashmap:
                     self.graph_cycles_without_keepalive_hashmap[graph_uuid] = -1
 
@@ -53,9 +54,9 @@ class GraphDataStorage:
 
             # TODO: Decide if, and if so how many, active uuids should be displated here.
             # TODO: Logger does not work here for whatever reason, maybe because __name__ != __main__
-            # if self.logger is not None: print(
-            #     f"Active graph uuids: {[uuid for uuid in self.graph_cycles_without_keepalive_hashmap.keys()]}"
-            # )
+            if self.logger is not None: print(
+                f"Active graph uuids: {[uuid for uuid in self.graph_cycles_without_keepalive_hashmap.keys()]}"
+            )
             sleep(self.keepalive_message_processor_sleep_time_s)   
 
 
