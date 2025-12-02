@@ -152,6 +152,77 @@ const MainAppContext: React.FC = () => {
   // Helpers
   const arrayFromF32 = (f: Float32Array) => Array.from(f);
 
+  const setGraphHashInUrl = (hash: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("g", hash);
+    window.history.replaceState(null, "", url.toString());
+  };
+
+  const clearHashInUrl = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("g");
+    window.history.replaceState(null, "", url.toString());
+  };
+
+  // Type and helper for loading graph
+  type LoadedGraph = {
+    graph_hash?: string;
+    uuid: string;
+    canvas_positions: number[];
+    links: number[];
+    names?: string[];
+    meta?: Record<string, unknown>;
+    config?: {
+      space_size?: number;
+      point_size?: number;
+    };
+  };
+
+  // To avoid duplication, one general function for loading graph
+  function applyLoadedGraph(
+    data: LoadedGraph,
+    options?: {
+      urlHash?: string | null;
+      fit?: boolean;
+    }
+  ) {
+    setCurrentGraphUUID(data.uuid);
+    if (data.graph_hash) {
+      setCurrentGraphHash(data.graph_hash);
+    } else {
+      setCurrentGraphHash(null);
+    }
+
+    setPointPositions(new Float32Array(data.canvas_positions));
+    setLinks(new Float32Array(data.links));
+    setSelectedNode(null);
+
+    if (data.names) {
+      setNodeNames(data.names);
+    } else {
+      setNodeNames(null);
+    }
+
+    if (data.config) {
+      setGraphConfig({
+        spaceSize: data.config.space_size || 256,
+        pointSize: data.config.point_size || 1
+      });
+    } else {
+      setGraphConfig(null);
+    }
+
+    if (options?.urlHash) {
+      setGraphHashInUrl(options.urlHash);
+    } else {
+      clearHashInUrl();
+    }
+
+    if (options?.fit) {
+      setTimeout(() => fitView(), 100);
+    }
+  }
+
   // Graph controls
   const { fitView, resetView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults } = useGraph(
     graphRef,
@@ -186,24 +257,7 @@ const MainAppContext: React.FC = () => {
     setLoading(true);
     fetchGraphByHash(g)
       .then((data) => {
-        setPointPositions(new Float32Array(data.canvas_positions));
-        setLinks(new Float32Array(data.links));
-        setSelectedNode(null);
-
-        if (data.names) {
-          setNodeNames(data.names);
-        } else {
-          setNodeNames(null);
-        }
-
-        if (data.config) {
-          setGraphConfig({
-            spaceSize: data.config.space_size || 256,
-            pointSize: data.config.point_size || 1
-          });
-        } else {
-          setGraphConfig(null);
-        }
+        applyLoadedGraph(data, { urlHash: g, fit: true });
       })
       .catch((err) => {
         console.error('Auto-load failed:', err);
@@ -238,34 +292,7 @@ const MainAppContext: React.FC = () => {
 
       const data = await res.json();
       console.log('JSON load response:', data);
-
-      if (data.uuid) {
-        setCurrentGraphUUID(data.uuid);
-      } else {
-        console.warn('JSON response has no uuid field; save_graph may not work correctly.');
-      }
-      if (data.graph_hash) {
-        setCurrentGraphHash(data.graph_hash);
-      }
-
-      setPointPositions(new Float32Array(data.canvas_positions));
-      setLinks(new Float32Array(data.links));
-      setSelectedNode(null);
-
-      if (data.names) {
-        setNodeNames(data.names);
-      } else {
-        setNodeNames(null);
-      }
-
-      if (data.config) {
-        setGraphConfig({
-          spaceSize: data.config.space_size ?? 256,
-          pointSize: data.config.point_size ?? 1,
-        });
-      } else {
-        setGraphConfig(null);
-      }
+      applyLoadedGraph(data, { fit: true });
 
     } catch (err) {
       console.error('Error while loading JSON graph:', err);
@@ -373,16 +400,7 @@ const MainAppContext: React.FC = () => {
 
       const data = await response.json();
       console.log("Received graph uuid: " + data.uuid);
-      setCurrentGraphUUID(data.uuid);
-      setPointPositions(new Float32Array(data.canvas_positions));
-      setLinks(new Float32Array(data.links));
-      setSelectedNode(null);
-
-      if (data.names) {
-        setNodeNames(data.names);
-      } else {
-        setNodeNames(null);
-      }
+      applyLoadedGraph(data, { fit: true });
 
       setSelectedFile(null);
     } catch (err) {
@@ -617,6 +635,7 @@ const MainAppContext: React.FC = () => {
 
       setCurrentGraphHash(hash);
       setSaveModalHash(hash);
+      setGraphHashInUrl(hash);
     } catch (e) {
       console.error(e);
       setSaveModalError("Failed to save the graph to the database.");
@@ -637,33 +656,9 @@ const MainAppContext: React.FC = () => {
       setLoadError(null);
 
       const data = await fetchGraphByHash(hash.trim());
-      setCurrentGraphUUID(data.uuid);
-      setCurrentGraphHash(data.graph_hash);
-      setPointPositions(new Float32Array(data.canvas_positions));
-      setLinks(new Float32Array(data.links));
-      setSelectedNode(null);
-
-      if (data.names) {
-        setNodeNames(data.names);
-      } else {
-        setNodeNames(null);
-      }
-
-      if (data.config) {
-        setGraphConfig({
-          spaceSize: data.config.space_size || 256,
-          pointSize: data.config.point_size || 1
-        });
-      } else {
-        setGraphConfig(null);
-      }
-
-      const url = new URL(window.location.href);
-      url.searchParams.set("g", hash.trim());
-      window.history.replaceState({}, "", url.toString());
+      applyLoadedGraph(data, { urlHash: hash.trim(), fit: true });
 
       setLoadModalOpen(false);
-      setTimeout(() => fitView(), 100);
     } catch (e) {
       console.error(e);
       setLoadError("Graph not found for the given hash.");
@@ -679,26 +674,7 @@ const MainAppContext: React.FC = () => {
       setLoadFromDbError(null);
 
       const data = await fetchGraphByHash(graphId.trim());
-      setCurrentGraphUUID(data.uuid);
-      setCurrentGraphHash(data.graph_hash);
-      setPointPositions(new Float32Array(data.canvas_positions));
-      setLinks(new Float32Array(data.links));
-      setSelectedNode(null);
-
-      if (data.names) {
-        setNodeNames(data.names);
-      } else {
-        setNodeNames(null);
-      }
-
-      if (data.config) {
-        setGraphConfig({
-          spaceSize: data.config.space_size || 256,
-          pointSize: data.config.point_size || 1
-        });
-      } else {
-        setGraphConfig(null);
-      }
+      applyLoadedGraph(data, { urlHash: graphId.trim(), fit: true });
 
       setGraphListOpen(false);
       setTimeout(() => fitView(), 100);
