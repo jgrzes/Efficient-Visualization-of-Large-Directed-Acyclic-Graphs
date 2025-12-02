@@ -632,6 +632,36 @@ def list_groups():
     return jsonify(groups), 200
 
 
+@app.route("/update_graph_config/<string:graph_hash>", methods=["POST"])
+def update_graph_config(graph_hash: str):
+    logger.info(f"Received call on endpoint /update_graph_config/<graph_hash={graph_hash}>")
+
+    try:
+        data = request.get_json(force=True) or {}
+    except Exception:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    allowed_fields = { # have to think about it
+        "favorites",
+        "point_size",
+        "space_size",
+    }
+
+    new_vals = {k: v for k, v in data.items() if k in allowed_fields}
+
+    if not new_vals:
+        return jsonify({"error": "No allowed fields in payload"}), 400
+
+    try:
+        db_manager.update_existing_entry(graph_hash, new_vals)
+    except Exception as e:
+        logger.exception("Failed to update graph config")
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({"status": "ok"}), 200
+
+
+
 if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     temp_graph_data_storage = GraphDataStorage()

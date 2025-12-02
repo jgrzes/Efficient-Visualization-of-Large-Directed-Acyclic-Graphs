@@ -114,6 +114,9 @@ class MongoDatabaseManager:
         if "name" in new_vals:
             update_dict["$set"]["name"] = new_vals["name"]
 
+        if "favorites" in new_vals:
+            update_dict["$set"]["favorites"] = new_vals["favorites"]
+
         if "vertices" in new_vals:
             vertices_updates_list: List[Tuple[int, List[Tuple[str, Any]]]] = new_vals["vertices"]
             n = len(vertices_updates_list)

@@ -196,6 +196,7 @@ const MainAppContext: React.FC = () => {
     config?: {
       space_size?: number;
       point_size?: number;
+      favorites?: number[];
     };
   };
 
@@ -231,14 +232,14 @@ const MainAppContext: React.FC = () => {
         colors: DEFAULT_GRAPH_COLORS,
       });
 
-      if (data.config.favorites) {
+      if (Array.isArray(data.config.favorites)) {
         favorites.setFavoritesFromGraph(data.config.favorites);
       } else {
         favorites.clearFavorites();
       }
-
     } else {
       setGraphConfig(null);
+      favorites.clearFavorites();
     }
 
     if (options?.urlHash) {
@@ -274,6 +275,28 @@ const MainAppContext: React.FC = () => {
   React.useEffect(() => {
     console.log("Current graph uuid: " + currentGraphUUID);
   }, [currentGraphUUID]);
+
+  // For auto-updating favorites in backend when they change
+  React.useEffect(() => {
+    if (!currentGraphHash) return;
+
+    const favs = favorites.favorites;
+    if (!Array.isArray(favs)) return;
+
+    const controller = new AbortController();
+
+    fetch(`${API_BASE}/update_graph_config/${currentGraphHash}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ favorites: favs }),
+      signal: controller.signal,
+    }).catch((err) => {
+      console.error("Failed to auto-update favorites:", err);
+    });
+
+    return () => controller.abort();
+  }, [favorites.favorites, currentGraphHash]);
+
 
   /** AUTO LOAD GRAPH FROM LINK ?g=... **/
   React.useEffect(() => {
@@ -604,6 +627,7 @@ const MainAppContext: React.FC = () => {
       config?: {
         space_size?: number;
         point_size?: number;
+        favorites?: number[];
         // opcjonalnie backend może tu dorzucać kolory
         default_color?: string;
         parent_color?: string;
