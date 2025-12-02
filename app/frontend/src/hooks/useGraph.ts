@@ -23,20 +23,38 @@ type NodeTooltip = {
 
 type RGBA = [number, number, number, number];
 
+const hexToRgba01 = (hex: string, alpha = 0.9): RGBA => {
+  let h = hex.trim();
+  if (h.startsWith("#")) h = h.slice(1);
+
+  if (h.length === 3) {
+    const r = parseInt(h[0] + h[0], 16);
+    const g = parseInt(h[1] + h[1], 16);
+    const b = parseInt(h[2] + h[2], 16);
+    return [r / 255, g / 255, b / 255, alpha];
+  }
+
+  if (h.length === 6) {
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return [r / 255, g / 255, b / 255, alpha];
+  }
+
+  // fallback – gdyby hex był zły
+  return [1, 1, 1, alpha];
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Colors & defaults
 // ─────────────────────────────────────────────────────────────────────────────
-const COLOR_DEFAULT_POINT: RGBA = [0.8, 0.8, 0.8, 0.5];
-const COLOR_SELECTED_POINT: RGBA = [0.15, 0.3, 0.9, 0.9]; // blue
-const COLOR_PARENT_POINT: RGBA = [0.9, 0.2, 0.2, 0.9];    // red
-const COLOR_CHILD_POINT: RGBA = [0.2, 0.9, 0.2, 0.9];     // green
-const COLOR_SEARCH_POINT: RGBA = [0.0, 0.9, 0.9, 0.9];    // turquoise
-
-const COLOR_DEFAULT_LINK: RGBA = [0.6, 0.6, 0.6, 0.4];
+const COLOR_DEFAULT_LINK: RGBA = [0.6, 0.6, 0.6, 0.8];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+
 
 const fetchNodeData = async (uuid: string, index: number) => {
   const response = await fetch(`${API_BASE}/node/${uuid}/${index}`);
@@ -76,10 +94,21 @@ const computeParentsChildren = (
   return { parents, children };
 };
 
+type GraphColors = {
+  default: string;
+  parent: string;
+  child: string;
+  selected: string;
+  hover: string;
+  search: string;
+};
+
 type UseGraphInitialConfig = {
   spaceSize?: number;
   pointSize?: number;
+  colors?: GraphColors;
 };
+
 
 export function useGraph(
   graphRef: React.RefObject<HTMLDivElement | null>,
@@ -117,13 +146,20 @@ export function useGraph(
   // Are we currently dragging a vertex
   const isDraggingRef = useRef(false);
 
+  // Node hoverowany z result card
+  const hoveredCardIndexRef = useRef<number | null>(null);
+
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext?.currentGraphUUID;
   const currentGraphUUIDRef = useRef<string | null>(currentGraphUUID ?? null);
+  const colorsRef = useRef<GraphColors | undefined>(initialConfig?.colors);
 
   // ───────────────────────────────────────────────────────────────────────────
   // Effects: UUID / links / names
   // ───────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+      colorsRef.current = initialConfig?.colors;
+    }, [initialConfig?.colors]);
 
   useEffect(() => {
     currentGraphUUIDRef.current = currentGraphUUID ?? null;
@@ -256,6 +292,24 @@ export function useGraph(
       const flatLinks = linksRef.current;
       const linkCount = flatLinks.length / 2;
 
+      const cfgColors = colorsRef.current ?? {
+        default: "#808080",
+        parent: "#e34a4a",
+        child: "#4ae34a",
+        selected: "#2633e7",
+        hover: "#ff66cc",
+        search: "#00e6e6",
+      };
+
+      const DEFAULT_POINT: RGBA = hexToRgba01(cfgColors.default, 0.8);
+      const SELECTED_POINT: RGBA = hexToRgba01(cfgColors.selected, 0.9);
+      const PARENT_POINT: RGBA = hexToRgba01(cfgColors.parent, 0.9);
+      const CHILD_POINT: RGBA = hexToRgba01(cfgColors.child, 0.9);
+      const HOVER_POINT: RGBA = hexToRgba01(cfgColors.hover, 0.95);
+      const SEARCH_POINT: RGBA = hexToRgba01(cfgColors.search, 0.9);
+
+      // const SEARCH_POINT: RGBA = COLOR_SEARCH_POINT
+
       const pointColors = new Float32Array(pointCount * 4);
       const linkColors = new Float32Array(linkCount * 4);
       const linkWidths = new Float32Array(linkCount);
@@ -265,6 +319,11 @@ export function useGraph(
       const childrenSet = new Set<number>(children);
       const searchSet = searchIndicesRef.current;
 
+      const hoveredCardIndex = hoveredCardIndexRef.current;
+      const hoveredCardSet = hoveredCardIndex != null
+        ? new Set<number>([hoveredCardIndex])
+        : new Set<number>();
+
       // Links
       for (let i = 0; i < flatLinks.length; i += 2) {
         const edgeIndex = i / 2;
@@ -272,16 +331,14 @@ export function useGraph(
         const target = flatLinks[i + 1];
 
         let color = COLOR_DEFAULT_LINK;
-        let width = 1;
+        let width = 2;
 
         if (selectedSet.size > 0) {
           if (selectedSet.has(target)) {
-            // Edge from parent to selected
-            color = COLOR_PARENT_POINT;
+            color = PARENT_POINT;
             width = 3;
           } else if (selectedSet.has(source)) {
-            // Edge from selected to child
-            color = COLOR_CHILD_POINT;
+            color = CHILD_POINT;
             width = 3;
           }
         }
@@ -291,22 +348,24 @@ export function useGraph(
       }
 
       // Points (priority):
-      // selected > parent > child > searched > default
+      // hoveredCard > selected > parent > child > searched > default
       for (let i = 0; i < pointCount; i++) {
-        let color: RGBA = COLOR_DEFAULT_POINT;
-
-        if (selectedSet.has(i)) {
-          color = COLOR_SELECTED_POINT;
+        let color: RGBA = DEFAULT_POINT;
+        if (hoveredCardSet.has(i)) {
+          color = HOVER_POINT;
+        } else if (selectedSet.has(i)) {
+          color = SELECTED_POINT;
         } else if (parentsSet.has(i)) {
-          color = COLOR_PARENT_POINT;
+          color = PARENT_POINT;
         } else if (childrenSet.has(i)) {
-          color = COLOR_CHILD_POINT;
+          color = CHILD_POINT;
         } else if (searchSet.has(i)) {
-          color = COLOR_SEARCH_POINT;
+          color = SEARCH_POINT;
         }
 
         pointColors.set(color, i * 4);
       }
+
 
       g.setPointColors(pointColors);
       g.setLinkColors(linkColors);
@@ -344,7 +403,7 @@ export function useGraph(
         recomputeTooltipsPositions();
       }
     },
-    [recomputeTooltipsPositions]
+    [recomputeTooltipsPositions, initialConfig]
   );
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -407,6 +466,32 @@ export function useGraph(
       }
     },
     [applyColors, clearSelection, setSelectedNode]
+  );
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Hover highlight z result card
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const highlightResultHover = useCallback(
+    async (index?: number)=> {
+      hoveredCardIndexRef.current = index ?? null;
+
+      const g = graphInstance.current;
+      if (!g) return;
+
+      const positions = g.getPointPositions();
+      if (!positions || positions.length === 0) return;
+
+      const selectedIndex = selectedIndexRef.current;
+      const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
+      const { parents, children } = computeParentsChildren(
+        selectedIndices,
+        linksRef.current
+      );
+
+      applyColors(selectedIndices, parents, children, { zoomToSelected: false });
+    },
+    [applyColors]
   );
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -502,7 +587,6 @@ export function useGraph(
       graphInstance.current?.destroy?.();
       graphInstance.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // init only once
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -580,5 +664,6 @@ export function useGraph(
     tooltips,
     hoverTooltip,
     highlightSearchResults,
+    highlightResultHover,
   };
 }

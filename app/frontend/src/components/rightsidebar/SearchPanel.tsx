@@ -12,6 +12,7 @@ interface RightSearchPanelProps {
   onOptionsChange?: (opts: { matchCase: boolean; matchWords: boolean }) => void;
   filters?: { id: string; field: string; query: string }[];
   onRemoveFilter?: (id: string) => void;
+  onHoverResultCard?: (node?: NodeInfoProps) => void;
 }
 
 export const SearchPanel: React.FC<RightSearchPanelProps> = ({
@@ -22,6 +23,7 @@ export const SearchPanel: React.FC<RightSearchPanelProps> = ({
   onOptionsChange,
   filters = [],
   onRemoveFilter,
+  onHoverResultCard
 }) => {
   const handleSearch = React.useCallback(
     (field: string, query: string) => {
@@ -54,7 +56,12 @@ export const SearchPanel: React.FC<RightSearchPanelProps> = ({
       </div>
 
       <div className="px-4 py-4">
-        <ResultsList type="search" items={results} onSelectNode={onSelectNode} />
+        <ResultsList
+          type="search"
+          items={results}
+          onSelectNode={onSelectNode}
+          onHoverResultCard={onHoverResultCard}
+        />
       </div>
     </div>
   );

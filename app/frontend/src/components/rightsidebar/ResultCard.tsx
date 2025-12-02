@@ -8,9 +8,14 @@ import CommentModal from "../CommentModal";
 export interface ResultCardProps {
   node: NodeInfoProps;
   onSelect: (n: NodeInfoProps) => void;
+  onHoverResultcard?: (node?: NodeInfoProps) => void;
 }
 
-const ResultCard: React.FC<ResultCardProps> = ({ node, onSelect }) => {
+const ResultCard: React.FC<ResultCardProps> = ({
+  node,
+  onSelect,
+  onHoverResultcard
+}) => {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addComment } = useComments();
 
@@ -42,6 +47,8 @@ const ResultCard: React.FC<ResultCardProps> = ({ node, onSelect }) => {
     <>
       <li
         onClick={() => onSelect(node)}
+        onMouseEnter={() => onHoverResultcard?.(node)}
+        onMouseLeave={() => onHoverResultcard?.()}
         className="group rounded-xl p-3 border border-gray-900/60 bg-white/[0.03]
                    hover:bg-white/[0.06] hover:border-gray-700 transition cursor-pointer
                    shadow-sm hover:shadow-md w-[17em] max-w-full"
@@ -57,7 +64,7 @@ const ResultCard: React.FC<ResultCardProps> = ({ node, onSelect }) => {
             </p>
 
             <p className="text-[11px] text-gray-400 mt-0.5 truncate">
-              {node.namespace || node.id}
+              {node.id}
             </p>
           </div>
 
@@ -104,9 +111,7 @@ const ResultCard: React.FC<ResultCardProps> = ({ node, onSelect }) => {
         open={commentOpen}
         onClose={() => setCommentOpen(false)}
         onSubmit={handleSubmitComment}
-  title={`Comment for: ${node.name}`}
-        // jeśli masz jakieś domyślne imię użytkownika, możesz dodać:
-        // initialName={defaultAuthorName}
+        title={`Comment for: ${node.name}`}
       />
     </>
   );

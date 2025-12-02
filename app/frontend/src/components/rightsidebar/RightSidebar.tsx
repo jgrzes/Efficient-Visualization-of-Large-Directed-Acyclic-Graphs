@@ -22,6 +22,7 @@ interface RightSidebarProps {
   onOptionsChange?: (opts: { matchCase: boolean; matchWords: boolean }) => void;
   filters?: { id: string; field: string; query: string }[];
   onRemoveFilter?: (id: string) => void;
+  onHoverResultCard?: (node?: NodeInfoProps) => void;
 }
 
 const RightSidebar: React.FC<RightSidebarProps> = ({
@@ -37,6 +38,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   onOptionsChange,
   filters,
   onRemoveFilter,
+  onHoverResultCard
 }) => {
   const { favorites = [] } = useFavorites();
 
@@ -116,12 +118,17 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
             onOptionsChange={onOptionsChange}
             filters={filters ?? []}
             onRemoveFilter={onRemoveFilter}
+            onHoverResultCard={onHoverResultCard}
           />
         )}
 
         {isFavorites && (
           <div className="px-4 py-3">
-            <FavoritesPanel favorites={favorites} onSelectNode={onSelectNode} />
+            <FavoritesPanel
+              favorites={favorites}
+              onSelectNode={onSelectNode}
+              onHoverResultCard={onHoverResultCard} 
+            />
           </div>
         )}
 

@@ -7,12 +7,14 @@ interface ResultsListProps {
   type: "search" | "favorites";
   items: NodeInfoProps[];
   onSelectNode: (node: NodeInfoProps) => void;
+  onHoverResultCard?: (node?: NodeInfoProps) => void;
 }
 
 const ResultsList: React.FC<ResultsListProps> = ({
   type,
   items,
   onSelectNode,
+  onHoverResultCard
 }) => {
   if (items.length === 0) {
     return <EmptyState type={type} />;
@@ -31,6 +33,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
             key={`${type}-${node.id}-${node.index ?? 0}`}
             node={node}
             onSelect={onSelectNode}
+            onHoverResultcard={onHoverResultCard}
           />
         ))}
       </ul>

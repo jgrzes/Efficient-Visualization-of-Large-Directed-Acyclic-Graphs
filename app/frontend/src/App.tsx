@@ -17,7 +17,8 @@ import SaveGraphModal from "./components/SaveGraphModal";
 import LoadGraphModal from "./components/LoadGraphModal";
 import GraphListModal from "./components/GraphListModal";
 import LoadSourceModal from "./components/LoadSourceModal";
-import SettingsModal from './components/SettingsModal';
+import SettingsModal, { GraphColors } from './components/SettingsModal';
+import { DEFAULT_GRAPH_COLORS, DEFAULT_SPACE_SIZE, DEFAULT_POINT_SIZE } from "./graphConfig";
 
 import { useGraph } from './hooks/useGraph';
 
@@ -27,6 +28,22 @@ export const AppContext = createContext<{
   currentGraphUUID: string | null,
   setCurrentGraphUUID: React.Dispatch<React.SetStateAction<string | null>>
 } | null>(null);
+
+// domyślna paleta kolorów wierzchołków
+// const DEFAULT_GRAPH_COLORS: GraphColors = {
+//   default: "#a1a1aa",   // neutral
+//   parent: "#22c55e",    // green
+//   child: "#38bdf8",     // blue
+//   selected: "#f97316",  // orange
+//   hover: "#facc15",     // yellow
+//   search: "#e879f9"    // pink
+// };
+
+type GraphConfig = {
+  spaceSize: number;
+  pointSize: number;
+  colors: GraphColors;
+};
 
 const MainAppContext: React.FC = () => {
   // Refs
@@ -43,10 +60,12 @@ const MainAppContext: React.FC = () => {
   );
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
-  const [graphConfig, setGraphConfig] = useState<{
-    spaceSize: number;
-    pointSize: number;
-  } | null>({ spaceSize: 256, pointSize: 1 });
+
+  const [graphConfig, setGraphConfig] = useState<GraphConfig | null>({
+    spaceSize: DEFAULT_SPACE_SIZE,
+    pointSize: DEFAULT_POINT_SIZE,
+    colors: DEFAULT_GRAPH_COLORS,
+  });
 
   const [nodeNames, setNodeNames] = useState<string[] | null>(null);
 
@@ -206,7 +225,8 @@ const MainAppContext: React.FC = () => {
     if (data.config) {
       setGraphConfig({
         spaceSize: data.config.space_size || 256,
-        pointSize: data.config.point_size || 1
+        pointSize: data.config.point_size || 1,
+        colors: DEFAULT_GRAPH_COLORS,
       });
     } else {
       setGraphConfig(null);
@@ -224,7 +244,7 @@ const MainAppContext: React.FC = () => {
   }
 
   // Graph controls
-  const { fitView, resetView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults } = useGraph(
+  const { fitView, resetView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover } = useGraph(
     graphRef,
     pointPositions,
     links,
@@ -575,6 +595,13 @@ const MainAppContext: React.FC = () => {
       config?: {
         space_size?: number;
         point_size?: number;
+        // opcjonalnie backend może tu dorzucać kolory
+        default_color?: string;
+        parent_color?: string;
+        child_color?: string;
+        selected_color?: string;
+        hover_color?: string;
+        search_color?: string;
       };
     }>;
   }
@@ -593,6 +620,15 @@ const MainAppContext: React.FC = () => {
       point_size: graphConfig?.pointSize ?? null,
       space_size: graphConfig?.spaceSize ?? null,
     };
+
+    if (graphConfig?.colors) {
+      body.default_color = graphConfig.colors.default;
+      body.parent_color = graphConfig.colors.parent;
+      body.child_color = graphConfig.colors.child;
+      body.selected_color = graphConfig.colors.selected;
+      body.hover_color = graphConfig.colors.hover;
+      body.search_color = graphConfig.colors.search;
+    }
 
     if (group && password) {
       body.group_name = group;
@@ -774,6 +810,7 @@ const MainAppContext: React.FC = () => {
           onOptionsChange={setSearchOptions}
           filters={filters}
           onRemoveFilter={handleRemoveFilter}
+          onHoverResultCard={(node) => highlightResultHover(node?.index)}
         />
 
         <SaveGraphModal
@@ -826,8 +863,9 @@ const MainAppContext: React.FC = () => {
           onClose={() => setSettingsModalOpen(false)}
           spaceSize={graphConfig?.spaceSize || 256}
           pointSize={graphConfig?.pointSize || 1}
-          onApply={(spaceSize, pointSize) => {
-            setGraphConfig({ spaceSize, pointSize });
+          colors={graphConfig?.colors || DEFAULT_GRAPH_COLORS}
+          onApply={(spaceSize, pointSize, colors) => {
+            setGraphConfig({ spaceSize, pointSize, colors });
             setSettingsModalOpen(false);
           }}
         />
