@@ -6,9 +6,15 @@ interface FavoritesPanelProps {
   favorites: NodeInfoProps[];
   isLoading?: boolean;
   onSelectNode: (node: NodeInfoProps) => void;
+  onHoverResultCard?: (node?: NodeInfoProps) => void;
 }
 
-export const FavoritesPanel: React.FC<FavoritesPanelProps> = ({ favorites, isLoading, onSelectNode }) => {
+export const FavoritesPanel: React.FC<FavoritesPanelProps> = ({ 
+  favorites,
+  isLoading, 
+  onSelectNode,
+  onHoverResultCard 
+}) => {
   if (isLoading) {
     return (
       <div className="text-sm text-gray-400">
@@ -28,7 +34,12 @@ export const FavoritesPanel: React.FC<FavoritesPanelProps> = ({ favorites, isLoa
 
   return (
     <div>
-      <ResultsList type="favorites" items={favorites} onSelectNode={onSelectNode} />
+      <ResultsList 
+        type="favorites"
+        items={favorites}
+        onSelectNode={onSelectNode}
+        onHoverResultCard={onHoverResultCard} 
+      />
     </div>
   );
 };
