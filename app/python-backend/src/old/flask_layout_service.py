@@ -440,11 +440,14 @@ def _build_graph_from_graph_data(graph_data: Dict[str, Any]) -> Dict[str, Any]:
 
     graph_uuid = temp_graph_data_storage.register_new_graph_data(payload)
 
+    names = extract_vertex_names(G_gt)
+
     return {
         "uuid": graph_uuid,
         "canvas_positions": linearized_canvas_positions,
         "links": linearized_links,
         "config": config,
+        "names" : names
     }
 
 
