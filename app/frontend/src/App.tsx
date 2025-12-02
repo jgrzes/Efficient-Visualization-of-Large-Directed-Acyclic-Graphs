@@ -158,6 +158,12 @@ const MainAppContext: React.FC = () => {
     window.history.replaceState(null, "", url.toString());
   };
 
+  const clearHashInUrl = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("g");
+    window.history.replaceState(null, "", url.toString());
+  };
+
   // Type and helper for loading graph
   type LoadedGraph = {
     graph_hash?: string;
@@ -208,6 +214,8 @@ const MainAppContext: React.FC = () => {
 
     if (options?.urlHash) {
       setGraphHashInUrl(options.urlHash);
+    } else {
+      clearHashInUrl();
     }
 
     if (options?.fit) {
