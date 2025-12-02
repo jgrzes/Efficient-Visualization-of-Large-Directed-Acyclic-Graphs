@@ -3,17 +3,19 @@ import ResultsList from "./ResultsList";
 import { NodeInfoProps } from "../leftsidebar/NodeInfo";
 
 interface FavoritesPanelProps {
-  favorites: NodeInfoProps[];
+  favorites: number[];
   isLoading?: boolean;
   onSelectNode: (node: NodeInfoProps) => void;
   onHoverResultCard?: (node?: NodeInfoProps) => void;
+  nodeNames?: string[] | null;
 }
 
 export const FavoritesPanel: React.FC<FavoritesPanelProps> = ({ 
   favorites,
   isLoading, 
   onSelectNode,
-  onHoverResultCard 
+  onHoverResultCard,
+  nodeNames
 }) => {
   if (isLoading) {
     return (
@@ -32,11 +34,16 @@ export const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     );
   }
 
+  const favoriteNodes : NodeInfoProps[] = favorites.map(index => ({
+    index,
+    name: nodeNames && nodeNames[index] ? nodeNames[index] : `Node ${index}`
+  }));
+
   return (
     <div>
       <ResultsList 
         type="favorites"
-        items={favorites}
+        items={favoriteNodes}
         onSelectNode={onSelectNode}
         onHoverResultCard={onHoverResultCard} 
       />

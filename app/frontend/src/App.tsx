@@ -18,6 +18,7 @@ import LoadGraphModal from "./components/LoadGraphModal";
 import GraphListModal from "./components/GraphListModal";
 import LoadSourceModal from "./components/LoadSourceModal";
 import SettingsModal, { GraphColors } from './components/SettingsModal';
+import { useFavorites } from './hooks/useFavorites';
 import { DEFAULT_GRAPH_COLORS, DEFAULT_SPACE_SIZE, DEFAULT_POINT_SIZE } from "./graphConfig";
 
 import { useGraph } from './hooks/useGraph';
@@ -68,6 +69,7 @@ const MainAppContext: React.FC = () => {
   });
 
   const [nodeNames, setNodeNames] = useState<string[] | null>(null);
+  const favorites = useFavorites();
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext!.currentGraphUUID;
@@ -228,6 +230,13 @@ const MainAppContext: React.FC = () => {
         pointSize: data.config.point_size || 1,
         colors: DEFAULT_GRAPH_COLORS,
       });
+
+      if (data.config.favorites) {
+        favorites.setFavoritesFromGraph(data.config.favorites);
+      } else {
+        favorites.clearFavorites();
+      }
+
     } else {
       setGraphConfig(null);
     }
@@ -619,6 +628,7 @@ const MainAppContext: React.FC = () => {
       graph_hash: currentGraphHash,
       point_size: graphConfig?.pointSize ?? null,
       space_size: graphConfig?.spaceSize ?? null,
+      favorites: favorites.favorites,
     };
 
     if (graphConfig?.colors) {
@@ -811,6 +821,7 @@ const MainAppContext: React.FC = () => {
           filters={filters}
           onRemoveFilter={handleRemoveFilter}
           onHoverResultCard={(node) => highlightResultHover(node?.index)}
+          nodeNames={nodeNames}
         />
 
         <SaveGraphModal

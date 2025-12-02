@@ -32,7 +32,8 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
     ...rawProps
   } = props;
 
-  const id = rawProps.id as string | undefined;
+  const id = rawProps.id as string | undefined; // is it necessary?
+  const nodeIndex = rawProps.index as number | undefined;
 
   const [copied, setCopied] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
@@ -42,7 +43,11 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
     useFavorites();
   const { addComment } = useComments();
 
-  const fav = isLoading ? !!isFavoriteProp : (id ? isFavHook(id) : false);
+  const fav =
+    nodeIndex !== undefined
+      ? isFavHook(nodeIndex)
+      : (isLoading ? !!isFavoriteProp : false);
+
 
   useEffect(() => {
     return () => {
@@ -58,9 +63,11 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
     copiedTimerRef.current = window.setTimeout(() => setCopied(false), 1200);
   };
 
-  const handleToggleFav = useCallback(async () => {
-    await toggleFavorite(props);
-  }, [toggleFavorite, props]);
+  const handleToggleFav = useCallback(() => {
+    if (nodeIndex === undefined) return;
+    toggleFavorite(nodeIndex);
+    onToggleFavorite?.(props);
+  }, [toggleFavorite, nodeIndex, onToggleFavorite, props]);
 
   const handleAddCommentOpen = useCallback(() => {
     setCommentOpen(true);
@@ -190,14 +197,14 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
           <button
             type="button"
             onClick={handleToggleFav}
-            disabled={isSaving || !id}
+            disabled={isSaving || nodeIndex === undefined}
             className={`shrink-0 p-2 rounded-md transition
                         focus:outline-none focus:ring-2 focus:ring-gray-700
                         ${fav
                 ? "text-yellow-400 hover:bg-yellow-400/10"
                 : "text-gray-300 hover:bg-white/10 hover:text-white"
               }
-                        ${isSaving || !id ? "opacity-60 cursor-not-allowed" : ""}`}
+                        ${isSaving || nodeIndex === undefined ? "opacity-60 cursor-not-allowed" : ""}`}
             title={fav ? "Remove from favorites" : "Add to favorites"}
             aria-label={fav ? "Remove from favorites" : "Add to favorites"}
             aria-pressed={fav}

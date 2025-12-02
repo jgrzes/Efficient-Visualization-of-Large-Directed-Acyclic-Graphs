@@ -352,15 +352,8 @@ def save_graph_to_db(graph_uuid: str):
                 G_gt.vertex_properties[p][v]
             )
 
-    point_size = data.get("point_size", None)
-    space_size = data.get("space_size", None)
-    additional_config: Dict[str, Any] = {}
-    if point_size is not None:
-        additional_config["point_size"] = point_size
-    if space_size is not None:
-        additional_config["space_size"] = space_size
-    if group_name is not None:
-        additional_config["group_name"] = group_name
+    additional_config_keys = ["point_size", "space_size", "group_name", "favorites"]
+    additional_config = {key: data.get(key) for key in additional_config_keys if key in data}
 
     if not db_manager.check_if_contains_graph_with_hash(graph_hash):
         graph_hash = db_manager.push_new_entry(
