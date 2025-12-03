@@ -137,7 +137,11 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
         {isComments && (
           <div className="px-4 py-3">
-            <CommentsPanel />
+            <CommentsPanel 
+              onSelectNode={onSelectNode}
+              onHoverResultCard={onHoverResultCard}
+              nodeNames={nodeNames}
+            />
           </div>
         )}
 

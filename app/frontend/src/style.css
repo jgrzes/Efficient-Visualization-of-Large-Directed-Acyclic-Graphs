@@ -6,7 +6,6 @@ body {
   padding: 0;
   height: 100%;
   box-sizing: border-box;
-  display: flex;
 }
 
 *, *::before, *::after {

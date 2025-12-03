@@ -32,7 +32,6 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
     ...rawProps
   } = props;
 
-  const id = rawProps.id as string | undefined; // is it necessary?
   const nodeIndex = rawProps.index as number | undefined;
 
   const [copied, setCopied] = useState(false);
