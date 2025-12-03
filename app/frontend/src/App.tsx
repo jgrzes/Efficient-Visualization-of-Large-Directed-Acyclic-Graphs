@@ -19,6 +19,7 @@ import GraphListModal from "./components/GraphListModal";
 import LoadSourceModal from "./components/LoadSourceModal";
 import SettingsModal, { GraphColors } from './components/SettingsModal';
 import { useFavorites } from './hooks/useFavorites';
+import { useComments } from './hooks/useComments';
 import { DEFAULT_GRAPH_COLORS, DEFAULT_SPACE_SIZE, DEFAULT_POINT_SIZE } from "./graphConfig";
 
 import { useGraph } from './hooks/useGraph';
@@ -70,6 +71,7 @@ const MainAppContext: React.FC = () => {
 
   const [nodeNames, setNodeNames] = useState<string[] | null>(null);
   const favorites = useFavorites();
+  const comments = useComments();
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext!.currentGraphUUID;
@@ -197,6 +199,7 @@ const MainAppContext: React.FC = () => {
       space_size?: number;
       point_size?: number;
       favorites?: number[];
+      comments?: { name: string; text: string }[];
     };
   };
 
@@ -237,9 +240,16 @@ const MainAppContext: React.FC = () => {
       } else {
         favorites.clearFavorites();
       }
+
+      if (Array.isArray(data.config.comments)) {
+        comments.setCommentsFromGraph(data.config.comments);
+      } else {
+        comments.setCommentsFromGraph([]);
+      }
     } else {
       setGraphConfig(null);
       favorites.clearFavorites();
+      comments.setCommentsFromGraph([]);
     }
 
     if (options?.urlHash) {
@@ -276,26 +286,37 @@ const MainAppContext: React.FC = () => {
     console.log("Current graph uuid: " + currentGraphUUID);
   }, [currentGraphUUID]);
 
-  // For auto-updating favorites in backend when they change
+  // For auto-updating favorites and comments in backend when they change
   React.useEffect(() => {
     if (!currentGraphHash) return;
 
     const favs = favorites.favorites;
-    if (!Array.isArray(favs)) return;
+    const items = comments.comments;
+
+    const payload: any = {};
+
+    if (Array.isArray(favs)) {
+      payload.favorites = favs;
+    }
+    if (Array.isArray(items)) {
+      payload.comments = items;
+    }
+
+    if (Object.keys(payload).length === 0) return;
 
     const controller = new AbortController();
 
     fetch(`${API_BASE}/update_graph_config/${currentGraphHash}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ favorites: favs }),
+      body: JSON.stringify(payload),
       signal: controller.signal,
     }).catch((err) => {
-      console.error("Failed to auto-update favorites:", err);
+      console.error("Failed to auto-update graph config:", err);
     });
 
     return () => controller.abort();
-  }, [favorites.favorites, currentGraphHash]);
+  }, [favorites.favorites, comments.comments, currentGraphHash]);
 
 
   /** AUTO LOAD GRAPH FROM LINK ?g=... **/
@@ -628,6 +649,7 @@ const MainAppContext: React.FC = () => {
         space_size?: number;
         point_size?: number;
         favorites?: number[];
+        comments?: { name: string; text: string }[];
         // opcjonalnie backend może tu dorzucać kolory
         default_color?: string;
         parent_color?: string;
@@ -653,6 +675,7 @@ const MainAppContext: React.FC = () => {
       point_size: graphConfig?.pointSize ?? null,
       space_size: graphConfig?.spaceSize ?? null,
       favorites: favorites.favorites,
+      comments: comments.comments,
     };
 
     if (graphConfig?.colors) {

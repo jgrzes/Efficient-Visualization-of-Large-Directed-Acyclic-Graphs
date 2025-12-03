@@ -111,11 +111,12 @@ class MongoDatabaseManager:
 
     def _build_update_dict(self, new_vals: Dict[str, Any]) -> Dict:
         update_dict: Dict[str, Any] = {"$set": {}}
-        if "name" in new_vals:
-            update_dict["$set"]["name"] = new_vals["name"]
 
-        if "favorites" in new_vals:
-            update_dict["$set"]["favorites"] = new_vals["favorites"]
+        simple_fields = ["name", "favorites", "comments"] # simple fields that can be updated directly
+
+        for field in simple_fields:
+            if field in new_vals:
+                update_dict["$set"][field] = new_vals[field]
 
         if "vertices" in new_vals:
             vertices_updates_list: List[Tuple[int, List[Tuple[str, Any]]]] = new_vals["vertices"]

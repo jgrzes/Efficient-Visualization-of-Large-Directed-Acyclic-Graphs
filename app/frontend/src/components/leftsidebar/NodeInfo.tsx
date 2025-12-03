@@ -76,13 +76,19 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
   const handleCommentSubmit = useCallback(
     (data: { name: string; text: string }) => {
       setCommentOpen(false);
-      addComment({
-        id: id ?? "", name,
-        namespace: undefined
-      }, data);
+
+      if (nodeIndex !== undefined) {
+        addComment(
+          {
+            index: nodeIndex,
+            name,
+          },
+          data
+        );
+      }
       onAddComment?.(props, data);
     },
-    [addComment, id, name, onAddComment, props]
+    [addComment, nodeIndex, name, onAddComment, props]
   );
 
   const HIDDEN_KEYS = new Set([ // keys that we receive but don't want to show

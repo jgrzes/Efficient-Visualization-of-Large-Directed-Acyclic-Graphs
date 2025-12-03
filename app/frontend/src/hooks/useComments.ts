@@ -5,7 +5,7 @@ import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
 
 export type CommentItem = {
   id: string;
-  nodeId: string;
+  nodeIndex: number;
   nodeName: string;
   namespace?: string;
 
@@ -15,7 +15,6 @@ export type CommentItem = {
   createdAt: number;
   updatedAt?: number;
 };
-
 
 export type NewCommentPayload = {
   name: string;
@@ -32,15 +31,16 @@ type CommentsState = {
   // actions (async)
   loadComments: () => Promise<void>;
   addComment: (
-    node: Pick<NodeInfoProps, "id" | "name" | "namespace">,
+    node: Pick<NodeInfoProps, "index" | "name">,
     comment: NewCommentPayload
-  ) => Promise<void>;      // <-- ZMIENIONA SYGNATURA
+  ) => Promise<void>;
   editComment: (id: string, text: string) => Promise<void>;
   removeComment: (id: string) => Promise<void>;
   clearAll: () => Promise<void>;
 
-  // helpers (sync)
-  getCommentsForNode: (nodeId: string) => CommentItem[];
+  setCommentsFromGraph: (items: CommentItem[]) => void;
+
+  getCommentsForNode: (nodeIndex: number) => CommentItem[];
   getAllSorted: () => CommentItem[];
 };
 
@@ -54,26 +54,29 @@ export const useComments = create<CommentsState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await new Promise((r) => setTimeout(r, 300));
-      // tutaj wczytać z API
       set({ comments: [], isLoading: false });
     } catch (e) {
-  set({ isLoading: false, error: "Failed to load comments" });
+      set({ isLoading: false, error: "Failed to load comments" });
     }
   },
 
-  // TERAZ: node + { name, text }
   addComment: async (node, comment) => {
     const trimmedText = comment.text.trim();
-    const trimmedTitle = comment.name.trim(); // <-- name = title
+    const trimmedTitle = comment.name.trim();
     if (!trimmedText || !trimmedTitle) return;
+
+    const idx = node.index;
+    if (typeof idx !== "number" || idx < 0) {
+      return;
+    }
 
     const item: CommentItem = {
       id: nanoid(),
-      nodeId: node.id,
+      nodeIndex: idx,
       nodeName: node.name,
       namespace: node.namespace,
-      title: trimmedTitle,     // <-- NOWE
-      text: trimmedText,       // treść
+      title: trimmedTitle,
+      text: trimmedText,
       createdAt: Date.now(),
     };
 
@@ -83,10 +86,9 @@ export const useComments = create<CommentsState>((set, get) => ({
       await new Promise((r) => setTimeout(r, 120));
       set({ isSaving: false });
     } catch {
-  set({ isSaving: false, error: "Failed to add comment" });
+      set({ isSaving: false, error: "Failed to add comment" });
     }
   },
-
 
   editComment: async (id, text) => {
     const trimmed = text.trim();
@@ -98,11 +100,10 @@ export const useComments = create<CommentsState>((set, get) => ({
 
     set({ comments: next, isSaving: true, error: null });
     try {
-      // symulacja zapisu
       await new Promise((r) => setTimeout(r, 120));
       set({ isSaving: false });
     } catch {
-  set({ isSaving: false, error: "Failed to edit comment" });
+      set({ isSaving: false, error: "Failed to edit comment" });
     }
   },
 
@@ -110,11 +111,10 @@ export const useComments = create<CommentsState>((set, get) => ({
     const next = get().comments.filter((c) => c.id !== id);
     set({ comments: next, isSaving: true, error: null });
     try {
-      // symulacja usuniecia
       await new Promise((r) => setTimeout(r, 120));
       set({ isSaving: false });
     } catch {
-  set({ isSaving: false, error: "Failed to remove comment" });
+      set({ isSaving: false, error: "Failed to remove comment" });
     }
   },
 
@@ -124,14 +124,27 @@ export const useComments = create<CommentsState>((set, get) => ({
       await new Promise((r) => setTimeout(r, 120));
       set({ isSaving: false });
     } catch {
-  set({ isSaving: false, error: "Failed to clear comments" });
+      set({ isSaving: false, error: "Failed to clear comments" });
     }
   },
 
-  getCommentsForNode: (nodeId) =>
+  setCommentsFromGraph: (items) => {
+    const normalized: CommentItem[] = (items ?? [])
+      .filter((c) => typeof c.nodeIndex === "number" && c.nodeIndex >= 0)
+      .map((c) => ({
+        ...c,
+        id: c.id ?? nanoid(),
+        createdAt: c.createdAt ?? Date.now(),
+      }));
+
+    set({ comments: normalized });
+  },
+
+  getCommentsForNode: (nodeIndex) =>
     get()
-      .comments.filter((c) => c.nodeId === nodeId)
+      .comments.filter((c) => c.nodeIndex === nodeIndex)
       .sort((a, b) => b.createdAt - a.createdAt),
 
-  getAllSorted: () => [...get().comments].sort((a, b) => b.createdAt - a.createdAt),
+  getAllSorted: () =>
+    [...get().comments].sort((a, b) => b.createdAt - a.createdAt),
 }));

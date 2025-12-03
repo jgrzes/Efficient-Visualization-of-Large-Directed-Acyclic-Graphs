@@ -643,6 +643,7 @@ def update_graph_config(graph_hash: str):
 
     allowed_fields = { # have to think about it
         "favorites",
+        "comments",
         "point_size",
         "space_size",
     }
