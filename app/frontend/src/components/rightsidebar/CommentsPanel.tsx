@@ -94,7 +94,11 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
           return (
             <li
               key={c.id}
-              className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+              className="
+                rounded-xl border border-white/10 bg-white/[0.03] p-3
+                transition-colors duration-150
+                hover:bg-white/10 hover:border-white/30
+              "
               onClick={handleClickNode}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}

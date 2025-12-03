@@ -57,6 +57,9 @@ const MainAppContext: React.FC = () => {
   const [pointPositions, setPointPositions] = useState<Float32Array>(
     new Float32Array(initialPointPositions)
   );
+  const [initialLayout, setInitialLayout] = useState<Float32Array>(
+    new Float32Array(initialPointPositions)
+  );
   const [links, setLinks] = useState<Float32Array>(
     new Float32Array(initialLinks)
   );
@@ -219,6 +222,7 @@ const MainAppContext: React.FC = () => {
     }
 
     setPointPositions(new Float32Array(data.canvas_positions));
+    setInitialLayout(new Float32Array(data.canvas_positions));
     setLinks(new Float32Array(data.links));
     setSelectedNode(null);
 
@@ -264,7 +268,7 @@ const MainAppContext: React.FC = () => {
   }
 
   // Graph controls
-  const { fitView, resetView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover } = useGraph(
+  const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover } = useGraph(
     graphRef,
     pointPositions,
     links,
@@ -481,6 +485,11 @@ const MainAppContext: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  /** RESET VIEW **/
+  const handleResetView = () => {
+    setPointPositions(new Float32Array(initialLayout));
   };
 
   /** EXPORT **/
@@ -821,7 +830,7 @@ const MainAppContext: React.FC = () => {
         <LeftSidebar
           handleLoadClick={handleLoadClick}
           fitView={fitView}
-          resetView={resetView}
+          resetView={handleResetView}
           handleExportClick={handleExportClick}
           handleAnalyzeClick={handleAnalyzeClick}
           handleSaveLayoutClick={saveToDb}

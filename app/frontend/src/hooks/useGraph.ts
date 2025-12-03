@@ -230,11 +230,9 @@ export function useGraph(
   // ───────────────────────────────────────────────────────────────────────────
 
   const fitView = useCallback(() => {
-    graphInstance.current?.fitView();
-  }, []);
-
-  const resetView = useCallback(() => {
-    graphInstance.current?.restart();
+    const g = graphInstance.current;
+    g.fitView();
+    g.render();
   }, []);
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -659,7 +657,6 @@ export function useGraph(
 
   return {
     fitView,
-    resetView,
     selectNodeByIndex,
     tooltips,
     hoverTooltip,
