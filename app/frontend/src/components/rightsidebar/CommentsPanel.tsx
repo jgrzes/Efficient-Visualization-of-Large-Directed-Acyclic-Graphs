@@ -143,7 +143,10 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                   <button
                     className="p-1.5 rounded-md text-gray-400 hover:text-red-400 hover:bg-red-400/10
                              focus:outline-none focus:ring-2 focus:ring-red-700"
-                    onClick={() => removeComment(c.id)}
+                    onClick={() => {
+                      removeComment(c.id);
+                      onHoverResultCard?.(undefined);
+                    }}
                   >
                     <Trash2 size={16} />
                   </button>

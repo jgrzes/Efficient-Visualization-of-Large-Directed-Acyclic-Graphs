@@ -611,8 +611,6 @@ export function useGraph(
     g.setLinks(links);
     g.render();
 
-    fitView();
-
     // Refresh colors for current selection + search
     const selectedIndex = selectedIndexRef.current;
     const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];

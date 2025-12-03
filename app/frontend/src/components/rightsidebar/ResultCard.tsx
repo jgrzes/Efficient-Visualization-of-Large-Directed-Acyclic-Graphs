@@ -19,12 +19,12 @@ const ResultCard: React.FC<ResultCardProps> = ({
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addComment } = useComments();
 
-  const isFav = isFavorite(node.id);
+  const isFav = isFavorite(node.index);
   const [commentOpen, setCommentOpen] = useState(false);
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleFavorite(node);
+    toggleFavorite(node.index);
   };
 
   const openComment = (e: React.MouseEvent) => {
@@ -36,11 +36,11 @@ const ResultCard: React.FC<ResultCardProps> = ({
     (data: { name: string; text: string }) => {
       setCommentOpen(false);
       addComment(
-        { id: node.id, name: node.name, namespace: node.namespace },
+        { index: node.index, name: node.name },
         data
       );
     },
-    [addComment, node.id, node.name, node.namespace]
+    [addComment, node.index, node.name]
   );
 
   return (
@@ -61,10 +61,6 @@ const ResultCard: React.FC<ResultCardProps> = ({
               title={node.name}
             >
               {node.name}
-            </p>
-
-            <p className="text-[11px] text-gray-400 mt-0.5 truncate">
-              {node.id}
             </p>
           </div>
 
