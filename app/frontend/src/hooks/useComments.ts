@@ -7,7 +7,6 @@ export type CommentItem = {
   id: string;
   nodeIndex: number;
   nodeName: string;
-  namespace?: string;
 
   title: string;
   text: string;
@@ -74,7 +73,6 @@ export const useComments = create<CommentsState>((set, get) => ({
       id: nanoid(),
       nodeIndex: idx,
       nodeName: node.name,
-      namespace: node.namespace,
       title: trimmedTitle,
       text: trimmedText,
       createdAt: Date.now(),

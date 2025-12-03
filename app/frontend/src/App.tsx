@@ -20,6 +20,7 @@ import LoadSourceModal from "./components/LoadSourceModal";
 import SettingsModal, { GraphColors } from './components/SettingsModal';
 import { useFavorites } from './hooks/useFavorites';
 import { useComments } from './hooks/useComments';
+import type { CommentItem } from './hooks/useComments';
 import { DEFAULT_GRAPH_COLORS, DEFAULT_SPACE_SIZE, DEFAULT_POINT_SIZE } from "./graphConfig";
 
 import { useGraph } from './hooks/useGraph';
@@ -52,6 +53,8 @@ const MainAppContext: React.FC = () => {
   const graphRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const prevFavsRef = React.useRef<number[] | null>(null);
+  const prevCommentsRef = React.useRef<CommentItem[] | null>(null);
 
   // Graph state
   const [pointPositions, setPointPositions] = useState<Float32Array>(
@@ -81,6 +84,8 @@ const MainAppContext: React.FC = () => {
   const setCurrentGraphUUID = appContext!.setCurrentGraphUUID;
 
   const [currentGraphHash, setCurrentGraphHash] = useState<string | null>("");
+
+  const [syncInitialized, setSyncInitialized] = React.useState(false);
 
   // UI state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -202,7 +207,7 @@ const MainAppContext: React.FC = () => {
       space_size?: number;
       point_size?: number;
       favorites?: number[];
-      comments?: { name: string; text: string }[];
+      comments?: CommentItem[];
     };
   };
 
@@ -244,7 +249,6 @@ const MainAppContext: React.FC = () => {
       } else {
         favorites.clearFavorites();
       }
-
       if (Array.isArray(data.config.comments)) {
         comments.setCommentsFromGraph(data.config.comments);
       } else {
@@ -255,6 +259,15 @@ const MainAppContext: React.FC = () => {
       favorites.clearFavorites();
       comments.setCommentsFromGraph([]);
     }
+    
+    prevFavsRef.current = Array.isArray(data.config?.favorites)
+      ? data.config!.favorites
+      : [];
+    prevCommentsRef.current = Array.isArray(data.config?.comments)
+      ? data.config!.comments
+      : [];
+
+    setSyncInitialized(true);
 
     if (options?.urlHash) {
       setGraphHashInUrl(options.urlHash);
@@ -290,21 +303,61 @@ const MainAppContext: React.FC = () => {
     console.log("Current graph uuid: " + currentGraphUUID);
   }, [currentGraphUUID]);
 
-  // For auto-updating favorites and comments in backend when they change
   React.useEffect(() => {
     if (!currentGraphHash) return;
 
-    const favs = favorites.favorites;
-    const items = comments.comments;
+    const favs = Array.isArray(favorites.favorites) ? favorites.favorites : [];
+    const items = Array.isArray(comments.comments) ? comments.comments : [];
+
+    if (!syncInitialized) {
+      prevFavsRef.current = favs;
+      prevCommentsRef.current = items;
+      return;
+    }
+
+    const prevFavs = prevFavsRef.current ?? [];
+    const prevItems = prevCommentsRef.current ?? [];
 
     const payload: any = {};
 
-    if (Array.isArray(favs)) {
-      payload.favorites = favs;
+    // delta favorites
+    if (favs.length !== prevFavs.length) {
+      const favSet = new Set(favs);
+      const prevSet = new Set(prevFavs);
+
+      if (favs.length > prevFavs.length) {
+        for (const idx of favSet) {
+          if (!prevSet.has(idx)) {
+            payload.favorite_add = idx;
+            break;
+          }
+        }
+      } else {
+        for (const idx of prevSet) {
+          if (!favSet.has(idx)) {
+            payload.favorite_remove = idx;
+            break;
+          }
+        }
+      }
     }
-    if (Array.isArray(items)) {
-      payload.comments = items;
+
+    // delta comments
+    if (items.length !== prevItems.length) {
+      const prevIds = new Set(prevItems.map((c) => c.id));
+      const ids = new Set(items.map((c) => c.id));
+
+      if (items.length > prevItems.length) {
+        const added = items.find((c) => !prevIds.has(c.id));
+        if (added) payload.comment_add = added;
+      } else {
+        const removed = prevItems.find((c) => !ids.has(c.id));
+        if (removed) payload.comment_remove = removed.id;
+      }
     }
+
+    prevFavsRef.current = favs;
+    prevCommentsRef.current = items;
 
     if (Object.keys(payload).length === 0) return;
 
@@ -320,7 +373,7 @@ const MainAppContext: React.FC = () => {
     });
 
     return () => controller.abort();
-  }, [favorites.favorites, comments.comments, currentGraphHash]);
+  }, [favorites.favorites, comments.comments, currentGraphHash, syncInitialized]);
 
 
   /** AUTO LOAD GRAPH FROM LINK ?g=... **/

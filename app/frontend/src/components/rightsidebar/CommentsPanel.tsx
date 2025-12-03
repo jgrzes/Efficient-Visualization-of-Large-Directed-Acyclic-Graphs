@@ -74,7 +74,6 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
           const node: NodeInfoProps = {
             index,
             name: nodeNames?.[index] ?? c.nodeName ?? `Node ${index}`,
-            namespace: c.namespace,
           };
 
           const handleClickNode = () => {
@@ -114,9 +113,6 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                     <span className="text-gray-500">
                       {node.name}
                     </span>
-                    {c.namespace ? (
-                      <span className="text-gray-600"> · {c.namespace}</span>
-                    ) : null}
                   </div>
 
                   {/* Czas */}

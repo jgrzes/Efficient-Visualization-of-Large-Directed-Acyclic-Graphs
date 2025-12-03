@@ -644,6 +644,12 @@ def update_graph_config(graph_hash: str):
     allowed_fields = {
         "favorites",
         "comments",
+        "favorite_add",
+        "favorite_remove",
+        "comment_add",
+        "comment_remove",
+        "vertices",
+        "name",
     }
 
     new_vals = {k: v for k, v in data.items() if k in allowed_fields}
