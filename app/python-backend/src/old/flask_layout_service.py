@@ -641,11 +641,9 @@ def update_graph_config(graph_hash: str):
     except Exception:
         return jsonify({"error": "Invalid JSON"}), 400
 
-    allowed_fields = { # have to think about it
+    allowed_fields = {
         "favorites",
         "comments",
-        "point_size",
-        "space_size",
     }
 
     new_vals = {k: v for k, v in data.items() if k in allowed_fields}

@@ -81,7 +81,7 @@ const CommentsPanel: React.FC = () => {
                 <div className="text-[11px] text-gray-500 mt-0.5">
                   {formatTime(c.createdAt)}
                   {c.updatedAt && (
-                    <span className="ml-1 text-gray-500">(edytowano)</span>
+                    <span className="ml-1 text-gray-500">(edited)</span>
                   )}
                 </div>
               </div>
