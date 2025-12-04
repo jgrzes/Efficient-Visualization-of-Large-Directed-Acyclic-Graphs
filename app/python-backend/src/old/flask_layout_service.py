@@ -352,7 +352,7 @@ def save_graph_to_db(graph_uuid: str):
                 G_gt.vertex_properties[p][v]
             )
 
-    additional_config_keys = ["point_size", "space_size", "group_name", "favorites"]
+    additional_config_keys = ["point_size", "space_size", "group_name"]
     additional_config = {key: data.get(key) for key in additional_config_keys if key in data}
 
     if not db_manager.check_if_contains_graph_with_hash(graph_hash):
@@ -641,7 +641,7 @@ def update_graph_config(graph_hash: str):
     except Exception:
         return jsonify({"error": "Invalid JSON"}), 400
 
-    allowed_fields = {
+    allowed_fields = { # should be refactored
         "favorites",
         "comments",
         "favorite_add",

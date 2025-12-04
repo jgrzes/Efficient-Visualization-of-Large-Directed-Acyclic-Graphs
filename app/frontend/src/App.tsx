@@ -711,7 +711,7 @@ const MainAppContext: React.FC = () => {
         space_size?: number;
         point_size?: number;
         favorites?: number[];
-        comments?: { name: string; text: string }[];
+        comments?: CommentItem[];
         // opcjonalnie backend może tu dorzucać kolory
         default_color?: string;
         parent_color?: string;

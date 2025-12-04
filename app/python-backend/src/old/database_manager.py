@@ -123,9 +123,9 @@ class MongoDatabaseManager:
         }
 
         set_part = ops["$set"]
-        add_to_set = ops["$addToSet"]
-        pull = ops["$pull"]
-        push = ops["$push"]
+        add_to_set = ops["$addToSet"] # for adding to arrays without duplicates
+        pull = ops["$pull"] # for removing from arrays
+        push = ops["$push"] # for adding to arrays (with duplicates)
 
         # Simple $set fields (full replacement)
         simple_set_fields = {"name"}  # you can add others if you want
