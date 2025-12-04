@@ -109,25 +109,69 @@ class MongoDatabaseManager:
             self._build_update_dict(new_vals)
         )    
 
-    def _build_update_dict(self, new_vals: Dict[str, Any]) -> Dict:
-        update_dict: Dict[str, Any] = {"$set": {}}
-        if "name" in new_vals:
-            update_dict["$set"]["name"] = new_vals["name"]
+    def _build_update_dict(self, new_vals: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Builds update dict for MongoDB update operation based on new_vals.
+        """
 
+        # Sets per operator
+        ops: Dict[str, Dict[str, Any]] = {
+            "$set": {},
+            "$addToSet": {},
+            "$pull": {},
+            "$push": {},
+        }
+
+        set_part = ops["$set"]
+        add_to_set = ops["$addToSet"] # for adding to arrays without duplicates
+        pull = ops["$pull"] # for removing from arrays
+        push = ops["$push"] # for adding to arrays (with duplicates)
+
+        # Simple $set fields (full replacement)
+        simple_set_fields = {"name"}  # you can add others if you want
+
+        for field in simple_set_fields:
+            if field in new_vals:
+                set_part[field] = new_vals[field]
+
+        # Delta: favorites
+        if "favorite_add" in new_vals:
+            add_to_set["favorites"] = new_vals["favorite_add"]
+
+        if "favorite_remove" in new_vals:
+            pull["favorites"] = new_vals["favorite_remove"]
+
+        # Delta: comments
+        if "comment_add" in new_vals:
+            push["comments"] = new_vals["comment_add"]
+
+        if "comment_remove" in new_vals:
+            pull["comments"] = {"id": new_vals["comment_remove"]}
+
+        # Update in vertices
+        # new_vals["vertices"] = List[Tuple[int, List[Tuple[str, Any]]]]
         if "vertices" in new_vals:
             vertices_updates_list: List[Tuple[int, List[Tuple[str, Any]]]] = new_vals["vertices"]
-            n = len(vertices_updates_list)
-            for i in range(0, n):
-                vertex_index, vertex_update_list = vertices_updates_list[i]
+            for vertex_index, vertex_update_list in vertices_updates_list:
                 for field, new_val in vertex_update_list:
-                    if field == "N" or field == "index":
+                    if field in ("N", "index"):
                         raise RuntimeError(
                             "Attempted to change data that cannot be updated after creation"
                         )
-                    
-                    update_dict["$set"][f"vertices.{vertex_index}.{field}"] = new_val
+                    set_part[f"vertices.{vertex_index}.{field}"] = new_val
 
-        return update_dict
+        # always bump last_entry_update
+        set_part["last_entry_update"] = datetime.datetime.utcnow()
+
+        # Clean up empty operators
+        update: Dict[str, Any] = {
+            op: payload for op, payload in ops.items() if payload
+        }
+
+        if not update:
+            raise RuntimeError("Empty update dict")
+
+        return update
 
     # Groups
     def get_group(self, group_name: str) -> Optional[Dict]:

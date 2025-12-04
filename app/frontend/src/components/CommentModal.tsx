@@ -43,7 +43,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
       {/* backdrop */}
       <button
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        aria-label="Zamknij"
+        aria-label="Close"
         onClick={onClose}
       />
 
@@ -67,7 +67,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
-              placeholder='Np. "Uwaga do definicji"'
+              placeholder='For example, "Note on definition"'
             />
           </div>
 

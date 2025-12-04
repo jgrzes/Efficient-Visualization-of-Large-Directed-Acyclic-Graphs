@@ -18,6 +18,9 @@ import LoadGraphModal from "./components/LoadGraphModal";
 import GraphListModal from "./components/GraphListModal";
 import LoadSourceModal from "./components/LoadSourceModal";
 import SettingsModal, { GraphColors } from './components/SettingsModal';
+import { useFavorites } from './hooks/useFavorites';
+import { useComments } from './hooks/useComments';
+import type { CommentItem } from './hooks/useComments';
 import { DEFAULT_GRAPH_COLORS, DEFAULT_SPACE_SIZE, DEFAULT_POINT_SIZE } from "./graphConfig";
 
 import { useGraph } from './hooks/useGraph';
@@ -50,9 +53,14 @@ const MainAppContext: React.FC = () => {
   const graphRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const prevFavsRef = React.useRef<number[] | null>(null);
+  const prevCommentsRef = React.useRef<CommentItem[] | null>(null);
 
   // Graph state
   const [pointPositions, setPointPositions] = useState<Float32Array>(
+    new Float32Array(initialPointPositions)
+  );
+  const [initialLayout, setInitialLayout] = useState<Float32Array>(
     new Float32Array(initialPointPositions)
   );
   const [links, setLinks] = useState<Float32Array>(
@@ -68,12 +76,16 @@ const MainAppContext: React.FC = () => {
   });
 
   const [nodeNames, setNodeNames] = useState<string[] | null>(null);
+  const favorites = useFavorites();
+  const comments = useComments();
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext!.currentGraphUUID;
   const setCurrentGraphUUID = appContext!.setCurrentGraphUUID;
 
   const [currentGraphHash, setCurrentGraphHash] = useState<string | null>("");
+
+  const [syncInitialized, setSyncInitialized] = React.useState(false);
 
   // UI state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -194,6 +206,8 @@ const MainAppContext: React.FC = () => {
     config?: {
       space_size?: number;
       point_size?: number;
+      favorites?: number[];
+      comments?: CommentItem[];
     };
   };
 
@@ -213,6 +227,7 @@ const MainAppContext: React.FC = () => {
     }
 
     setPointPositions(new Float32Array(data.canvas_positions));
+    setInitialLayout(new Float32Array(data.canvas_positions));
     setLinks(new Float32Array(data.links));
     setSelectedNode(null);
 
@@ -228,9 +243,31 @@ const MainAppContext: React.FC = () => {
         pointSize: data.config.point_size || 1,
         colors: DEFAULT_GRAPH_COLORS,
       });
+
+      if (Array.isArray(data.config.favorites)) {
+        favorites.setFavoritesFromGraph(data.config.favorites);
+      } else {
+        favorites.clearFavorites();
+      }
+      if (Array.isArray(data.config.comments)) {
+        comments.setCommentsFromGraph(data.config.comments);
+      } else {
+        comments.setCommentsFromGraph([]);
+      }
     } else {
       setGraphConfig(null);
+      favorites.clearFavorites();
+      comments.setCommentsFromGraph([]);
     }
+    
+    prevFavsRef.current = Array.isArray(data.config?.favorites)
+      ? data.config!.favorites
+      : [];
+    prevCommentsRef.current = Array.isArray(data.config?.comments)
+      ? data.config!.comments
+      : [];
+
+    setSyncInitialized(true);
 
     if (options?.urlHash) {
       setGraphHashInUrl(options.urlHash);
@@ -244,7 +281,7 @@ const MainAppContext: React.FC = () => {
   }
 
   // Graph controls
-  const { fitView, resetView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover } = useGraph(
+  const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover } = useGraph(
     graphRef,
     pointPositions,
     links,
@@ -265,6 +302,79 @@ const MainAppContext: React.FC = () => {
   React.useEffect(() => {
     console.log("Current graph uuid: " + currentGraphUUID);
   }, [currentGraphUUID]);
+
+  React.useEffect(() => {
+    if (!currentGraphHash) return;
+
+    const favs = Array.isArray(favorites.favorites) ? favorites.favorites : [];
+    const items = Array.isArray(comments.comments) ? comments.comments : [];
+
+    if (!syncInitialized) {
+      prevFavsRef.current = favs;
+      prevCommentsRef.current = items;
+      return;
+    }
+
+    const prevFavs = prevFavsRef.current ?? [];
+    const prevItems = prevCommentsRef.current ?? [];
+
+    const payload: any = {};
+
+    // delta favorites
+    if (favs.length !== prevFavs.length) {
+      const favSet = new Set(favs);
+      const prevSet = new Set(prevFavs);
+
+      if (favs.length > prevFavs.length) {
+        for (const idx of favSet) {
+          if (!prevSet.has(idx)) {
+            payload.favorite_add = idx;
+            break;
+          }
+        }
+      } else {
+        for (const idx of prevSet) {
+          if (!favSet.has(idx)) {
+            payload.favorite_remove = idx;
+            break;
+          }
+        }
+      }
+    }
+
+    // delta comments
+    if (items.length !== prevItems.length) {
+      const prevIds = new Set(prevItems.map((c) => c.id));
+      const ids = new Set(items.map((c) => c.id));
+
+      if (items.length > prevItems.length) {
+        const added = items.find((c) => !prevIds.has(c.id));
+        if (added) payload.comment_add = added;
+      } else {
+        const removed = prevItems.find((c) => !ids.has(c.id));
+        if (removed) payload.comment_remove = removed.id;
+      }
+    }
+
+    prevFavsRef.current = favs;
+    prevCommentsRef.current = items;
+
+    if (Object.keys(payload).length === 0) return;
+
+    const controller = new AbortController();
+
+    fetch(`${API_BASE}/update_graph_config/${currentGraphHash}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    }).catch((err) => {
+      console.error("Failed to auto-update graph config:", err);
+    });
+
+    return () => controller.abort();
+  }, [favorites.favorites, comments.comments, currentGraphHash, syncInitialized]);
+
 
   /** AUTO LOAD GRAPH FROM LINK ?g=... **/
   React.useEffect(() => {
@@ -428,6 +538,11 @@ const MainAppContext: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  /** RESET VIEW **/
+  const handleResetView = () => {
+    setPointPositions(new Float32Array(initialLayout));
   };
 
   /** EXPORT **/
@@ -595,6 +710,8 @@ const MainAppContext: React.FC = () => {
       config?: {
         space_size?: number;
         point_size?: number;
+        favorites?: number[];
+        comments?: CommentItem[];
         // opcjonalnie backend może tu dorzucać kolory
         default_color?: string;
         parent_color?: string;
@@ -619,6 +736,8 @@ const MainAppContext: React.FC = () => {
       graph_hash: currentGraphHash,
       point_size: graphConfig?.pointSize ?? null,
       space_size: graphConfig?.spaceSize ?? null,
+      favorites: favorites.favorites,
+      comments: comments.comments,
     };
 
     if (graphConfig?.colors) {
@@ -764,7 +883,7 @@ const MainAppContext: React.FC = () => {
         <LeftSidebar
           handleLoadClick={handleLoadClick}
           fitView={fitView}
-          resetView={resetView}
+          resetView={handleResetView}
           handleExportClick={handleExportClick}
           handleAnalyzeClick={handleAnalyzeClick}
           handleSaveLayoutClick={saveToDb}
@@ -811,6 +930,7 @@ const MainAppContext: React.FC = () => {
           filters={filters}
           onRemoveFilter={handleRemoveFilter}
           onHoverResultCard={(node) => highlightResultHover(node?.index)}
+          nodeNames={nodeNames}
         />
 
         <SaveGraphModal

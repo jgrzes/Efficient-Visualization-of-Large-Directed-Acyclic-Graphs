@@ -230,11 +230,9 @@ export function useGraph(
   // ───────────────────────────────────────────────────────────────────────────
 
   const fitView = useCallback(() => {
-    graphInstance.current?.fitView();
-  }, []);
-
-  const resetView = useCallback(() => {
-    graphInstance.current?.restart();
+    const g = graphInstance.current;
+    g.fitView();
+    g.render();
   }, []);
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -613,8 +611,6 @@ export function useGraph(
     g.setLinks(links);
     g.render();
 
-    fitView();
-
     // Refresh colors for current selection + search
     const selectedIndex = selectedIndexRef.current;
     const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
@@ -659,7 +655,6 @@ export function useGraph(
 
   return {
     fitView,
-    resetView,
     selectNodeByIndex,
     tooltips,
     hoverTooltip,

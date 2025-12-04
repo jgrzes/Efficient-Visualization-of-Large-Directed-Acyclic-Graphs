@@ -1,18 +1,15 @@
 import { create } from "zustand";
-import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
 
 type FavoritesState = {
-  favorites: NodeInfoProps[];
+  favorites: number[];
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
 
-  // actions
-  loadFavorites: () => Promise<void>;
-  addFavorite: (node: NodeInfoProps) => Promise<void>;
-  removeFavorite: (id: string) => Promise<void>;
-  toggleFavorite: (node: NodeInfoProps) => Promise<void>;
-  isFavorite: (id: string) => boolean;
+  setFavoritesFromGraph: (indices: number[]) => void;
+  clearFavorites: () => void;
+  toggleFavorite: (index: number) => void;
+  isFavorite: (index: number) => boolean;
 };
 
 export const useFavorites = create<FavoritesState>((set, get) => ({
@@ -21,33 +18,36 @@ export const useFavorites = create<FavoritesState>((set, get) => ({
   isSaving: false,
   error: null,
 
-  loadFavorites: async () => {
-    // symulacja ładowania
-    set({ isLoading: true });
-    await new Promise((r) => setTimeout(r, 300));
-    set({ isLoading: false, favorites: [] });
+  setFavoritesFromGraph: (indices) => {
+    const unique = Array.from(
+      new Set(
+        (indices ?? []).filter(
+          (i) => Number.isInteger(i) && i >= 0
+        )
+      )
+    );
+    set({ favorites: unique });
   },
 
-  addFavorite: async (node) => {
-    const prev = get().favorites;
-    if (prev.some((f) => f.id === node.id)) return;
-    set({ favorites: [node, ...prev] });
-    // symulacja zapisu
-    await new Promise((r) => setTimeout(r, 100));
+  clearFavorites: () => {
+    set({ favorites: [] });
   },
 
-  removeFavorite: async (id) => {
-    const prev = get().favorites;
-    set({ favorites: prev.filter((f) => f.id !== id) });
-    // symulacja zapisu
-    await new Promise((r) => setTimeout(r, 100));
+  toggleFavorite: (index) => {
+    if (!Number.isInteger(index) || index < 0) return;
+
+    set((state) => {
+      const s = new Set(state.favorites);
+      if (s.has(index)) {
+        s.delete(index);
+      } else {
+        s.add(index);
+      }
+      return { favorites: Array.from(s) };
+    });
   },
 
-  toggleFavorite: async (node) => {
-    const exists = get().favorites.some((f) => f.id === node.id);
-    if (exists) return get().removeFavorite(node.id);
-    return get().addFavorite(node);
+  isFavorite: (index) => {
+    return get().favorites.includes(index);
   },
-
-  isFavorite: (id) => get().favorites.some((f) => f.id === id),
 }));

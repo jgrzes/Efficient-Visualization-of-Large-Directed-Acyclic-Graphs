@@ -352,15 +352,8 @@ def save_graph_to_db(graph_uuid: str):
                 G_gt.vertex_properties[p][v]
             )
 
-    point_size = data.get("point_size", None)
-    space_size = data.get("space_size", None)
-    additional_config: Dict[str, Any] = {}
-    if point_size is not None:
-        additional_config["point_size"] = point_size
-    if space_size is not None:
-        additional_config["space_size"] = space_size
-    if group_name is not None:
-        additional_config["group_name"] = group_name
+    additional_config_keys = ["point_size", "space_size", "group_name"]
+    additional_config = {key: data.get(key) for key in additional_config_keys if key in data}
 
     if not db_manager.check_if_contains_graph_with_hash(graph_hash):
         graph_hash = db_manager.push_new_entry(
@@ -637,6 +630,41 @@ def list_graphs_for_group(group_name: str):
 def list_groups():
     groups = db_manager.list_groups()
     return jsonify(groups), 200
+
+
+@app.route("/update_graph_config/<string:graph_hash>", methods=["POST"])
+def update_graph_config(graph_hash: str):
+    logger.info(f"Received call on endpoint /update_graph_config/<graph_hash={graph_hash}>")
+
+    try:
+        data = request.get_json(force=True) or {}
+    except Exception:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    allowed_fields = { # should be refactored
+        "favorites",
+        "comments",
+        "favorite_add",
+        "favorite_remove",
+        "comment_add",
+        "comment_remove",
+        "vertices",
+        "name",
+    }
+
+    new_vals = {k: v for k, v in data.items() if k in allowed_fields}
+
+    if not new_vals:
+        return jsonify({"error": "No allowed fields in payload"}), 400
+
+    try:
+        db_manager.update_existing_entry(graph_hash, new_vals)
+    except Exception as e:
+        logger.exception("Failed to update graph config")
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({"status": "ok"}), 200
+
 
 
 if __name__ == "__main__":
