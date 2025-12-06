@@ -192,68 +192,70 @@ PartiallyDisabledGraph::~PartiallyDisabledGraph() {
 
 
 void PartiallyDisabledGraph::recomputeRootsIfNeeded() const {
-    #define _extractFront(_v, _q) (_v = _q.front(), _q.pop_front())
-    // std::cout << "Recomputing roots...\n";
-    std::deque<uint32_t> Q;
-    std::unordered_set<uint32_t> vertexIndicesInQ;
-    std::unordered_set<uint32_t> verticesToIgnoreIndices;
-    auto& underlyingGraphImpl = const_cast<Graph&>(getUnderlyingGraphImpl());
-    auto& rootList = underlyingGraphImpl.m_rootList;
-    // std::cout << "Roots: \n";
-    // for (uint32_t rIndex : rootList) std::cout << rIndex << " ";
-    // std::cout << "\n";
-    std::vector<uint32_t> enabledPredsOfVertex;
-
-    // std::cout << "Interaring over initial root list...\n";
-    for (auto it=rootList.begin(); it!=rootList.end(); ) {
-        uint32_t rIndex = *it;
-        bool rDisabled = m_disabledFlags[rIndex];
-        auto Nrr = NR(rIndex);
-        enabledPredsOfVertex.clear();
-        // std::cout << rIndex << (rDisabled ? " disabled" : " enabled") << "\n"; 
-        for (const auto pIndex : Nrr) {
-            // std::cout << pIndex << " ";
-            enabledPredsOfVertex.emplace_back(pIndex);
-        }
-        // std::cout << "\n";
-        if (!rDisabled && enabledPredsOfVertex.empty()) {
-            ++it;
-            verticesToIgnoreIndices.emplace(rIndex);
-            vertexIndicesInQ.emplace(rIndex);
-        } else if (!rDisabled) {
-            for (const auto pIndex : enabledPredsOfVertex) {
-                _emplaceInQueue(pIndex, Q, vertexIndicesInQ);
-            }
-            it = rootList.erase(it);
-        } else if (rDisabled) {
-            for (const auto pIndex : enabledPredsOfVertex) {
-                _emplaceInQueue(pIndex, Q, vertexIndicesInQ);
-            }
-            for (const auto sIndex : N(rIndex)) {
-                _emplaceInQueue(sIndex, Q, vertexIndicesInQ);
-            }
-            it = rootList.erase(it);
-        }
+    // TODO: Try to fix the better implementation
+    auto& rootList = const_cast<Graph&>(getUnderlyingGraphImpl()).m_rootList;
+    rootList.clear();
+    uint32_t n = getVertexCount();
+    for (uint32_t uIndex=0; uIndex<n; ++uIndex) {
+        if (NR(uIndex).size() == 0) rootList.emplace_back(uIndex);
     }
 
-    while (!Q.empty()) {
-        uint32_t uIndex;
-        _extractFront(uIndex, Q);
-        if (verticesToIgnoreIndices.find(uIndex) != verticesToIgnoreIndices.end()) continue;
-        verticesToIgnoreIndices.emplace(uIndex);
-        enabledPredsOfVertex.clear();
-        for (const auto pIndex : NR(uIndex)) {
-            enabledPredsOfVertex.emplace_back(pIndex);
-        }
-        if (enabledPredsOfVertex.empty()) {
-            rootList.emplace_back(uIndex);
-        } else {
-            for (const auto pIndex : enabledPredsOfVertex) {
-                _emplaceInQueue(pIndex, Q, vertexIndicesInQ);
-            }
-        }
-    }
-    #undef _extractFront
+    return;
+
+    // #define _extractFront(_v, _q) (_v = _q.front(), _q.pop_front())
+    // std::deque<uint32_t> Q;
+    // std::unordered_set<uint32_t> vertexIndicesInQ;
+    // std::unordered_set<uint32_t> verticesToIgnoreIndices;
+    // auto& underlyingGraphImpl = const_cast<Graph&>(getUnderlyingGraphImpl());
+    // auto& rootList = underlyingGraphImpl.m_rootList;
+    // std::vector<uint32_t> enabledPredsOfVertex;
+
+    // for (auto it=rootList.begin(); it!=rootList.end(); ) {
+    //     uint32_t rIndex = *it;
+    //     bool rDisabled = m_disabledFlags[rIndex];
+    //     auto Nrr = NR(rIndex);
+    //     enabledPredsOfVertex.clear();
+    //     for (const auto pIndex : Nrr) {
+    //         enabledPredsOfVertex.emplace_back(pIndex);
+    //     }
+    //     if (!rDisabled && enabledPredsOfVertex.empty()) {
+    //         ++it;
+    //         verticesToIgnoreIndices.emplace(rIndex);
+    //         vertexIndicesInQ.emplace(rIndex);
+    //     } else if (!rDisabled) {
+    //         for (const auto pIndex : enabledPredsOfVertex) {
+    //             _emplaceInQueue(pIndex, Q, vertexIndicesInQ);
+    //         }
+    //         it = rootList.erase(it);
+    //     } else if (rDisabled) {
+    //         for (const auto pIndex : enabledPredsOfVertex) {
+    //             _emplaceInQueue(pIndex, Q, vertexIndicesInQ);
+    //         }
+    //         for (const auto sIndex : N(rIndex)) {
+    //             _emplaceInQueue(sIndex, Q, vertexIndicesInQ);
+    //         }
+    //         it = rootList.erase(it);
+    //     }
+    // }
+
+    // while (!Q.empty()) {
+    //     uint32_t uIndex;
+    //     _extractFront(uIndex, Q);
+    //     if (verticesToIgnoreIndices.find(uIndex) != verticesToIgnoreIndices.end()) continue;
+    //     verticesToIgnoreIndices.emplace(uIndex);
+    //     enabledPredsOfVertex.clear();
+    //     for (const auto pIndex : NR(uIndex)) {
+    //         enabledPredsOfVertex.emplace_back(pIndex);
+    //     }
+    //     if (enabledPredsOfVertex.empty()) {
+    //         rootList.emplace_back(uIndex);
+    //     } else {
+    //         for (const auto pIndex : enabledPredsOfVertex) {
+    //             _emplaceInQueue(pIndex, Q, vertexIndicesInQ);
+    //         }
+    //     }
+    // }
+    // #undef _extractFront
 }
 
 

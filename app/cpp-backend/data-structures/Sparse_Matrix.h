@@ -8,13 +8,13 @@
 #include <stdexcept>
 #include <optional>
 
-#include "Sparse_Array.h"
+#include "Sparse_Array.hpp"
 
 using size_t = std::size_t;
 
 namespace data_structures {
 
-template <typename T, bool Symmetric = true, bool AutoOptimizng = true>
+template <typename T, bool Symmetric = true, bool AutoOptimizing = true>
 class SparseMatrix {
 
 public:
@@ -29,14 +29,32 @@ public:
 
     SparseMatrix(size_t n, size_t m) : m_rowCount{n}, m_columnCount{m} {
         // std::cout << "[Sparse Matrix] Row and column count: " << m_rowCount << ", " << m_columnCount << "\n";
-        m_sparseMatrixData.reserve(m_rowCount);
-        for (size_t i=0; i<m_columnCount; ++i) {
+        m_sparseMatrixData.reserve(m_columnCount);
+        for (size_t i=0; i<m_rowCount; ++i) {
             m_sparseMatrixData.emplace_back(m_columnCount);
         }
     }
 
-    // Returns the number of rows (`rows` = `cols`).
-    size_t size() const {return m_rowCount;}
+    // TODO: Rename to getRowCount as soon as VSC starts cooperating.
+    // Returns the number of rows.
+    size_t getRowCount() const {return m_rowCount;}
+
+    size_t getColCount() const {return m_columnCount;}
+
+    const SparseArray<T, AutoOptimizing>& getIthRow(size_t i) const {
+        return const_cast<SparseArray<T, AutoOptimizing>&>(
+            const_cast<SparseMatrix<T, Symmetric, AutoOptimizing>*>(this)->getIthRow(i)
+        );
+    }
+
+    SparseArray<T, AutoOptimizing>& getIthRow(size_t i) {
+        if (i >= m_rowCount) {
+            throw std::runtime_error{
+                "Sparse Symmetric Matrix error: attempting to breach bounds of the matrix"
+            };
+        }
+        return m_sparseMatrixData[i];
+    }
     
     // Warning: calling `at(i, j)` will always construct the object, making the cell not-empty.
     const T& at(size_t i, size_t j) const {
@@ -94,7 +112,7 @@ private:
     // `n` = number of rows = number of cols
     const size_t m_rowCount; 
     const size_t m_columnCount;
-    std::vector<SparseArray<T, AutoOptimizng>> m_sparseMatrixData;
+    std::vector<SparseArray<T, AutoOptimizing>> m_sparseMatrixData;
 
 };
 

@@ -64,7 +64,7 @@ BoostLogger::BoostLogger(
 
     boost::log::core::get()->add_sink(m_consoleSink);
     auto backend = boost::make_shared<boost::log::sinks::text_file_backend>(
-        boost::log::keywords::file_name = "log_%Y-%m-%d__%H-%M.log", 
+        boost::log::keywords::file_name = "/app/log_data/log_%Y-%m-%d__%H-%M.log", 
         boost::log::keywords::open_mode = std::ios_base::app, 
         boost::log::keywords::rotation_size = logFileRotationSize, 
         boost::log::keywords::target = logFileDir

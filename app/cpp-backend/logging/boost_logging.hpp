@@ -48,7 +48,7 @@ public:
     }
 
     static severity_logger_mt<trivial_severity_level>* getBoostLoggerInstanceAsPtr() {
-        getInstanceAsPtr()->m_logger.get();    
+        return getInstanceAsPtr()->m_logger.get();    
     }
 
 private:

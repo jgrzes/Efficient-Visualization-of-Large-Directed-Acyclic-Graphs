@@ -24,6 +24,7 @@ import type { CommentItem } from './hooks/useComments';
 import { DEFAULT_GRAPH_COLORS, DEFAULT_SPACE_SIZE, DEFAULT_POINT_SIZE } from "./graphConfig";
 
 import { useGraph } from './hooks/useGraph';
+import { useStartKeepAlive } from './hooks/useKeepalive';
 
 const API_BASE = 'http://localhost:30301';
 
@@ -68,6 +69,10 @@ const MainAppContext: React.FC = () => {
   );
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+  // const [graphConfig, setGraphConfig] = useState<{
+  //   spaceSize: number;
+  //   pointSize: number;
+  // } | null>({spaceSize: 256, pointSize: 0.8});
 
   const [graphConfig, setGraphConfig] = useState<GraphConfig | null>({
     spaceSize: DEFAULT_SPACE_SIZE,
@@ -385,7 +390,7 @@ const MainAppContext: React.FC = () => {
     if (!g) return;
 
     setLoading(true);
-    fetchGraphByHash(g)
+    fetchGraphByHash(g) // Remember to set graph hash and uuid
       .then((data) => {
         applyLoadedGraph(data, { urlHash: g, fit: true });
       })
@@ -994,11 +999,34 @@ const MainAppContext: React.FC = () => {
   );
 };
 
+// export default function App() {
+//   const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
+//   return (
+//     <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
+//       <MainAppContext />
+//     </AppContext.Provider>
+//   )
+// }
+
+const AppKeepAliveComponent = () => {
+  useStartKeepAlive(`${API_BASE}/session_keepalive`, 10_000); 
+  return <MainAppContext />;
+}
+
+
 const App: React.FC = () => {
   const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
+  // TODO: Tweak the keepalive interval, probably should be something like 1 every 2/3 minutes
+  // useStartKeepAlive(`${API_BASE}/session_keepalive`, 10_000); 
+  // return (
+  //   <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
+  //     <MainAppContext />
+  //   </AppContext.Provider>
+  // )
+
   return (
-    <AppContext.Provider value={{ currentGraphUUID, setCurrentGraphUUID }}>
-      <MainAppContext />
+    <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
+      <AppKeepAliveComponent />
     </AppContext.Provider>
   );
 };
