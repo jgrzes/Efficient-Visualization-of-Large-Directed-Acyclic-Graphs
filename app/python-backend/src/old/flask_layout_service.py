@@ -56,13 +56,15 @@ def build_reponse_json_string_for_make_graph_structure_req(
 
 @app.route("/session_keepalive", methods=["POST"])
 def session_keepalive():
+    print(request)
     data = request.get_json()
     print(data)
     datetime = data.get("date", "")
     graph_uuid = data.get("uuid", "nothing")
+    event_type = data.get("type", "nothing")
     if graph_uuid != "nothing":
         print(f"Keepalive received for {graph_uuid}")
-    temp_graph_data_storage.keepalive_message_queue.put((graph_uuid, datetime))
+    temp_graph_data_storage.keepalive_message_queue.put((graph_uuid, datetime, event_type))
     return jsonify({"status": "ok"}), 200
 
 
@@ -167,22 +169,24 @@ def flask_make_graph_structure():
 
         space_size = 0 
         for x, y in canvas_positions:
-            space_size = max(abs(x), abs(y))    
+            space_size = max(abs(x), abs(y))   
+
+        print("Space size: ", space_size)     
 
         # for i in range(len(canvas_positions)):
-        #     print(f"{i}: {canvas_positions[i]}")
-        # x_positions = [p[0] for p in canvas_positions]
-        # y_positions = [p[1] for p in canvas_positions]
-        # plt.scatter(x_positions, y_positions)
-        # for u in range(G_gt.num_vertices()):
-        #     Nu = G_gt.get_out_neighbors(u)
-        #     for v in Nu:
-        #         plt.plot(
-        #             [canvas_positions[u][0], canvas_positions[v][0]],
-        #             [canvas_positions[u][1], canvas_positions[v][1]]
-        #         )
+            # print(f"{i}: {canvas_positions[i]}")
+        x_positions = [p[0] for p in canvas_positions]
+        y_positions = [p[1] for p in canvas_positions]
+        plt.scatter(x_positions, y_positions)
+        for u in range(G_gt.num_vertices()):
+            Nu = G_gt.get_out_neighbors(u)
+            for v in Nu:
+                plt.plot(
+                    [canvas_positions[u][0], canvas_positions[v][0]],
+                    [canvas_positions[u][1], canvas_positions[v][1]]
+                )
 
-        # plt.show()        
+        plt.show()        
 
         transformed_canvas_positions, links = build_reponse_json_string_for_make_graph_structure_req(
             G_gt=G_gt, canvas_positions=canvas_positions
@@ -206,7 +210,7 @@ def flask_make_graph_structure():
         )
 
         return jsonify(
-            {"uuid": graph_uuid, "canvas_positions": transformed_canvas_positions, "links": links}
+            {"uuid": graph_uuid, "canvas_positions": transformed_canvas_positions, "links": links, "space_size": space_size}
         ), 200
     
     logger.error(

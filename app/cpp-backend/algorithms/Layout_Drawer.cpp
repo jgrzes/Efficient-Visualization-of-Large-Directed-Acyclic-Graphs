@@ -805,9 +805,10 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
                 if (graph.getVertexColour(uIndex) != colour) continue;
                 ++numberOfColourChildrenOfV;
             }
-            // std::cout << " base weight: " << weightV << " ";
+            std::cout << vIndex << "\n";
+            std::cout << " base weight: " << weightV << " ";
             weightV += m_algorithmParams.addWeightFromChildrenCoeff * static_cast<double>(numberOfColourChildrenOfV);
-            // std::cout << "weight with children: " << weightV << " ";
+            std::cout << "weight with children: " << weightV << " ";
 
             double lowestParentY = std::numeric_limits<double>::min();
             uint32_t numberOfColourParentsOfV = 0;
@@ -821,13 +822,14 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
                 ++numberOfColourParentsOfV;
             }
             if (numberOfColourParentsOfV == 0) lowestParentY = predictedYCoords[k-1];
-            // std::cout << "lowest parent y: " << lowestParentY << " ";
+            std::cout << "lowest parent y: " << lowestParentY << " ";
 
             double d = 1.0 + m_algorithmParams.pullUpCoeff * static_cast<double>(numberOfColourParentsOfV);
             double vPositionY = lowestParentY + std::max(
                 m_algorithmParams.nextLevelDownCoeff * (WDivSqrt2 * weightV / d), 
                 (weightV * m_algorithmParams.gAcceleration) / (m_algorithmParams.kInitialLayoutCoeff * d)
             ); 
+            std::cout << "vPositionY: " << vPositionY << "\n";
             m_layoutPositions[vIndex] = {vPositionX, vPositionY};
             largestYCoord = std::max(largestYCoord, vPositionY);
             alreadyDrawnInVk.emplace(vIndex);

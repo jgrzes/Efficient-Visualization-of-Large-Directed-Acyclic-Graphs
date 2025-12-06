@@ -40,15 +40,23 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
     m_graph = &graph;
     computeDisputableEdgesPerLevel(forceRecomputation);
     computeVerticesPerLevel(forceRecomputation);
-    // uint32_t numberOfLevels = m_verticesPerLevel.value()->getNumberOfNestedArrays();
-    // for (uint32_t level=0; level<numberOfLevels; ++level) {
-    //     std::cout << "Level: " << level << ": ";
-    //     auto verticesAtLevel = m_verticesPerLevel.value()->getNestedArrayView(level);
-    //     for (auto uIndex : verticesAtLevel) {
-    //         std::cout << uIndex << " ";
-    //     }
-    //     std::cout << "\n";
-    // }
+
+    uint32_t numberOfLevels = m_verticesPerLevel.value()->getNumberOfNestedArrays();
+    std::string verticesPerLevelString = "";
+    for (uint32_t level=0; level<numberOfLevels; ++level) {
+        verticesPerLevelString += "Level: " + std::to_string(level) + ": ";
+        auto verticesAtLevel = m_verticesPerLevel.value()->getNestedArrayView(level);
+        for (auto uIndex : verticesAtLevel) {
+            verticesPerLevelString += std::to_string(uIndex) + " ";
+        }
+        verticesPerLevelString += "\n";
+    }
+
+    logging::log_trace(
+        "Vertices per level for graph" +
+        (m_optLogGraphId.has_value() ? " with id = " + m_optLogGraphId.value() : "") + ":\n"
+        + verticesPerLevelString
+    );
 
     bool startingLevelValid;
     uint32_t startingLevel;

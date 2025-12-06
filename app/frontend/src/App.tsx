@@ -155,13 +155,14 @@ const MainAppContext: React.FC = () => {
 
       const data = await response.json();
       console.log("Received graph uuid: " + data.uuid);
+      console.log("Received graph space size: " + data.space_size);
       setCurrentGraphUUID(data.uuid);
       // console.log("Graph uuid set on frontend: " + currentGraphUUID);
-      setPointPositions(new Float32Array(data.canvas_positions));
       setGraphConfig({
         spaceSize: data.space_size || 1000, 
         pointSize: data.point_size || 0.8
       });
+      setPointPositions(new Float32Array(data.canvas_positions));
       setLinks(new Float32Array(data.links));
       setSelectedNode(null);
       setSelectedFile(null);
