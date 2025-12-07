@@ -23,16 +23,18 @@ RUN apt install protobuf-compiler-grpc -y \
 
 RUN apt install dos2unix -y
 
-RUN chmod u+x /app/compile_project.sh \
-    && chmod u+x /app/run_project.sh
-
 RUN apt install python3 -y \
     && apt install python3-pip -y \
-    && pip install numpy gurobipy scipy -y
+    && pip install numpy gurobipy scipy
 
 WORKDIR /app
 
 COPY . . 
+
+RUN chmod +x /app/compile_project.sh \
+    && chmod +x /app/run_project.sh
+
+RUN find /app -type f -exec dos2unix {} +    
 
 # RUN ls /app/net | grep net-compiled || mkdir /app/net/net-compiled
     

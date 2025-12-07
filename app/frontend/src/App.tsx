@@ -986,7 +986,7 @@ const MainAppContext: React.FC = () => {
         <SettingsModal
           open={settingsModalOpen}
           onClose={() => setSettingsModalOpen(false)}
-          spaceSize={graphConfig?.spaceSize || 256}
+          spaceSize={graphConfig?.spaceSize || 8192}
           pointSize={graphConfig?.pointSize || 1}
           colors={graphConfig?.colors || DEFAULT_GRAPH_COLORS}
           onApply={(spaceSize, pointSize, colors) => {

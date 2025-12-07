@@ -231,8 +231,8 @@ export function useGraph(
 
   const fitView = useCallback(() => {
     const g = graphInstance.current;
-    g.fitView();
-    g.render();
+    g?.fitView();
+    g?.render();
   }, []);
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -500,7 +500,8 @@ export function useGraph(
     if (!graphRef.current) return;
 
     const config: GraphConfigInterface = {
-      spaceSize: initialConfig?.spaceSize ?? 256,
+      // spaceSize: initialConfig?.spaceSize ?? 256,
+      spaceSize: 8192, 
       backgroundColor: "#000",
       pointSize: initialConfig?.pointSize ?? 1,
       pointColor: [128, 128, 128, 255],

@@ -140,7 +140,12 @@ def fill_colour_remapping_by_performing_qap(
 
             model.optimize()
             assignment = [(i, i) for i in range(number_of_children)]
+            print("Statuses: ", model.Status, gurobi.GRB.OPTIMAL)
             if model.Status == gurobi.GRB.OPTIMAL:
+                print([
+                    (i, k) for i in range(number_of_children) for k in range(number_of_children)
+                ])
+
                 assignment = [
                     (i, k) for i in range(number_of_children) for k in range(number_of_children)
                     if x[i, k].X > 0.5
@@ -281,6 +286,9 @@ if __name__ == "__main__":
     file.close()
     # D_matrix = build_D_matrix(row_count)
     colour_remapping = [i for i in range(max_colour_index+1)]
+    fill_colour_remapping_by_performing_qap(
+        colour_remapping, colour_hierarchy_root, F_matrix
+    )
 
     log_file.close()
     sys.stdout = console_stdout
