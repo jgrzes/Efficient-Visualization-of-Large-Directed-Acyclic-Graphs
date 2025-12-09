@@ -12,6 +12,9 @@ from stack import Stack
 from colour_hierarchy_node import ColourHierarchyNode
 from pretend_matrix import PretendMatrix, PretendMatrixMode
 
+# NOTE:
+# Gurobipy requires a licence for use of any nature that is not scrictly educational and so that functionality has been turned off for now.
+# Turn it on at your own risk as using Gurobipy without valid licence might result in Gurobi persuing legal action.
 
 def read_colour_hierarchy_from_file(file: TextIOWrapper) -> Tuple[ColourHierarchyNode, int]:
     colour_hierarchy_stack = Stack()
@@ -91,7 +94,7 @@ def fill_colour_remapping_by_performing_qap(
     Q.append(colour_hierarchy_root)
 
     colour_remapping[colour_hierarchy_root.colour] = 0
-    x = 1
+    counter = 1
 
     while len(Q) > 0:
         node: ColourHierarchyNode = Q.popleft()
@@ -102,9 +105,9 @@ def fill_colour_remapping_by_performing_qap(
         if node.parent is None:
             F_for_subquestion = np.zeros((number_of_children, number_of_children))
             for i in range(number_of_children):
-                a = node.children_nodes.colour
+                a = node.children_nodes[i].colour
                 for j in range(number_of_children):
-                    b = node.children_nodes.colour
+                    b = node.children_nodes[j].colour
                     F_for_subquestion[i, j] = F_matrix[a, b]   
 
             D_for_subquestion = PretendMatrix(
@@ -148,20 +151,20 @@ def fill_colour_remapping_by_performing_qap(
 
                 assignment = [
                     (i, k) for i in range(number_of_children) for k in range(number_of_children)
-                    if x[i, k].X > 0.5
+                    if x[i, k].X == 1
                 ]
 
             assignment.sort(key=lambda x: x[1])
-            for i, _ in assignment.items():
-                colour_remapping[node.children_nodes[i]] = x 
-                x += 1    
+            for i, _ in assignment:
+                colour_remapping[node.children_nodes[i].colour] = counter 
+                counter += 1    
 
         else:
             F_for_subquestion = np.zeros((number_of_children+2, number_of_children+2))
             for i in range(number_of_children):
-                a = node.children_nodes.colour
+                a = node.children_nodes[i].colour
                 for j in range(number_of_children):
-                    b = node.children_nodes.colour
+                    b = node.children_nodes[j].colour
                     F_for_subquestion[i, j] = F_matrix[a, b]
 
             D_for_subquestion = PretendMatrix(
@@ -246,10 +249,10 @@ def fill_colour_remapping_by_performing_qap(
                 ]
 
             assignment.sort(key=lambda x: x[1])
-            for i, _ in assignment.items():
+            for i, _ in assignment:
                 if i >= number_of_children: continue
-                colour_remapping[node.children_nodes[i]] = x 
-                x += 1        
+                colour_remapping[node.children_nodes[i].colour] = counter
+                counter += 1        
 
         node.children_nodes.sort(
             key=lambda x, cr_=colour_remapping: cr_[x.colour]
@@ -286,9 +289,9 @@ if __name__ == "__main__":
     file.close()
     # D_matrix = build_D_matrix(row_count)
     colour_remapping = [i for i in range(max_colour_index+1)]
-    fill_colour_remapping_by_performing_qap(
-        colour_remapping, colour_hierarchy_root, F_matrix
-    )
+    # fill_colour_remapping_by_performing_qap(
+    #     colour_remapping, colour_hierarchy_root, F_matrix
+    # )
 
     log_file.close()
     sys.stdout = console_stdout
