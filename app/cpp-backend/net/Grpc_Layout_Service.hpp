@@ -42,6 +42,11 @@ private:
         uint32_t indent = 1
     ) const;
 
+    void callQAPCppScript(
+        const ColouredGraph& graph, 
+        GraphColourer::ColourHierarchyNode& colourHierarchyRoot
+    );
+
     void callQAPPythonScript(
         const ColouredGraph& graph, 
         GraphColourer::ColourHierarchyNode& colourHierarchyRoot

@@ -1,5 +1,6 @@
 target_sources(
     EGVB PRIVATE 
+    Pretend_Matrix.cpp Pretend_Matrix.cpp
     # Array of arrays classes
     Array_of_Arrays.cpp Array_of_Arrays.h 
     Array_of_Arrays_View.cpp Array_of_Arrays_View.h 

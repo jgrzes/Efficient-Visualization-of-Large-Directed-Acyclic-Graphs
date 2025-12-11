@@ -286,6 +286,11 @@ private:
 
 };
 
+void countTheNumberOfColoursInColourHierarchyTree(
+    const GraphColourer::ColourHierarchyNode& colourHierarchyNode, 
+    uint32_t& outputNumberOfNodes
+);
+
 }
 
 #undef _findDisputableEdgesPerLevel
