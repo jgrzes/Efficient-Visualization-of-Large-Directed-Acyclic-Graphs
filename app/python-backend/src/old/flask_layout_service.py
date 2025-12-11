@@ -3,6 +3,7 @@ import json
 import os
 from typing import Any, List, Optional, Tuple, Dict
 import logging
+import matplotlib.pyplot as plt
 
 import graph_tool as gt
 from database_manager import MongoDatabaseManager
@@ -15,6 +16,7 @@ from graph_analysis import (
 )
 from graph_data_storage import GraphDataStorage
 from graph_utils import *
+from layout_computation_backend_comms import send_layout_computation_request_to_grpc_server
 
 load_dotenv()
 
@@ -22,6 +24,8 @@ SERVICE_IP_ADDRESS = os.getenv("SERVICE_IP_ADDRESS", "0.0.0.0")
 SERVICE_PORT = int(os.getenv("SERVICE_PORT", "30301"))
 MONGO_ACCESS_KEY = os.getenv("MONGO_ACCESS_KEY", "")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "inz")
+LAYOUT_SERVICE_IP_ADDRESS = os.getenv("LAYOUT_SERVICE_IP_ADDRESS", "cpp-backend")
+LAYOUT_SERVICE_PORT = int(os.getenv("LAYOUT_SERVICE_PORT", "30311"))
 # FRONT_URL = os.getenv("FRONT_URL")
 
 app = Flask(__name__)
@@ -46,9 +50,9 @@ def extract_vertex_names(G_gt: gt.Graph) -> list[str]:
     return [str(name_prop[v]) for v in G_gt.vertices()]
 
 
-def build_reponse_json_string_for_make_graph_structure_req(
+def build_response_json_string_for_make_graph_structure_req(
     G_gt: gt.Graph, canvas_positions: list[tuple[float, float]]
-) -> Tuple[List[int], List[int]]:
+) -> Tuple[List[float], List[int]]:
     transformed_canvas_positions = [0 for _ in range(0, 2 * len(canvas_positions))]
     for i in range(0, len(canvas_positions)):
         x, y = canvas_positions[i]
@@ -64,13 +68,27 @@ def build_reponse_json_string_for_make_graph_structure_req(
     return transformed_canvas_positions, links
 
 
+@app.route("/session_keepalive", methods=["POST"])
+def session_keepalive():
+    logger.debug(request)
+    data = request.get_json()
+    print(data)
+    datetime = data.get("date", "")
+    graph_uuid = data.get("uuid", "nothing")
+    event_type = data.get("type", "nothing")
+    if graph_uuid != "nothing":
+        logger.info(f"Keepalive received for {graph_uuid}")
+    temp_graph_data_storage.keepalive_message_queue.put((graph_uuid, datetime, event_type))
+    return jsonify({"status": "ok"}), 200
+
+
 @app.route("/node/<string:graph_uuid>/<int:node_id>", methods=["GET"])
 def get_node_information(graph_uuid: str, node_id: int):
     logger.info(f"Received call on endpoint /node/<graph_uuid={graph_uuid}>/<node_id={node_id}>.")
     try:
         graph_info = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
     except RuntimeError as e:
-        print(f"Node data acquisition error: {e}")
+        logger.error(f"Node data acquisition error: {e}")
         return jsonify({}), 404
 
     G_gt = graph_info["graph"]
@@ -108,7 +126,7 @@ def get_node_index(graph_uuid: str, node_name: str):
     try:
         graph_info = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
     except RuntimeError as e:
-        print(f"Node data acquisition error: {e}")
+        logger.error(f"Node data acquisition error: {e}")
         return jsonify({}), 404
 
     G_gt: gt.Graph = graph_info["graph"]
@@ -131,6 +149,10 @@ def flask_make_graph_structure():
 
     if file is None or file.filename == "":
         return jsonify({"error": "No file provided"}), 400
+    
+    layout_type = request.form.get("layout_type", "cpp") # layout_type can be "cpp" or "radial"
+
+    logger.info(f"Received request on endpoint /flask_make_graph_structure for file {file.filename} with layout_type={layout_type}")
 
     root_id, godag = None, None
     G_gt: Optional[gt.Graph] = None
@@ -143,42 +165,63 @@ def flask_make_graph_structure():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        print(f"Error while loading graph: {e}")
+        logger.error(f"Error while loading graph: {e}")
         return jsonify({"error": "Failed to construct graph from file"}), 500
 
-    canvas_positions = make_graph_structure(G_gt)
-    (
-        transformed_canvas_positions,
-        links,
-    ) = build_reponse_json_string_for_make_graph_structure_req(
-        G_gt=G_gt, canvas_positions=canvas_positions
-    )
+    logger.debug(
+        f"Successfully extracted graph from {file.filename} and created a graph tool object based on it"
+    )    
 
-    graph_uuid = temp_graph_data_storage.register_new_graph_data(
-        {
+    if G_gt is not None:
+        
+        if layout_type == "radial":
+            canvas_positions = make_graph_structure(G_gt)
+            logger.debug("Using radial layout computation")
+        else:
+            logger.debug("Using GRPC layout computation")
+            try:
+                canvas_positions = send_layout_computation_request_to_grpc_server(
+                    G_gt, LAYOUT_SERVICE_IP_ADDRESS, LAYOUT_SERVICE_PORT, logger=logger
+                )
+            except Exception as e:
+                logger.warning(f"GRPC server failed to conclude layout computation: {e}")
+                canvas_positions = make_graph_structure(G_gt)
+
+        space_size = float('-inf')
+        for x, y in canvas_positions:
+            space_size = max(space_size, abs(x), abs(y))
+
+        logger.debug(f"Computed space size: {space_size}")
+
+        transformed_canvas_positions, links = build_response_json_string_for_make_graph_structure_req(
+            G_gt=G_gt, canvas_positions=canvas_positions
+        )    
+
+        logger.debug(
+            f"Computed layout for {file.filename}, waiting for graph uuid generation..."
+        )
+
+        graph_uuid = temp_graph_data_storage.register_new_graph_data({
             "name": file.filename,
-            "graph": G_gt,
-            "root_id": root_id,
-            "godag": godag,
-            "layout": transformed_canvas_positions,
-        }
-    )
+            "graph": G_gt, 
+            "root_id": root_id, 
+            "godag": godag, 
+            "layout": transformed_canvas_positions, 
+            "space_size": int(space_size * 1.2)
+        })    
 
-    names = extract_vertex_names(G_gt)
+        names = extract_vertex_names(G_gt)
 
-    logger.info(f"Computed layout for {file.filename}, as well as generated new uuid for it, which is as follows {graph_uuid}")
-
-    return (
-        jsonify(
+        return jsonify(
             {
-                "uuid": graph_uuid,
-                "canvas_positions": transformed_canvas_positions,
-                "links": links,
-                "names": names,
+                "uuid": graph_uuid, "canvas_positions": transformed_canvas_positions, "links": links, 
+                "names": names, "space_size": space_size
             }
-        ),
-        200,
-    )
+        ), 200
+    
+    logger.error(
+        f"Failed to create layout for graph stored in file {file.filename}"    
+    ) 
 
 
 # TODO: Weird endpoint name
@@ -193,7 +236,7 @@ def analyze_graph(graph_uuid: str):
         return jsonify({"error": "Graph not found"}), 404
 
     hierarchy_levels = compute_hierarchy_levels(G_gt)
-    logger.info(f"Successfully analyzed graph with uuid as follows: {graph_uuid} (WTFM)")
+    logger.info(f"Successfully analyzed graph with uuid as follows: {graph_uuid}")
     return jsonify({"hierarchy_levels": hierarchy_levels}), 200
 
 
@@ -527,6 +570,8 @@ def load_graph_from_json():
     file = request.files.get("file")
     if file is None or file.filename == "":
         return jsonify({"error": "No file provided"}), 400
+    
+    layout_type = request.form.get("layout_type", "cpp") # layout_type can be "cpp" or "radial"
 
     try:
         graph_data = json.load(file)
@@ -561,8 +606,18 @@ def load_graph_from_json():
     # CASE 2: JSON HAS NO LAYOUT -> build the graph and compute layout
     G_gt = build_gt_graph_from_graph_dict(graph_data)
 
-    canvas_positions = make_graph_structure(G_gt)
-    linearized_canvas_positions, linearized_links = build_reponse_json_string_for_make_graph_structure_req(
+    if layout_type == "radial":
+        canvas_positions = make_graph_structure(G_gt)
+    else: 
+        try:
+            canvas_positions = send_layout_computation_request_to_grpc_server(
+                G_gt, LAYOUT_SERVICE_IP_ADDRESS, LAYOUT_SERVICE_PORT, logger=logger
+            )
+        except Exception as e:
+            logger.error(f"GRPC layout computation failed: {e}. Falling back to radial layout.")
+            canvas_positions = make_graph_structure(G_gt)
+        
+    linearized_canvas_positions, linearized_links = build_response_json_string_for_make_graph_structure_req(
         G_gt=G_gt, canvas_positions=canvas_positions
     )
 
@@ -668,7 +723,8 @@ def update_graph_config(graph_hash: str):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
-    temp_graph_data_storage = GraphDataStorage()
+    temp_graph_data_storage = GraphDataStorage(logger=logger)
     db_manager = MongoDatabaseManager(MONGO_ACCESS_KEY, MONGO_DB_NAME)
     app.run(host=SERVICE_IP_ADDRESS, port=SERVICE_PORT)

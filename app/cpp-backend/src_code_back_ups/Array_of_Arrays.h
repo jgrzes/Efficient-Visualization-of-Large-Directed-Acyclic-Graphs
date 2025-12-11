@@ -329,7 +329,7 @@ public:
     NestedArrayView getNestedArrayView(size_t arrIndex) {
         if (arrIndex >= m_arraysOfTsSizes.size()) {
             throw std::runtime_error{
-                "Array Of Arrays error: arrIndex" + 
+                "Array Of Arrays error: arrIndex " + 
                 std::to_string(arrIndex) + " is too large"
             };
         }

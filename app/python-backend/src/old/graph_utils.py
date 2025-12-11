@@ -1,6 +1,6 @@
 import io
 import tempfile
-from typing import Dict, Tuple, Any, Optional
+from typing import Dict, Tuple, Any, Optional, List
 import re
 import numpy as np
 
@@ -120,15 +120,30 @@ def build_graph_from_txt(txt_file_contents: str) -> gt.Graph:
     elems = txt_file_contents.split(sep=None)
     if len(elems) == 0:
         return gt.Graph(directed=True)
-    elems = [int(elem) for elem in elems]
+    elems: List[str] = [str(elem) for elem in elems]
     print(elems)
-    n = elems[0]
+    n = int(elems[0])
     G_gt = gt.Graph(directed=True)
-
     V = [G_gt.add_vertex() for _ in range(0, n)]
-    for i in range(1, len(elems), 2):
-        u, v = elems[i], elems[i + 1]
-        G_gt.add_edge(V[u], V[v])
+
+    if len(elems) == 1: return 
+    if elems[1][0] == '{' and elems[1][-1] == "}": # Adj list form
+        for i in range(1, len(elems)):
+            u = V[i-1]
+            adj_list_for_u_str = elems[i].lstrip("{").rstrip("}")
+            if len(adj_list_for_u_str.strip()) == 0:
+                continue
+            print(adj_list_for_u_str)
+            Nu = [int(u) for u in adj_list_for_u_str.split(",")]
+            print(Nu)
+            for v in Nu:
+                G_gt.add_edge(u, v)
+
+    else: # Edge list form
+        elems = [int(elem) for elem in elems]
+        for i in range(1, len(elems), 2):
+            u, v = elems[i], elems[i+1]
+            G_gt.add_edge(V[u], V[v])
 
     return G_gt
 
@@ -138,6 +153,7 @@ def filter_graph_by_root(G_gt: gt.Graph, root_vertex: gt.Vertex) -> gt.Graph:
     reachable = gt.topology.label_out_component(G_gt, root_vertex)
     subgraph_view = gt.GraphView(G_gt, vfilt=reachable)
     return gt.Graph(subgraph_view, prune=True)
+
 
 def build_gt_graph_from_graph_dict(graph_data: Dict[str, Any]) -> gt.Graph:
     """Builds a graph-tool Graph from a dict in the same format as stored in MongoDB."""

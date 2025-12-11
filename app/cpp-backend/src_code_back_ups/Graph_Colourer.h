@@ -55,13 +55,13 @@ public:
     struct ColourHierarchyNode {
         uint32_t colour;
         const ColourHierarchyNode* const parent;
-        std::vector<ColourHierarchyNode> children;
+        std::vector<ColourHierarchyNode> childrenPtrs;
 
         ColourHierarchyNode() : ColourHierarchyNode{0} {}
         ColourHierarchyNode(uint32_t colour) : colour{colour}, parent{nullptr} {}
         ColourHierarchyNode(uint32_t colour, const ColourHierarchyNode* parent) : colour{colour}, parent{parent} {}
 
-        void addChild(uint32_t childColour) {children.emplace_back(childColour, this);}
+        void addChild(uint32_t childColour) {childrenPtrs.emplace_back(childColour, this);}
     };
 
     GraphColourer(const AlgorithmParams& algorithmParams) : m_algorithmParams{algorithmParams} {}

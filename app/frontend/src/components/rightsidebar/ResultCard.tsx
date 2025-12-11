@@ -19,12 +19,12 @@ const ResultCard: React.FC<ResultCardProps> = ({
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addComment } = useComments();
 
-  const isFav = isFavorite(node.index);
+  const isFav = isFavorite(node.index!);
   const [commentOpen, setCommentOpen] = useState(false);
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleFavorite(node.index);
+    toggleFavorite(node.index!);
   };
 
   const openComment = (e: React.MouseEvent) => {

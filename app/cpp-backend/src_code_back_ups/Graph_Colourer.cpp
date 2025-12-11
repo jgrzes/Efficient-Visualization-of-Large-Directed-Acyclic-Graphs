@@ -36,7 +36,7 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
 
     size_t numberOfColours = introducedColours.size();
     ColourHierarchyNode colourHierarchyRoot = ColourHierarchyNode();
-    colourHierarchyRoot.children.reserve(numberOfColours);
+    colourHierarchyRoot.childrenPtrs.reserve(numberOfColours);
     for (uint32_t i=0; i<numberOfColours; ++i) {
         colourHierarchyRoot.addChild(introducedColours[i]);
     }
@@ -88,7 +88,7 @@ std::pair<ColouredGraph, GraphColourer::ColourHierarchyNode> GraphColourer::assi
             ))
         );
         buildColourHierarchyRecursivelyRootedAtColour(
-            colourHierarchyRoot.children[i], 
+            colourHierarchyRoot.childrenPtrs[i], 
             vertexColours
         );
     }
@@ -490,7 +490,7 @@ void GraphColourer::buildColourHierarchyRecursivelyRootedAtColour(
             ))
         );
         buildColourHierarchyRecursivelyRootedAtColour(
-            colourHierarchyRoot.children[i], 
+            colourHierarchyRoot.childrenPtrs[i], 
             vertexColours
         );
     }

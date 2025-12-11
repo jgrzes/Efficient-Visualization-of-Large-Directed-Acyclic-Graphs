@@ -10,5 +10,5 @@ export const DEFAULT_GRAPH_COLORS: GraphColors = {
 };
 
 
-export const DEFAULT_SPACE_SIZE = 256;
+export const DEFAULT_SPACE_SIZE = 8192;
 export const DEFAULT_POINT_SIZE = 1;

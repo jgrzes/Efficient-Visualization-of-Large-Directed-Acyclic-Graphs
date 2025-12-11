@@ -14,7 +14,7 @@ using size_t = std::size_t;
 
 namespace data_structures {
 
-template <typename T, bool Symmetric = true, bool AutoOptimizng = true>
+template <typename T, bool Symmetric = true, bool AutoOptimizing = true>
 class SparseMatrix {
 
 public:
@@ -59,7 +59,7 @@ public:
                     castedToMap[i]; 
                     // if (sizeof(castedToMap) >= m_logicalSize * sizeof(T)) { // rough estimate of when storing in vector becomes more efficient than hashing
                     size_t bytesAllocated = castedToMap.get_allocator().getAllocatedBytes();
-                    if (bytesAllocated >= m_logicalSize * sizeof(std::optional<T>) && AutoOptimizng) { // rough estimate of when storing in vector becomes more efficient than hashing
+                    if (bytesAllocated >= m_logicalSize * sizeof(std::optional<T>) && AutoOptimizing) { // rough estimate of when storing in vector becomes more efficient than hashing
                         transformFromMapToVector();
                     } else {
                         return castedToMap[i];

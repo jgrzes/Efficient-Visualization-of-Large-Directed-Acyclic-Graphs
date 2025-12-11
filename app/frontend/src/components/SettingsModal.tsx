@@ -141,8 +141,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* space_size slider */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
+              {/* <div className="space-y-2"> */}
+                {/* <div className="flex items-center justify-between gap-2">
                   <label className="text-[11px] text-gray-300">
                     space_size
                   </label>
@@ -182,8 +182,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <p className="text-[10px] text-gray-500">
                   Size of the layout space (higher = more spread out).
-                </p>
-              </div>
+                </p> */}
+              {/* </div> */}
 
               {/* point_size slider */}
               <div className="space-y-2">
@@ -195,9 +195,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="text-[10px] text-gray-500">px</span>
                     <input
                       type="number"
-                      min={1}
-                      max={20}
-                      step={1}
+                      min={0.4}
+                      max={4}
+                      step={0.2}
                       value={pointSizeInput}
                       onChange={(e) => setPointSizeInput(e.target.value)}
                       className="
@@ -212,17 +212,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <input
                   type="range"
-                  min={1}
-                  max={20}
-                  step={1}
+                  min={0.4}
+                  max={4}
+                  step={0.2}
                   value={pointSizeInput}
                   onChange={(e) => setPointSizeInput(e.target.value)}
                   className="w-full cursor-pointer accent-blue-500"
                 />
 
                 <div className="flex justify-between text-[10px] text-gray-500">
-                  <span>1</span>
-                  <span>20</span>
+                  <span>0.4</span>
+                  <span>4</span>
                 </div>
 
                 <p className="text-[10px] text-gray-500">

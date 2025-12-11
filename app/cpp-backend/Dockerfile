@@ -9,18 +9,32 @@ RUN apt install gdb -y \
     && apt install g++ -y \
     && apt install libboost-all-dev -y
 
+RUN apt install autoconf -y \
+    && apt install libtool -y \
+    && apt install pkg-config -y
+
 RUN apt install protobuf-compiler -y \
     && apt install libprotobuf-dev -y 
 
 RUN apt install protobuf-compiler-grpc -y \
+    && apt install libgrpc-dev -y \
     && apt install libgrpc++-dev -y \
     && apt install build-essential -y
 
 RUN apt install dos2unix -y
 
+RUN apt install python3 -y \
+    && apt install python3-pip -y \
+    && pip install numpy gurobipy scipy
+
 WORKDIR /app
 
 COPY . . 
+
+RUN chmod +x /app/compile_project.sh \
+    && chmod +x /app/run_project.sh
+
+RUN find /app -type f -exec dos2unix {} +    
 
 # RUN ls /app/net | grep net-compiled || mkdir /app/net/net-compiled
     

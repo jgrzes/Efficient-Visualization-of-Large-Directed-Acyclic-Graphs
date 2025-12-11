@@ -10,7 +10,7 @@
 
 #include "../data-structures/Coloured_Graph.h"
 #include "Graph_Colourer.h"
-#include "../data-structures/Sparse_Array.h"
+#include "../data-structures/Sparse_Array.hpp"
 #include "../graph-preprocessing/edge_and_vertex_processing_functions.h"
 #include "../data-structures/Cartesian_Surface_Grid.h"
 #include "../utils/arithmetic_ops_for_pair_overloads.h"
@@ -55,6 +55,7 @@ public:
         double baseVerexWeight;
         double addWeightFromChildrenCoeff;
         double kInitialLayoutCoeff;
+        double nextLevelDownCoeff;
         
         double sCoeff;
         double defaultAlphaP;
@@ -70,7 +71,7 @@ public:
         double fineTuningForceMoveCoeff;
 
         double minBoxWidthForUncoloured;
-        double yDistanceBetweenUncolouredLevels;
+        double minYDistanceBetweenUncolouredLevels;
     }; 
 
     LayoutDrawer(const AlgorithmParams& algorithmParams) : 
@@ -107,6 +108,8 @@ private:
 
         const Vertex& v;
         const double& xp;
+
+        virtual ~F() = default;
     };
 
     struct Fp : public F {
@@ -231,11 +234,11 @@ private:
         const std::pair<double, double>& boxBounds, double gapEpsilon
     );
 
-    void createGapForTwoConsecutiveVertices(
-        std::vector<std::pair<uint32_t, double>>& VkVerticesXPositions, 
-        size_t i, std::optional<double>& gamma, 
-        const std::pair<double, double>& boxBounds, double gapEpsilon
-    );
+    // void createGapForTwoConsecutiveVertices(
+    //     std::vector<std::pair<uint32_t, double>>& VkVerticesXPositions, 
+    //     size_t i, std::optional<double>& gamma, 
+    //     const std::pair<double, double>& boxBounds, double gapEpsilon
+    // );
 
     // TODO: Come up with a better way of drawing uncoloured vertices
     void drawUncolouredPartOfGraph(

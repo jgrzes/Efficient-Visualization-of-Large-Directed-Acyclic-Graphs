@@ -18,12 +18,14 @@ import LoadGraphModal from "./components/LoadGraphModal";
 import GraphListModal from "./components/GraphListModal";
 import LoadSourceModal from "./components/LoadSourceModal";
 import SettingsModal, { GraphColors } from './components/SettingsModal';
+import LayoutModal from './components/LayoutModal';
 import { useFavorites } from './hooks/useFavorites';
 import { useComments } from './hooks/useComments';
 import type { CommentItem } from './hooks/useComments';
 import { DEFAULT_GRAPH_COLORS, DEFAULT_SPACE_SIZE, DEFAULT_POINT_SIZE } from "./graphConfig";
 
 import { useGraph } from './hooks/useGraph';
+import { useStartKeepAlive } from './hooks/useKeepalive';
 
 const API_BASE = 'http://localhost:30301';
 
@@ -68,6 +70,10 @@ const MainAppContext: React.FC = () => {
   );
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+  // const [graphConfig, setGraphConfig] = useState<{
+  //   spaceSize: number;
+  //   pointSize: number;
+  // } | null>({spaceSize: 256, pointSize: 0.8});
 
   const [graphConfig, setGraphConfig] = useState<GraphConfig | null>({
     spaceSize: DEFAULT_SPACE_SIZE,
@@ -94,6 +100,12 @@ const MainAppContext: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [results, setResults] = useState<NodeInfoProps[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Layout selection state
+  const [showLayoutModal, setShowLayoutModal] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingExt, setPendingExt] = useState<"obo" | "txt" | "json" | null>(null);
+  const [selectedLayoutType, setSelectedLayoutType] = useState<"cpp" | "radial">("cpp");
 
   // Search filters state
   type SearchFilter = {
@@ -261,10 +273,10 @@ const MainAppContext: React.FC = () => {
     }
     
     prevFavsRef.current = Array.isArray(data.config?.favorites)
-      ? data.config!.favorites
+      ? data.config.favorites
       : [];
     prevCommentsRef.current = Array.isArray(data.config?.comments)
-      ? data.config!.comments
+      ? data.config.comments
       : [];
 
     setSyncInitialized(true);
@@ -385,7 +397,7 @@ const MainAppContext: React.FC = () => {
     if (!g) return;
 
     setLoading(true);
-    fetchGraphByHash(g)
+    fetchGraphByHash(g) // Remember to set graph hash and uuid
       .then((data) => {
         applyLoadedGraph(data, { urlHash: g, fit: true });
       })
@@ -396,12 +408,50 @@ const MainAppContext: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const jsonHasLayout = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        try {
+          const text = reader.result as string;
+          const data = JSON.parse(text);
+
+          const vertices = data?.vertices;
+          const numVertices = data?.num_of_vertices;
+
+          if (!Array.isArray(vertices) || typeof numVertices !== "number") {
+            resolve(false);
+            return;
+          }
+
+          const hasLayout = vertices.every(
+            (v: any) =>
+              Array.isArray(v?.pos) &&
+              v.pos.length === 2 &&
+              typeof v.pos[0] === "number" &&
+              typeof v.pos[1] === "number"
+          );
+
+          resolve(hasLayout);
+        } catch {
+          resolve(false);
+        }
+      };
+
+      reader.onerror = () => resolve(false);
+
+      reader.readAsText(file);
+    });
+  };
+
   /** LOAD GENERAL GRAPH FROM JSON FILE **/
-  const loadJsonGraph = async (file: File) => {
+  const loadJsonGraph = async (file: File, layoutType: "cpp" | "radial") => {
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('layout_type', layoutType);
 
       const res = await fetch(`${API_BASE}/load_graph_from_json`, {
         method: 'POST',
@@ -497,20 +547,49 @@ const MainAppContext: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const ext = file.name.split('.').pop()?.toLowerCase();
+    const ext = file.name.split(".").pop()?.toLowerCase();
 
-    if (ext === 'obo' || ext === 'txt') { // ontology formats
-      setSelectedFile(file);
+    if (ext === "obo" || ext === "txt") {
+      setPendingFile(file);
+      setPendingExt(ext as "obo" | "txt");
+      setShowLayoutModal(true);
+      return;
+    }
+
+    if (ext === "json") {
+      (async () => {
+        const hasLayout = await jsonHasLayout(file);
+
+        if (hasLayout) {
+          await loadJsonGraph(file, "cpp");
+        } else {
+          setPendingFile(file);
+          setPendingExt("json");
+          setShowLayoutModal(true);
+        }
+      })();
+
+      return;
+    }
+
+    alert(`Unhandled file format: .${ext ?? "unknown"}`);
+  };
+
+  const handleLayoutConfirm = (layoutType: "cpp" | "radial") => {
+    if (!pendingFile || !pendingExt) {
+      setShowLayoutModal(false);
+      return;
+    }
+
+    setSelectedLayoutType(layoutType);
+    setShowLayoutModal(false);
+
+    if (pendingExt === "json") {
+      void loadJsonGraph(pendingFile, layoutType);
+    } else {
+      setSelectedFile(pendingFile);
       setShowOntologyOptions(true);
-      return;
     }
-
-    if (ext === 'json') { // custom general graph format
-      loadJsonGraph(file);
-      return;
-    }
-
-    alert(`Unhandled file format: .${ext ?? 'unknown'}`);
   };
 
   const uploadFileWithNamespace = async (namespace: string) => {
@@ -522,6 +601,7 @@ const MainAppContext: React.FC = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('root', namespace);
+      formData.append('layout_type', selectedLayoutType);
 
       const response = await fetch(`${API_BASE}/flask_make_graph_structure`, {
         method: 'POST',
@@ -538,8 +618,11 @@ const MainAppContext: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
 
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   /** RESET VIEW **/
   const handleResetView = () => {
     setPointPositions(new Float32Array(initialLayout));
@@ -900,6 +983,19 @@ const MainAppContext: React.FC = () => {
           className="hidden"
         />
 
+        <LayoutModal
+          open={showLayoutModal}
+          onCancel={() => {
+            setShowLayoutModal(false);
+            setPendingFile(null);
+            setPendingExt(null);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+          }}
+          onConfirm={handleLayoutConfirm}
+        />
+
         {showOntologyOptions && selectedFile && (
           <OntologyModal
             fileName={selectedFile.name}
@@ -981,7 +1077,7 @@ const MainAppContext: React.FC = () => {
         <SettingsModal
           open={settingsModalOpen}
           onClose={() => setSettingsModalOpen(false)}
-          spaceSize={graphConfig?.spaceSize || 256}
+          spaceSize={graphConfig?.spaceSize || 8192}
           pointSize={graphConfig?.pointSize || 1}
           colors={graphConfig?.colors || DEFAULT_GRAPH_COLORS}
           onApply={(spaceSize, pointSize, colors) => {
@@ -994,11 +1090,24 @@ const MainAppContext: React.FC = () => {
   );
 };
 
+const AppKeepAliveComponent = () => {
+  useStartKeepAlive(`${API_BASE}/session_keepalive`, 10_000); 
+  return <MainAppContext />;
+};
+
 const App: React.FC = () => {
   const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
+  // TODO: Tweak the keepalive interval, probably should be something like 1 every 2/3 minutes
+  // useStartKeepAlive(`${API_BASE}/session_keepalive`, 10_000); 
+  // return (
+  //   <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
+  //     <MainAppContext />
+  //   </AppContext.Provider>
+  // )
+
   return (
     <AppContext.Provider value={{ currentGraphUUID, setCurrentGraphUUID }}>
-      <MainAppContext />
+      <AppKeepAliveComponent />
     </AppContext.Provider>
   );
 };

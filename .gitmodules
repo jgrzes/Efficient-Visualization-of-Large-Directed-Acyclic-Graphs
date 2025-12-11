@@ -1,3 +1,6 @@
 [submodule "app/cpp-backend/qap-solver"]
 	path = app/cpp-backend/qap-solver
 	url = https://github.com/janmast1o/QAPSolver
+[submodule "app/cpp-backend/submodules/biq-bin"]
+	path = app/cpp-backend/submodules/biq-bin
+	url = https://gitlab.aau.at/BiqBin/biqbin
