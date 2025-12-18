@@ -14,42 +14,7 @@ RCH line:  -- 2 4
 RCH line:  -- 3 4
 4 4
 
-Restricted license - for non-production use only - expires 2027-11-29
-Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (linux64 - "Ubuntu 22.04.5 LTS")
-
-CPU model: 13th Gen Intel(R) Core(TM) i5-13400F, instruction set [SSE2|AVX|AVX2]
-Thread count: 8 physical cores, 16 logical processors, using up to 16 threads
-
-Optimize a model with 6 rows, 9 columns and 18 nonzeros (Min)
-Model fingerprint: 0x3346a81f
-Model has 0 linear objective coefficients
-Model has 12 quadratic objective terms
-Variable types: 0 continuous, 9 integer (9 binary)
-Coefficient statistics:
-  Matrix range     [1e+00, 1e+00]
-  Objective range  [0e+00, 0e+00]
-  QObjective range [8e+00, 4e+03]
-  Bounds range     [1e+00, 1e+00]
-  RHS range        [1e+00, 1e+00]
-Presolve time: 0.01s
-Presolved: 18 rows, 21 columns, 54 nonzeros
-Variable types: 0 continuous, 21 integer (21 binary)
-Found heuristic solution: objective 1768.0000000
-Found heuristic solution: objective 886.0000000
-
-Root relaxation: objective 0.000000e+00, 7 iterations, 0.00 seconds (0.00 work units)
-
-    Nodes    |    Current Node    |     Objective Bounds      |     Work
- Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
-
-     0     0 infeasible    0       886.00000  886.00000  0.00%     -    0s
-
-Explored 1 nodes (7 simplex iterations) in 0.01 seconds (0.00 work units)
-Thread count was 16 (of 16 available processors)
-
-Solution count 2: 886 1768 
-
-Optimal solution found (tolerance 1.00e-04)
-Best objective 8.860000000000e+02, best bound 8.860000000000e+02, gap 0.0000%
-Statuses:  2 2
-[(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
+0 2 441.0
+{<0> --> <2>}
+0 1 2.0
+{<1> --> <0> --> <2>}

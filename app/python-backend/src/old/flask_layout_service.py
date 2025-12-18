@@ -189,15 +189,27 @@ def flask_make_graph_structure():
             canvas_positions = make_graph_structure(G_gt)
 
         space_size = 0 
+        ceoff_x_denominator = float("-inf")
+        coeff_y_denominator = float("-inf")
         for x, y in canvas_positions:
             space_size = max(abs(x), abs(y))   
+            coeff_y_denominator = max(
+                coeff_y_denominator, abs(y)
+            )
+            ceoff_x_denominator = max(
+                ceoff_x_denominator, abs(x)
+            )
 
         print("Space size: ", space_size)     
+        # coeff = 8192 / space_size # Hardcoded 8192
 
         # for i in range(len(canvas_positions)):
             # print(f"{i}: {canvas_positions[i]}")
-        x_positions = [p[0] for p in canvas_positions]
-        y_positions = [p[1] for p in canvas_positions]
+        coeff_x = 8192 / ceoff_x_denominator if ceoff_x_denominator > 8192 else 1
+        coeff_y = 8192 / coeff_y_denominator if coeff_y_denominator > 8192 else 1
+        x_positions = [p[0] * coeff_x for p in canvas_positions]
+        y_positions = [p[1] * coeff_y for p in canvas_positions]
+        canvas_positions = [(x*coeff_x, y*coeff_y) for x, y in canvas_positions] 
         plt.scatter(x_positions, y_positions)
         for u in range(G_gt.num_vertices()):
             Nu = G_gt.get_out_neighbors(u)
@@ -207,7 +219,7 @@ def flask_make_graph_structure():
                     [canvas_positions[u][1], canvas_positions[v][1]]
                 )
 
-        plt.show()        
+        plt.show()       
 
         transformed_canvas_positions, links = build_reponse_json_string_for_make_graph_structure_req(
             G_gt=G_gt, canvas_positions=canvas_positions

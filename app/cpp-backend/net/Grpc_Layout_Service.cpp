@@ -291,7 +291,8 @@ void GrpcLayoutService::callQAPScriptAndModifyColourHierarchy(
     const std::string& colourHierarchyAndFMatrixPathFile
 ) const {
 
-    constexpr std::string_view qapPyScriptPath = "/app/py_qap_solving_scripts/qap_solver.py";
+    // constexpr std::string_view qapPyScriptPath = "/app/py_qap_solving_scripts/qap_solver.py";
+    constexpr std::string_view qapPyScriptPath = "/app/py_qap_solving_scripts/biq_bin_qap_solver.py";
     std::string command = "python3 " + std::string(qapPyScriptPath) + " " + colourHierarchyAndFMatrixPathFile; 
 
     std::unique_ptr<FILE, decltype(&pclose)> qapPipe = std::unique_ptr<FILE, decltype(&pclose)>(

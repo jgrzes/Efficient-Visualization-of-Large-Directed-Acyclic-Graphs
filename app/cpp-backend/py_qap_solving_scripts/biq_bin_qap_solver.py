@@ -7,10 +7,16 @@ import numpy as np
 from typing import Tuple, List
 from collections import deque
 
-from stack import Stack
-from colour_hierarchy_node import ColourHierarchyNode
-from pretend_matrix import PretendMatrix, PretendMatrixMode
-from primitive_try_qap_solve import primitive_try_qap_solve
+try:
+    from .stack import Stack
+    from .colour_hierarchy_node import ColourHierarchyNode
+    from .pretend_matrix import PretendMatrix, PretendMatrixMode
+    from .primitive_try_qap_solve import primitive_try_qap_solve, primitve_try_qap_solve_with_borders_fixed
+except ImportError as e:
+    from stack import Stack
+    from colour_hierarchy_node import ColourHierarchyNode
+    from pretend_matrix import PretendMatrix, PretendMatrixMode
+    from primitive_try_qap_solve import primitive_try_qap_solve, primitve_try_qap_solve_with_borders_fixed
 
 
 def read_colour_hierarchy_from_file(file: TextIOWrapper) -> Tuple[ColourHierarchyNode, int]:
@@ -92,6 +98,7 @@ def write_biq_bin_source_path(
     # QAP Problem variable remapping x_ik = x'_a, where a = (i-1)*n + k
 
     with open(biq_bin_source_filepath, "w") as biq_bin_file:
+        biq_bin_file.write(f"{n**2} {2*n}\n")
         biq_bin_file.write(f"A\n")
         # Adding constraints: for each i: sum_{k=1}{n} x_ik = 1
         # i.e. only one facility per object
@@ -111,6 +118,7 @@ def write_biq_bin_source_path(
         for row in range(1, 2*n+1):
             biq_bin_file.write(f"{row} {1}\n")
 
+        print(F_matrix) 
         biq_bin_file.write("F\n")
         for i in range(n):
             for j in range(i+1, n):
@@ -119,11 +127,11 @@ def write_biq_bin_source_path(
                 for k in range(1, n+1):
                     for l in range(1, n+ 1):
                         if k == l: continue 
-                        biq_bin_file.write(f"{i*n + k} {j*n + l} {F_matrix[i, j] * D_matrix[i, j]}\n")
+                        biq_bin_file.write(f"{i*n + k} {j*n + l} {int(F_matrix[i, j] * D_matrix[k, l])}\n")
 
         biq_bin_file.write("c\n")
         for i in range(1, n**2+1):
-            biq_bin_file.write(f"{i} {0}")                
+            biq_bin_file.write(f"{i} {0}\n")                
 
 
 def fill_colour_remapping_by_performing_qap(
@@ -135,10 +143,10 @@ def fill_colour_remapping_by_performing_qap(
     Q = deque()
     Q.append(colour_hierarchy_root)
 
-    colour_remapping[colour_hierarchy_root] = 0
+    colour_remapping[colour_hierarchy_root.colour] = 0
     counter = 1
-    biq_bin_module_path = "/app/submodules/biq-bin/matlab"
-    matlab_src_code_suite_path = "/app/submodules/biq-bin/matlab"
+    biq_bin_module_path = "/app/submodules/biq_bin_forked"
+    matlab_src_code_suite_path = "/app/submodules/biq_bin_forked/matlab"
 
     while len(Q) > 0:
         node: ColourHierarchyNode = Q.popleft()        
@@ -175,33 +183,87 @@ def fill_colour_remapping_by_performing_qap(
                 )
 
                 command_output = subprocess.run(
-                    'octave --no-gui --silent --eval ' +
-                    f"addpath('{matlab_src_code_suite_path}'); prepare_MC('{biq_bin_source_filepath}', '{max_cut_problem_transformation_filepath}'); exit;", 
+                    'octave --no-gui --silent --eval ' + '"' + 
+                    f"addpath('{matlab_src_code_suite_path}'); prepare_MC('{biq_bin_source_filepath}', '{max_cut_problem_transformation_filepath}'); exit; " + '"', 
                     shell=True, capture_output=True, text=True
                 )
-                command_output.check_returncode()
+                try:
+                    command_output.check_returncode()
+                except subprocess.CalledProcessError as e:
+                    print(command_output.stderr)
+                    raise e
 
-                command_output = subprocess.run(
+                # command_output = subprocess.run(
+                #     f"cd {biq_bin_module_path} && " +
+                #     f"mpirun --allow-run-as-root -n 4 ./biqbin {max_cut_problem_transformation_filepath} params 0 start.log temp.log &", 
+                #     shell=True, capture_output=True, text=True
+                # )
+                # try:
+                #     command_output.check_returncode()
+                # except subprocess.CalledProcessError as e:
+                #     print(command_output.stderr)
+                #     raise e
+                
+                subprocess.run(
                     f"cd {biq_bin_module_path} && " +
-                    f"mpirun --allow-run-as-root -n 4 ./biqbin ${max_cut_problem_transformation_filepath} params 0 start.log temp.log", 
-                    shell=True, capture_output=True, text=True
+                    f"mpirun --allow-run-as-root -n 4 ./biqbin {max_cut_problem_transformation_filepath} params 0 start.log temp.log > /dev/null 2>&1",
+                    shell=True 
+                    # start_new_session=True 
                 )
-                command_output.check_returncode()
 
                 command_output = subprocess.run(
-                    f"mv {max_cut_problem_transformation_filepath}_0.output {max_cut_problem_transformation_filepath} && " +
-                    f"cat {max_cut_problem_transformation_filepath} | head -n 6 | tail -n 1", 
+                    f"while [ ! -f {max_cut_problem_transformation_filepath}_0.output ]; do sleep 1; done", 
+                    shell=True, text=True, capture_output=True 
+                )
+                try:
+                    command_output.check_returncode()
+                except subprocess.CalledProcessError as e:
+                    print(command_output.stderr)
+                    raise e
+
+                command_output = subprocess.run(
+                    f"cp {max_cut_problem_transformation_filepath}_0.output {max_cut_problem_transformation_filepath}_0_new && " +
+                    f"cat {max_cut_problem_transformation_filepath}_0_new | head -n 6 | tail -n 1", 
                     shell=True, capture_output=True, text=True 
                 )
                 command_output.check_returncode()
                 max_cut_opt_run_result = command_output.stdout
-                # max_cut_opt_run_result_lines = max_cut_opt_run_result.split("\n")
+                print("Max cut opt run result: ", max_cut_opt_run_result)
 
                 command_output = subprocess.run(
-                    f"rm -r {max_cut_problem_transformation_filepath}*", 
+                    "kill $(ps aux | grep " +
+                    f'\"[c]d {biq_bin_module_path} && ' +
+                    f'mpirun --allow-run-as-root -n 4 ./biqbin {max_cut_problem_transformation_filepath} params 0 start.log temp.log > /dev/null 2>&1\" ' +
+                    f" | head -n 1 | tr ' ' " + r"'\n'" + " | grep -v '^$' | head -n 2 | tail -n 1) || echo True",   
                     shell=True, capture_output=True, text=True
                 )
-                command_output.check_returncode()
+                try:
+                    command_output.check_returncode()
+                except subprocess.CalledProcessError as e:
+                    print(command_output.stderr)
+                    raise e
+                
+                command_output = subprocess.run(
+                    "kill $(ps aux | grep " +
+                    f'\"[m]pirun --allow-run-as-root -n 4 ./biqbin {max_cut_problem_transformation_filepath} params 0 start.log temp.log\" ' +
+                    f" | head -n 1 | tr ' ' " + r"'\n'" + " | grep -v '^$' | head -n 2 | tail -n 1) || echo True",  
+                    shell=True, capture_output=True, text=True
+                )
+                try:
+                    command_output.check_returncode()
+                except subprocess.CalledProcessError as e:
+                    print(command_output.stderr)
+                    raise e
+
+                command_output = subprocess.run(
+                    f"rm -r {max_cut_problem_transformation_filepath}_0* || echo True", 
+                    shell=True, capture_output=True, text=True
+                )
+                try:
+                    command_output.check_returncode()
+                except subprocess.CalledProcessError as e:
+                    print(command_output.stderr)
+                    raise e
 
                 unused_filed_name, vertice_list = max_cut_opt_run_result.split(":")
                 vertice_list = vertice_list.strip().lstrip("[").rstrip(",").rstrip("]")
@@ -234,7 +296,59 @@ def fill_colour_remapping_by_performing_qap(
                 colour_remapping[child_i_colour] = counter
                 counter += 1
 
-        else: ... 
+        else: 
+            F_for_subquestion = np.zeros((number_of_children+2, number_of_children+2))
+            for i in range(number_of_children):
+                a = node.children_nodes[i].colour
+                for j in range(number_of_children):
+                    b = node.children_nodes[j].colour
+                    F_for_subquestion[i, j] = F_matrix[a, b]
+
+                D_for_subquestion = PretendMatrix(
+                    mode=PretendMatrixMode.DYNAMIC_CALCULATION, 
+                    size=(number_of_children+2, number_of_children+2),
+                    dynamic_calculator=lambda i, j: abs(i-j)
+                )    
+
+                g = node.parent 
+                p = node 
+                while g is not None:
+                    left_of_p = []
+                    right_of_p = []
+
+                    current_side_array = left_of_p
+                    for child in g.children_nodes:
+                        if child.colour == p.colour:
+                            current_side_array = right_of_p
+                        else:
+                            current_side_array.append(child.colour)
+
+                    for i in range(len(node.children_nodes)):
+                        a = node.children_nodes[i].colour
+                        for l in left_of_p:
+                            F_for_subquestion[i, number_of_children] += F_matrix[a, l]
+                            F_for_subquestion[number_of_children, i] += F_matrix[a, l]
+
+                        for r in right_of_p:    
+                            F_for_subquestion[i, number_of_children-1] += F_matrix[a, r]
+                            F_for_subquestion[number_of_children-1, i] += F_matrix[a, r]
+
+                    p = g
+                    g = g.parent
+
+                # For now was_successful is always true
+                R, unused_was_successful = primitve_try_qap_solve_with_borders_fixed(
+                    F_matrix=F_for_subquestion, D_matrix=D_for_subquestion
+                )  
+
+                R_with_indices = [(i, R[i]) for i in range(len(R))]
+                R_with_indices.sort(key=lambda x: x[1])
+
+                for i, unused_R_i in R_with_indices:
+                    child_i_colour = node.children_nodes[i].colour
+                    colour_remapping[child_i_colour] = counter
+                    counter += 1
+
 
         node.children_nodes.sort(
             key=lambda x, cr_=colour_remapping: cr_[x.colour]
@@ -242,3 +356,49 @@ def fill_colour_remapping_by_performing_qap(
 
         for child in node.children_nodes:
             Q.append(child)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        raise Exception(f"No file with contents for qap specified")
+
+    console_stdout = sys.stdout
+    log_file = open(
+        f"{os.path.dirname(os.path.abspath(__file__))}/python_logs/log_temp.txt", "w" 
+    )  
+    sys.stdout = log_file 
+
+    input_problem_file_path = sys.argv[1]
+    with open(input_problem_file_path, "r") as input_problem_file:
+        print(input_problem_file.read())
+
+    input_problem_file = open(input_problem_file_path, "r")
+    colour_hierarchy_root, max_colour_index = read_colour_hierarchy_from_file(input_problem_file)     
+    F_matrix, row_count, col_count = build_F_matrix(input_problem_file)
+    if row_count != col_count:
+        raise RuntimeError(
+            f"Matrix must be sqaure not of shape ({row_count}, {col_count})"
+        )         
+    
+    input_problem_file.close()
+    colour_remapping = [i for i in range(max_colour_index+1)]
+
+    biq_bin_source_filepath = f"{input_problem_file_path.split('.')[0]}_biq_bin_input.txt"
+    max_cut_transformation_filepath = f"{input_problem_file_path.split('.')[0]}_max_cut_transformation.txt"
+
+    fill_colour_remapping_by_performing_qap(
+        colour_remapping, colour_hierarchy_root, 
+        F_matrix, biq_bin_source_filepath, 
+        max_cut_transformation_filepath
+    )
+    
+    subprocess.run(f"rm -f {biq_bin_source_filepath}", shell=True, text=True)
+    subprocess.run(f"rm -f {max_cut_transformation_filepath}", shell=True, text=True)
+
+    log_file.close()
+    sys.stdout = console_stdout
+
+    for i in range(len(colour_remapping)):
+        print(f"{i}>{colour_remapping[i]}", sep=" ")
+    print("")    
+
