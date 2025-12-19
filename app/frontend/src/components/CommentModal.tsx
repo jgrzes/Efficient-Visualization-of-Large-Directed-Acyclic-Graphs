@@ -42,15 +42,24 @@ const CommentModal: React.FC<CommentModalProps> = ({
     >
       {/* backdrop */}
       <button
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm dark:bg-black/60"
         aria-label="Close"
         onClick={onClose}
       />
 
       {/* modal */}
-      <div className="relative z-[1001] w-[min(92vw,560px)] rounded-xl border border-white/10 bg-[#0b0b0b] shadow-2xl">
-        <div className="px-4 py-3 border-b border-white/10">
-          <h2 id="comment-modal-title" className="text-sm font-semibold text-gray-100">
+      <div
+        className="
+          relative z-[1001] w-[min(92vw,560px)] rounded-xl border shadow-2xl
+          border-black/10 bg-white/95
+          dark:border-white/10 dark:bg-[#0b0b0b]
+        "
+      >
+        <div className="px-4 py-3 border-b border-black/10 dark:border-white/10">
+          <h2
+            id="comment-modal-title"
+            className="text-sm font-semibold text-gray-900 dark:text-gray-100"
+          >
             {title}
           </h2>
         </div>
@@ -58,7 +67,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
         <div className="p-4 space-y-4">
           {/* COMMENT NAME / TITLE FIELD */}
           <div>
-            <label htmlFor="comment-name" className="text-sm text-gray-300">
+            <label htmlFor="comment-name" className="text-sm text-gray-700 dark:text-gray-300">
               Comment title
             </label>
             <input
@@ -66,7 +75,14 @@ const CommentModal: React.FC<CommentModalProps> = ({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+              className="
+                mt-1 w-full rounded-lg border p-3 text-sm
+                bg-white text-gray-900 placeholder:text-gray-400
+                border-black/10 focus:outline-none focus:ring-2 focus:ring-blue-300
+
+                dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-100 dark:placeholder:text-gray-500
+                dark:focus:ring-white/20
+              "
               placeholder='For example, "Note on definition"'
             />
           </div>
@@ -82,17 +98,28 @@ const CommentModal: React.FC<CommentModalProps> = ({
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={6}
-              className="w-full resize-y rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+              className="
+                w-full resize-y rounded-lg border p-3 text-sm
+                bg-white text-gray-900 placeholder:text-gray-400
+                border-black/10 focus:outline-none focus:ring-2 focus:ring-blue-300
+
+                dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-100 dark:placeholder:text-gray-500
+                dark:focus:ring-white/20
+              "
               placeholder="Enter comment text…"
             />
           </div>
         </div>
 
-        <div className="px-4 py-3 border-t border-white/10 flex items-center justify-end gap-2">
+        <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-2 text-sm rounded-md border border-white/10 text-gray-300 hover:bg-white/[0.06] transition"
+            className="
+              px-3 py-2 text-sm rounded-md border transition
+              border-black/10 text-gray-700 hover:bg-black/[0.04]
+              dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/[0.06]
+            "
           >
             Cancel
           </button>
@@ -103,15 +130,15 @@ const CommentModal: React.FC<CommentModalProps> = ({
               if (!isValid) return;
 
               onSubmit({
-                name: name.trim(), // nazwa / klucz komentarza
-                text: text.trim(), // treść komentarza
+                name: name.trim(),
+                text: text.trim(),
               });
             }}
             disabled={!isValid}
             className={`px-3 py-2 text-sm rounded-md transition ${
               isValid
                 ? "bg-blue-500/90 text-white hover:bg-blue-500"
-                : "bg-white/[0.06] text-gray-400 cursor-not-allowed"
+                : "bg-black/[0.04] text-gray-400 cursor-not-allowed dark:bg-white/[0.06] dark:text-gray-400"
             }`}
           >
             Save comment

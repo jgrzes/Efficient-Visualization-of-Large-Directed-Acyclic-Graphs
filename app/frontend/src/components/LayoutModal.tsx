@@ -3,211 +3,251 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Orbit, LayoutTemplate, Info } from "lucide-react";
 
 interface LayoutModalProps {
-    open: boolean;
-    onCancel: () => void;
-    onConfirm: (layoutType: "cpp" | "radial") => void;
+  open: boolean;
+  onCancel: () => void;
+  onConfirm: (layoutType: "cpp" | "radial") => void;
 }
 
-const LayoutModal: React.FC<LayoutModalProps> = ({
-    open,
-    onCancel,
-    onConfirm,
-}) => {
-    const [layoutType, setLayoutType] = useState<"cpp" | "radial">("cpp");
+const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) => {
+  const [layoutType, setLayoutType] = useState<"cpp" | "radial">("cpp");
 
-    useEffect(() => {
-        if (open) {
-            setLayoutType("cpp");
-        }
-    }, [open]);
+  useEffect(() => {
+    if (open) setLayoutType("cpp");
+  }, [open]);
 
-    if (!open) return null;
+  if (!open) return null;
 
-    const handleConfirm = () => {
-        onConfirm(layoutType);
-    };
+  const handleConfirm = () => {
+    onConfirm(layoutType);
+  };
 
-    return (
-        <AnimatePresence>
-            <motion.div
-                className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="
+          fixed inset-0 z-[1000] flex items-center justify-center backdrop-blur-sm
+          bg-black/30 dark:bg-black/70
+        "
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 220, damping: 20 }}
+          className="
+            relative w-[min(96vw,640px)]
+            max-h-[80vh]
+            rounded-2xl border
+            shadow-2xl
+            p-5
+            flex flex-col
+
+            border-black/10
+            bg-white/95
+            text-gray-900
+            shadow-black/10
+
+            dark:border-white/10
+            dark:bg-gradient-to-b dark:from-zinc-900/95 dark:to-zinc-950/95
+            dark:text-gray-100
+            dark:shadow-black/80
+          "
+        >
+          {/* Close */}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="
+              absolute right-3 top-3 z-20
+              inline-flex h-8 w-8 items-center justify-center
+              rounded-full transition
+
+              bg-black/5 text-gray-600
+              hover:bg-black/10 hover:text-gray-900
+
+              dark:bg-white/5 dark:text-gray-400
+              dark:hover:bg-white/10 dark:hover:text-white
+            "
+            aria-label="Close"
+            title="Close"
+          >
+            <X size={18} />
+          </button>
+
+          {/* Header */}
+          <div className="mb-4 pr-10">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+              Choose layout type
+            </h2>
+            <p className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1.5">
+              <Info size={12} className="mt-[1px] text-gray-500 dark:text-gray-500" />
+              Select how the graph should be arranged on the canvas. You can re-load the same
+              file with a different layout later.
+            </p>
+          </div>
+
+          {/* Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 text-xs">
+            {/* C++ layout card */}
+            <button
+              type="button"
+              onClick={() => setLayoutType("cpp")}
+              className={`
+                group relative w-full text-left rounded-xl border px-3.5 py-3
+                flex flex-col gap-2
+                transition
+                ${
+                  layoutType === "cpp"
+                    ? `
+                      border-blue-600/50 bg-blue-600/10
+                      shadow-[0_0_0_1px_rgba(37,99,235,0.20)]
+                      dark:border-blue-500/70 dark:bg-blue-600/15 dark:shadow-[0_0_0_1px_rgba(59,130,246,0.4)]
+                    `
+                    : `
+                      border-black/10 bg-black/[0.02] hover:border-blue-600/30 hover:bg-blue-600/5
+                      dark:border-white/10 dark:bg-black/20 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/5
+                    `
+                }
+              `}
             >
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 220, damping: 20 }}
+              <div className="flex items-center justify-between gap-2">
+                <div className="inline-flex items-center gap-2">
+                  <div
                     className="
-                        relative w-[min(96vw,640px)]
-                        max-h-[80vh]
-                        rounded-2xl border border-white/10
-                        bg-gradient-to-b from-zinc-900/95 to-zinc-950/95
-                        shadow-2xl shadow-black/80
-                        text-gray-100
-                        p-5
-                        flex flex-col
+                      inline-flex h-8 w-8 items-center justify-center rounded-full
+                      bg-blue-600/10 text-blue-700
+                      dark:bg-blue-600/20 dark:text-blue-300
                     "
+                  >
+                    <LayoutTemplate size={18} />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold text-gray-900 dark:text-white">
+                      C++ layout
+                    </div>
+                    <div className="text-[10px] text-gray-600 dark:text-gray-400">
+                      Hierarchical, optimized layout
+                    </div>
+                  </div>
+                </div>
+
+                <span
+                  className={`
+                    text-[10px] px-2 py-0.5 rounded-full border
+                    ${
+                      layoutType === "cpp"
+                        ? `
+                          border-blue-600/35 bg-blue-600/10 text-blue-800
+                          dark:border-blue-400/80 dark:bg-blue-500/20 dark:text-blue-100
+                        `
+                        : `
+                          border-black/10 text-gray-700 bg-black/[0.02]
+                          dark:border-white/15 dark:text-gray-300 dark:bg-white/5
+                        `
+                    }
+                  `}
                 >
-                    {/* Close */}
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        className="
-                            absolute right-3 top-3 z-20
-                            inline-flex h-8 w-8 items-center justify-center
-                            rounded-full bg-white/5 text-gray-400
-                            hover:bg-white/10 hover:text-white transition
-                        "
-                    >
-                        <X size={18} />
-                    </button>
+                  Recommended
+                </span>
+              </div>
 
-                    {/* Header */}
-                    <div className="mb-4 pr-10">
-                        <h2 className="text-sm font-semibold text-white mb-1">
-                            Choose layout type
-                        </h2>
-                        <p className="text-xs text-gray-400 flex items-start gap-1.5">
-                            <Info size={12} className="mt-[1px] text-gray-500" />
-                            Select how the graph should be arranged on the canvas.
-                            You can re-load the same file with a different layout later.
-                        </p>
+              <ul className="mt-1.5 space-y-1 text-[10px] text-gray-700 dark:text-gray-300">
+                <li>• Uses the C++ backend layout algorithm.</li>
+                <li>• Emphasizes DAG hierarchy and reduces edge crossings.</li>
+                <li>• Best for exploring large GO DAGs and complex structures.</li>
+              </ul>
+            </button>
+
+            {/* Radial layout card */}
+            <button
+              type="button"
+              onClick={() => setLayoutType("radial")}
+              className={`
+                group relative w-full text-left rounded-xl border px-3.5 py-3
+                flex flex-col gap-2
+                transition
+                ${
+                  layoutType === "radial"
+                    ? `
+                      border-purple-600/45 bg-purple-600/10
+                      shadow-[0_0_0_1px_rgba(147,51,234,0.18)]
+                      dark:border-purple-500/70 dark:bg-purple-600/15 dark:shadow-[0_0_0_1px_rgba(168,85,247,0.4)]
+                    `
+                    : `
+                      border-black/10 bg-black/[0.02] hover:border-purple-600/30 hover:bg-purple-600/5
+                      dark:border-white/10 dark:bg-black/20 dark:hover:border-purple-500/50 dark:hover:bg-purple-500/5
+                    `
+                }
+              `}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="inline-flex items-center gap-2">
+                  <div
+                    className="
+                      inline-flex h-8 w-8 items-center justify-center rounded-full
+                      bg-purple-600/10 text-purple-700
+                      dark:bg-purple-600/20 dark:text-purple-300
+                    "
+                  >
+                    <Orbit size={18} />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold text-gray-900 dark:text-white">
+                      Radial layout
                     </div>
-
-                    {/* Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 text-xs">
-                        {/* C++ layout card */}
-                        <button
-                            type="button"
-                            onClick={() => setLayoutType("cpp")}
-                            className={`
-                                group relative w-full text-left rounded-xl border px-3.5 py-3
-                                flex flex-col gap-2
-                                transition
-                                ${layoutType === "cpp"
-                                    ? "border-blue-500/70 bg-blue-600/15 shadow-[0_0_0_1px_rgba(59,130,246,0.4)]"
-                                    : "border-white/10 bg-black/20 hover:border-blue-500/50 hover:bg-blue-500/5"
-                                }
-                            `}
-                        >
-                            <div className="flex items-center justify-between gap-2">
-                                <div className="inline-flex items-center gap-2">
-                                    <div
-                                        className="
-                                            inline-flex h-8 w-8 items-center justify-center
-                                            rounded-full bg-blue-600/20 text-blue-300
-                                        "
-                                    >
-                                        <LayoutTemplate size={18} />
-                                    </div>
-                                    <div>
-                                        <div className="text-[11px] font-semibold text-white">
-                                            C++ layout
-                                        </div>
-                                        <div className="text-[10px] text-gray-400">
-                                            Hierarchical, optimized layout
-                                        </div>
-                                    </div>
-                                </div>
-                                <span
-                                    className={`
-                                        text-[10px] px-2 py-0.5 rounded-full border
-                                        ${layoutType === "cpp"
-                                            ? "border-blue-400/80 bg-blue-500/20 text-blue-100"
-                                            : "border-white/15 text-gray-300 bg-white/5"
-                                        }
-                                    `}
-                                >
-                                    Recommended
-                                </span>
-                            </div>
-                            <ul className="mt-1.5 space-y-1 text-[10px] text-gray-300">
-                                <li>• Uses the C++ backend layout algorithm.</li>
-                                <li>• Emphasizes DAG hierarchy and reduces edge crossings.</li>
-                                <li>• Best for exploring large GO DAGs and complex structures.</li>
-                            </ul>
-                        </button>
-
-                        {/* Radial layout card */}
-                        <button
-                            type="button"
-                            onClick={() => setLayoutType("radial")}
-                            className={`
-                                group relative w-full text-left rounded-xl border px-3.5 py-3
-                                flex flex-col gap-2
-                                transition
-                                ${layoutType === "radial"
-                                    ? "border-purple-500/70 bg-purple-600/15 shadow-[0_0_0_1px_rgba(168,85,247,0.4)]"
-                                    : "border-white/10 bg-black/20 hover:border-purple-500/50 hover:bg-purple-500/5"
-                                }
-                            `}
-                        >
-                            <div className="flex items-center justify-between gap-2">
-                                <div className="inline-flex items-center gap-2">
-                                    <div
-                                        className="
-                                            inline-flex h-8 w-8 items-center justify-center
-                                            rounded-full bg-purple-600/20 text-purple-300
-                                        "
-                                    >
-                                        <Orbit size={18} />
-                                    </div>
-                                    <div>
-                                        <div className="text-[11px] font-semibold text-white">
-                                            Radial layout
-                                        </div>
-                                        <div className="text-[10px] text-gray-400">
-                                            Root in the center, levels as rings
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <ul className="mt-1.5 space-y-1 text-[10px] text-gray-300">
-                                <li>• Places the root node in the middle.</li>
-                                <li>• Children are arranged on concentric circles.</li>
-                                <li>• Good for smaller graphs or quick “overview from root”.</li>
-                            </ul>
-                        </button>
+                    <div className="text-[10px] text-gray-600 dark:text-gray-400">
+                      Root in the center, levels as rings
                     </div>
+                  </div>
+                </div>
+              </div>
 
-                    {/* Footer / actions */}
-                    <div className="mt-2 flex justify-end gap-2 pt-2 border-t border-white/10">
-                        <button
-                            type="button"
-                            onClick={onCancel}
-                            className="
-                                inline-flex items-center gap-1.5
-                                rounded-lg px-3 py-1.5
-                                text-xs font-medium
-                                bg-white/5 text-gray-300
-                                hover:bg-white/10
-                                transition
-                            "
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleConfirm}
-                            className="
-                                inline-flex items-center gap-1.5
-                                rounded-lg px-3 py-1.5
-                                text-xs font-medium
-                                bg-blue-600/90 text-white
-                                hover:bg-blue-500
-                                transition
-                            "
-                        >
-                            Confirm layout
-                        </button>
-                    </div>
-                </motion.div>
-            </motion.div>
-        </AnimatePresence>
-    );
+              <ul className="mt-1.5 space-y-1 text-[10px] text-gray-700 dark:text-gray-300">
+                <li>• Places the root node in the middle.</li>
+                <li>• Children are arranged on concentric circles.</li>
+                <li>• Good for smaller graphs or quick “overview from root”.</li>
+              </ul>
+            </button>
+          </div>
+
+          {/* Footer / actions */}
+          <div className="mt-2 flex justify-end gap-2 pt-2 border-t border-black/10 dark:border-white/10">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="
+                inline-flex items-center gap-1.5
+                rounded-lg px-3 py-1.5
+                text-xs font-medium transition
+                border border-black/10 bg-black/[0.04] text-gray-700 hover:bg-black/[0.08]
+
+                dark:border-transparent dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10
+              "
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="
+                inline-flex items-center gap-1.5
+                rounded-lg px-3 py-1.5
+                text-xs font-medium
+                bg-blue-600/90 text-white
+                hover:bg-blue-500
+                transition
+              "
+            >
+              Confirm layout
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
 };
 
 export default LayoutModal;

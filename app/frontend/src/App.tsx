@@ -22,7 +22,7 @@ import LayoutModal from './components/LayoutModal';
 import { useFavorites } from './hooks/useFavorites';
 import { useComments } from './hooks/useComments';
 import type { CommentItem } from './hooks/useComments';
-import { DEFAULT_GRAPH_COLORS, DEFAULT_SPACE_SIZE, DEFAULT_POINT_SIZE } from "./graphConfig";
+import { DEFAULT_GRAPH_COLORS, DEFAULT_POINT_SIZE } from "./graphConfig";
 
 import { useGraph } from './hooks/useGraph';
 import { useStartKeepAlive } from './hooks/useKeepalive';
@@ -34,18 +34,7 @@ export const AppContext = createContext<{
   setCurrentGraphUUID: React.Dispatch<React.SetStateAction<string | null>>
 } | null>(null);
 
-// domyślna paleta kolorów wierzchołków
-// const DEFAULT_GRAPH_COLORS: GraphColors = {
-//   default: "#a1a1aa",   // neutral
-//   parent: "#22c55e",    // green
-//   child: "#38bdf8",     // blue
-//   selected: "#f97316",  // orange
-//   hover: "#facc15",     // yellow
-//   search: "#e879f9"    // pink
-// };
-
 type GraphConfig = {
-  spaceSize: number;
   pointSize: number;
   colors: GraphColors;
 };
@@ -70,16 +59,12 @@ const MainAppContext: React.FC = () => {
   );
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
-  // const [graphConfig, setGraphConfig] = useState<{
-  //   spaceSize: number;
-  //   pointSize: number;
-  // } | null>({spaceSize: 256, pointSize: 0.8});
 
-  const [graphConfig, setGraphConfig] = useState<GraphConfig | null>({
-    spaceSize: DEFAULT_SPACE_SIZE,
+  const [graphConfig, setGraphConfig] = useState<GraphConfig>({
     pointSize: DEFAULT_POINT_SIZE,
     colors: DEFAULT_GRAPH_COLORS,
   });
+
 
   const [nodeNames, setNodeNames] = useState<string[] | null>(null);
   const favorites = useFavorites();
@@ -216,7 +201,6 @@ const MainAppContext: React.FC = () => {
     names?: string[];
     meta?: Record<string, unknown>;
     config?: {
-      space_size?: number;
       point_size?: number;
       favorites?: number[];
       comments?: CommentItem[];
@@ -249,13 +233,13 @@ const MainAppContext: React.FC = () => {
       setNodeNames(null);
     }
 
-    if (data.config) {
-      setGraphConfig({
-        spaceSize: data.config.space_size || 256,
-        pointSize: data.config.point_size || 1,
-        colors: DEFAULT_GRAPH_COLORS,
-      });
+    setGraphConfig((prev) => ({
+      pointSize: data.config?.point_size ?? prev.pointSize,
+      colors: prev.colors,
+    }));
 
+
+    if (data.config) {
       if (Array.isArray(data.config.favorites)) {
         favorites.setFavoritesFromGraph(data.config.favorites);
       } else {
@@ -267,7 +251,6 @@ const MainAppContext: React.FC = () => {
         comments.setCommentsFromGraph([]);
       }
     } else {
-      setGraphConfig(null);
       favorites.clearFavorites();
       comments.setCommentsFromGraph([]);
     }
@@ -298,7 +281,7 @@ const MainAppContext: React.FC = () => {
     pointPositions,
     links,
     setSelectedNode,
-    graphConfig || undefined,
+    graphConfig,
     nodeNames || undefined
   );
 
@@ -791,17 +774,9 @@ const MainAppContext: React.FC = () => {
       names?: string[];
       meta?: Record<string, unknown>;
       config?: {
-        space_size?: number;
         point_size?: number;
         favorites?: number[];
         comments?: CommentItem[];
-        // opcjonalnie backend może tu dorzucać kolory
-        default_color?: string;
-        parent_color?: string;
-        child_color?: string;
-        selected_color?: string;
-        hover_color?: string;
-        search_color?: string;
       };
     }>;
   }
@@ -818,7 +793,6 @@ const MainAppContext: React.FC = () => {
       links,
       graph_hash: currentGraphHash,
       point_size: graphConfig?.pointSize ?? null,
-      space_size: graphConfig?.spaceSize ?? null,
       favorites: favorites.favorites,
       comments: comments.comments,
     };
@@ -1077,11 +1051,10 @@ const MainAppContext: React.FC = () => {
         <SettingsModal
           open={settingsModalOpen}
           onClose={() => setSettingsModalOpen(false)}
-          spaceSize={graphConfig?.spaceSize || 8192}
           pointSize={graphConfig?.pointSize || 1}
           colors={graphConfig?.colors || DEFAULT_GRAPH_COLORS}
-          onApply={(spaceSize, pointSize, colors) => {
-            setGraphConfig({ spaceSize, pointSize, colors });
+          onApply={( pointSize, colors) => {
+            setGraphConfig({ pointSize, colors });
             setSettingsModalOpen(false);
           }}
         />
