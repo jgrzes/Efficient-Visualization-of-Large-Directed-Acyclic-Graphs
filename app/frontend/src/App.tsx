@@ -74,7 +74,7 @@ const MainAppContext: React.FC = () => {
   const currentGraphUUID = appContext!.currentGraphUUID;
   const setCurrentGraphUUID = appContext!.setCurrentGraphUUID;
 
-  const [currentGraphHash, setCurrentGraphHash] = useState<string | null>("");
+  const [currentGraphHash, setCurrentGraphHash] = useState<string | null>(null);
 
   const [syncInitialized, setSyncInitialized] = React.useState(false);
 
@@ -262,7 +262,7 @@ const MainAppContext: React.FC = () => {
       ? data.config.comments
       : [];
 
-    setSyncInitialized(true);
+    setSyncInitialized(Boolean(data.graph_hash));
 
     if (options?.urlHash) {
       setGraphHashInUrl(options.urlHash);
@@ -273,6 +273,23 @@ const MainAppContext: React.FC = () => {
     if (options?.fit) {
       setTimeout(() => fitView(), 100);
     }
+  }
+
+  async function syncAllCommentsAndFavorites(hash: string) {
+    const payload = {
+      favorites: Array.isArray(favorites.favorites) ? favorites.favorites : [],
+      comments: Array.isArray(comments.comments) ? comments.comments : [],
+    };
+
+    await fetch(`${API_BASE}/update_graph_config/${hash}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    prevFavsRef.current = payload.favorites;
+    prevCommentsRef.current = payload.comments;
+    setSyncInitialized(true);
   }
 
   // Graph controls
@@ -305,8 +322,16 @@ const MainAppContext: React.FC = () => {
     const items = Array.isArray(comments.comments) ? comments.comments : [];
 
     if (!syncInitialized) {
-      prevFavsRef.current = favs;
-      prevCommentsRef.current = items;
+      console.log("Performing initial full sync of comments and favorites");
+      void (async () => {
+        try {
+          await syncAllCommentsAndFavorites(currentGraphHash);
+          setSyncInitialized(true);
+        } catch (e) {
+          console.error("Initial full sync failed:", e);
+        }
+      })();
+
       return;
     }
 

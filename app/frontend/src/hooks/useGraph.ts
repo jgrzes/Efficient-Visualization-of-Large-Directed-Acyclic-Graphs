@@ -367,7 +367,7 @@ export function useGraph(
       ]);
       highlightedIndicesRef.current = Array.from(indicesSet);
 
-      // ✅ BONUS: if hoverTooltip is currently on a node that became pinned, hide it
+      // If hoverTooltip is currently on a node that became pinned, hide it
       const hoverIdx = hoverIndexRef.current;
       if (hoverIdx != null && highlightedIndicesRef.current.includes(hoverIdx)) {
         hoverIndexRef.current = null;
@@ -522,7 +522,7 @@ export function useGraph(
           return;
         }
 
-        // ✅ KEY FIX: if this node already has a pinned tooltip, don't show hover tooltip
+        // If this node already has a pinned tooltip, don't show hover tooltip
         if (hasPinnedTooltip(index)) {
           hoverIndexRef.current = null;
           setHoverTooltip(null);
