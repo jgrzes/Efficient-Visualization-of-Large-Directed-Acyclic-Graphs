@@ -11,7 +11,7 @@ import {
 import { Graph, GraphConfigInterface } from "@cosmograph/cosmos";
 import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
 import { AppContext } from "../App";
-import { DEFAULT_GRAPH_COLORS } from "../graphConfig"; // <- dostosuj ścieżkę, jeśli masz inaczej
+import { DEFAULT_GRAPH_COLORS } from "../graphConfig";
 
 const API_BASE = "http://localhost:30301";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -58,7 +58,6 @@ const hexToRgba01 = (hex: string, alpha = 0.9): RGBA => {
     return [r / 255, g / 255, b / 255, alpha];
   }
 
-  // fallback – gdyby hex był zły
   return [1, 1, 1, alpha];
 };
 
@@ -123,6 +122,7 @@ export function useGraph(
   const selectedIndexRef = useRef<number | null>(null);
 
   // Currently highlighted indices (for selection tooltips)
+  // (selected + parents + children)
   const highlightedIndicesRef = useRef<number[]>([]);
 
   // Cache index -> name
@@ -152,7 +152,15 @@ export function useGraph(
   const currentGraphUUIDRef = useRef<string | null>(currentGraphUUID ?? null);
 
   // IMPORTANT: colorsRef MUST always be defined → no fallbacks later
-  const colorsRef = useRef<GraphColors>(initialConfig?.colors ?? DEFAULT_GRAPH_COLORS);
+  const colorsRef = useRef<GraphColors>(
+    initialConfig?.colors ?? DEFAULT_GRAPH_COLORS
+  );
+
+  // Helper: does this node already have a pinned tooltip?
+  // (i.e. it's in selected/parents/children)
+  const hasPinnedTooltip = useCallback((index: number) => {
+    return highlightedIndicesRef.current.includes(index);
+  }, []);
 
   // ───────────────────────────────────────────────────────────────────────────
   // Effects: sync refs
@@ -286,7 +294,7 @@ export function useGraph(
       const flatLinks = linksRef.current;
       const linkCount = flatLinks.length / 2;
 
-      const cfgColors = colorsRef.current; // ALWAYS defined
+      const cfgColors = colorsRef.current;
 
       const DEFAULT_POINT: RGBA = hexToRgba01(cfgColors.default, 0.8);
       const SELECTED_POINT: RGBA = hexToRgba01(cfgColors.selected, 0.9);
@@ -306,7 +314,9 @@ export function useGraph(
 
       const hoveredCardIndex = hoveredCardIndexRef.current;
       const hoveredCardSet =
-        hoveredCardIndex != null ? new Set<number>([hoveredCardIndex]) : new Set<number>();
+        hoveredCardIndex != null
+          ? new Set<number>([hoveredCardIndex])
+          : new Set<number>();
 
       // Links
       for (let i = 0; i < flatLinks.length; i += 2) {
@@ -349,9 +359,20 @@ export function useGraph(
       g.setLinkColors(linkColors);
       g.setLinkWidths(linkWidths);
 
-      // Always update which nodes have selection tooltips
-      const indicesSet = new Set<number>([...selectedIndices, ...parents, ...children]);
+      // Update which nodes have "pinned" selection tooltips
+      const indicesSet = new Set<number>([
+        ...selectedIndices,
+        ...parents,
+        ...children,
+      ]);
       highlightedIndicesRef.current = Array.from(indicesSet);
+
+      // ✅ BONUS: if hoverTooltip is currently on a node that became pinned, hide it
+      const hoverIdx = hoverIndexRef.current;
+      if (hoverIdx != null && highlightedIndicesRef.current.includes(hoverIdx)) {
+        hoverIndexRef.current = null;
+        setHoverTooltip(null);
+      }
 
       const zoomToSelected = opts?.zoomToSelected ?? false;
 
@@ -359,7 +380,6 @@ export function useGraph(
         const zoomDuration = 700;
         const zoomScale = 30;
 
-        // Clear tooltips while zoom animates
         setTooltips([]);
 
         const token = ++highlightTokenRef.current;
@@ -376,7 +396,7 @@ export function useGraph(
         recomputeTooltipsPositions();
       }
     },
-    [recomputeTooltipsPositions, initialConfig?.colors]
+    [recomputeTooltipsPositions]
   );
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -452,7 +472,10 @@ export function useGraph(
 
       const selectedIndex = selectedIndexRef.current;
       const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
-      const { parents, children } = computeParentsChildren(selectedIndices, linksRef.current);
+      const { parents, children } = computeParentsChildren(
+        selectedIndices,
+        linksRef.current
+      );
 
       applyColors(selectedIndices, parents, children, { zoomToSelected: false });
     },
@@ -467,7 +490,7 @@ export function useGraph(
 
     const config: GraphConfigInterface = {
       spaceSize: 8192,
-      backgroundColor: colorsRef.current.background, // <- from colorsRef
+      backgroundColor: colorsRef.current.background,
       pointSize: initialConfig?.pointSize ?? 1,
       pointGreyoutOpacity: 0.1,
       linkWidth: 0.8,
@@ -481,7 +504,7 @@ export function useGraph(
       simulationGravity: 0,
       simulationDecay: 0,
 
-      // CLICK ON NODE: select but DO NOT zoom (tooltips still appear)
+      // CLICK ON NODE: select but DO NOT zoom
       onClick: (index) => {
         if (index === null || index === undefined) selectNodeByIndex(undefined);
         else selectNodeByIndex(index, { zoom: false });
@@ -494,6 +517,13 @@ export function useGraph(
         if (!g || !el) return;
 
         if (index == null || !pointPos) {
+          hoverIndexRef.current = null;
+          setHoverTooltip(null);
+          return;
+        }
+
+        // ✅ KEY FIX: if this node already has a pinned tooltip, don't show hover tooltip
+        if (hasPinnedTooltip(index)) {
           hoverIndexRef.current = null;
           setHoverTooltip(null);
           return;
@@ -520,10 +550,17 @@ export function useGraph(
 
         recomputeTooltipsPositions();
 
-        const index = hoverIndexRef.current ?? selectedIndexRef.current;
-        if (index == null) return;
+        const hoverIdx = hoverIndexRef.current;
 
-        updateHoverTooltipPosition(index);
+        if (hoverIdx == null) return;
+
+        if (hasPinnedTooltip(hoverIdx)) {
+          hoverIndexRef.current = null;
+          setHoverTooltip(null);
+          return;
+        }
+
+        updateHoverTooltipPosition(hoverIdx);
       },
 
       onDragEnd: () => {
@@ -571,7 +608,10 @@ export function useGraph(
 
     const selectedIndex = selectedIndexRef.current;
     const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
-    const { parents, children } = computeParentsChildren(selectedIndices, linksRef.current);
+    const { parents, children } = computeParentsChildren(
+      selectedIndices,
+      linksRef.current
+    );
     applyColors(selectedIndices, parents, children, { zoomToSelected: false });
   }, [pointPositions, links, applyColors]);
 
@@ -587,7 +627,10 @@ export function useGraph(
 
       const selectedIndex = selectedIndexRef.current;
       const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
-      const { parents, children } = computeParentsChildren(selectedIndices, linksRef.current);
+      const { parents, children } = computeParentsChildren(
+        selectedIndices,
+        linksRef.current
+      );
 
       applyColors(selectedIndices, parents, children, { zoomToSelected: false });
     },
