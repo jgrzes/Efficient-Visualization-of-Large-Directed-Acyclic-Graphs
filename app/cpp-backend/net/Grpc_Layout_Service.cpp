@@ -2,13 +2,19 @@
 
 #include <thread>
 #include <boost/filesystem.hpp>
+#include <queue>
 
 #include "../graph-preprocessing/assign_levels.h"
 #include "../utils/input_generation_for_qap.h"
+#include "../qap-solver/Codes/QAP.h"
+#include "../data-structures/Pretend_Matrix.hpp"
 
 namespace net {
 
 auto assignLevelsInGraph = graph_preprocessing::assignLevelsInGraph;
+
+template <typename T>
+using PretendMatrix = data_structures::PretendMatrix<T>; 
 
 grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context, const EdgeList* edgeList, GraphLayout* response) {
     constexpr uint8_t TargetGraphUUIDLength = 7;   
@@ -77,6 +83,7 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                         "Preparing to run QAP for graph with id = " + graphUUIDInStrForm + "..."
                     );
                     callQAPPythonScript(colouredGraph, colourHierarchyRoot);
+                    // callQAPCppScript(colouredGraph, colourHierarchyRoot);
                     logging::log_info(
                         "Ran QAP for graph with id = " + graphUUIDInStrForm + "."
                     );
@@ -144,6 +151,103 @@ void GrpcLayoutService::fillFileWithColourHierarchy(
 }
 
 
+void GrpcLayoutService::callQAPCppScript(
+    const ColouredGraph& graph, 
+    GraphColourer::ColourHierarchyNode& colourHierarchyRoot
+) {
+    std::cout << "X1\n";
+    auto [F, FPrim] = utils::createFMatricesForColoursQAP(
+        colourHierarchyRoot, graph
+    );
+    std::cout << "X2\n";
+
+    uint32_t n = F.getRowCount();
+    uint32_t numberOfColourNodes = 0;
+    algorithms::countTheNumberOfColoursInColourHierarchyTree(
+        colourHierarchyRoot, numberOfColourNodes
+    );
+    std::cout << "X3\n";
+
+    std::vector<uint32_t> newColourRemapping(numberOfColourNodes);
+    for (uint32_t i=0; i<numberOfColourNodes; ++i) {
+        newColourRemapping[i] = i;    
+    }
+
+    std::queue<GraphColourer::ColourHierarchyNode*> Q;
+    Q.emplace(&colourHierarchyRoot);
+    uint32_t counter = 0;
+
+    std::cout << "X4\n";
+
+    while (!Q.empty()) {
+        GraphColourer::ColourHierarchyNode* colourNodePtr = Q.front();
+        Q.pop();
+        uint32_t m = colourNodePtr->childrenPtrs.size();
+
+        std::cout << "Extracted from queue: " << colourNodePtr->colour << "\n";
+        if (colourNodePtr->parent == nullptr) {
+            std::vector<std::vector<int>> FForSubquestion(
+                m, std::vector<int>(m, 0)
+            );
+
+            for (uint32_t i=0; i<m; ++i) {
+                uint32_t colourI = colourNodePtr->childrenPtrs[i]->colour;
+                for (uint32_t j=0; j<m; ++j) {
+                    uint32_t colourJ = colourNodePtr->childrenPtrs[j]->colour;
+                    FForSubquestion[i][j] = F.dataAtOr(i, j, 0);
+                }
+            }
+            std::cout << "A ";
+
+            std::vector<std::vector<int>> DForSubquestion(
+                m, std::vector<int>(m, 0)
+            );
+
+            for (int64_t i=0; i<m; ++i) {
+                for (int64_t j=0; j<m; ++j) {
+                    DForSubquestion[i][j] = std::abs(i-j);
+                }
+            }
+
+            std::cout << "B ";
+
+            std::vector<int> initialSolution;
+            constexpr uint32_t InitSolutionIter = 100;
+            constexpr uint32_t TabuSearchMaxIter = 100;
+            constexpr uint32_t TabuSearchMinTabuTenure = 7;
+            constexpr uint32_t TabuSearchMaxTabuTenure = 10;
+            QAPSolver qapSolver(&FForSubquestion, &DForSubquestion, &m);
+            qapSolver.genInitSol("random", &initialSolution, InitSolutionIter);
+            qapSolver.TS(
+                initialSolution, TabuSearchMaxIter, 
+                TabuSearchMinTabuTenure, TabuSearchMaxTabuTenure
+            );
+
+            std::cout << "C ";
+
+            std::vector<int> bestSolutionPermutation = qapSolver.getPerm();
+            for (uint32_t i=0; i<m; ++i) {
+                newColourRemapping[colourNodePtr->childrenPtrs[i]->colour] = ++counter;
+            }
+
+            std::cout << "D\n";
+        }
+
+        for (uint32_t i=0; i<m; ++i) {
+            Q.emplace(colourNodePtr->childrenPtrs[i].get());
+        }
+    }
+
+    std::vector<GraphColourer::ColourHierarchyNode*> colourHierarchyNodesPtrs(numberOfColourNodes, nullptr);
+    fillVectorOfColourHierarchyNodesPtr(colourHierarchyRoot, colourHierarchyNodesPtrs);
+    for (uint32_t i=0; i<numberOfColourNodes; ++i) {
+        colourHierarchyNodesPtrs[i]->colour = newColourRemapping[i];
+    }
+
+    sortChildrenInColourHierarchyNodeWithRecursion(colourHierarchyRoot);
+}
+
+
 void GrpcLayoutService::callQAPPythonScript(
     const ColouredGraph& graph, 
     GraphColourer::ColourHierarchyNode& colourHierarchyRoot
@@ -187,7 +291,8 @@ void GrpcLayoutService::callQAPScriptAndModifyColourHierarchy(
     const std::string& colourHierarchyAndFMatrixPathFile
 ) const {
 
-    constexpr std::string_view qapPyScriptPath = "/app/py_qap_solving_scripts/qap_solver.py";
+    // constexpr std::string_view qapPyScriptPath = "/app/py_qap_solving_scripts/qap_solver.py";
+    constexpr std::string_view qapPyScriptPath = "/app/py_qap_solving_scripts/biq_bin_qap_solver.py";
     std::string command = "python3 " + std::string(qapPyScriptPath) + " " + colourHierarchyAndFMatrixPathFile; 
 
     std::unique_ptr<FILE, decltype(&pclose)> qapPipe = std::unique_ptr<FILE, decltype(&pclose)>(

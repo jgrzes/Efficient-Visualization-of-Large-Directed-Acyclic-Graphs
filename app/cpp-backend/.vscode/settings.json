@@ -78,6 +78,12 @@
         "typeindex": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/c++", 
-    "python.analysis.extraPaths": ["/app/py_qap_solving_scripts"], 
-    "python.autoComplete.extraPaths": ["/app/py_qap_solving_scripts"]
+    "python.analysis.extraPaths": [
+        "/app/py_qap_solving_scripts", 
+        "/app/additional_scripts"
+    ], 
+    "python.autoComplete.extraPaths": [
+        "/app/py_qap_solving_scripts", 
+        "/app/additional_scripts"
+    ]
 }

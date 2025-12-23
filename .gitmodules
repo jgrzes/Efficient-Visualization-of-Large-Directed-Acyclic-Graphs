@@ -4,3 +4,6 @@
 [submodule "app/cpp-backend/submodules/biq-bin"]
 	path = app/cpp-backend/submodules/biq-bin
 	url = https://gitlab.aau.at/BiqBin/biqbin
+[submodule "app/cpp-backend/submodules/biq_bin_forked"]
+	path = app/cpp-backend/submodules/biq_bin_forked
+	url = https://github.com/janmast1o/biq_bin_forked

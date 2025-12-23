@@ -187,11 +187,28 @@ def flask_make_graph_structure():
                 logger.warning(f"GRPC server failed to conclude layout computation: {e}")
                 canvas_positions = make_graph_structure(G_gt)
 
-        space_size = float('-inf')
+        space_size = 0 
+        ceoff_x_denominator = float("-inf")
+        coeff_y_denominator = float("-inf")
         for x, y in canvas_positions:
-            space_size = max(space_size, abs(x), abs(y))
+            space_size = max(abs(x), abs(y))   
+            coeff_y_denominator = max(
+                coeff_y_denominator, abs(y)
+            )
+            ceoff_x_denominator = max(
+                ceoff_x_denominator, abs(x)
+            )
 
-        logger.debug(f"Computed space size: {space_size}")
+        print("Space size: ", space_size)     
+        # coeff = 8192 / space_size # Hardcoded 8192
+
+        # for i in range(len(canvas_positions)):
+            # print(f"{i}: {canvas_positions[i]}")
+        coeff_x = 8192 / ceoff_x_denominator if ceoff_x_denominator > 8192 else 1
+        coeff_y = 8192 / coeff_y_denominator if coeff_y_denominator > 8192 else 1
+        x_positions = [p[0] * coeff_x for p in canvas_positions]
+        y_positions = [p[1] * coeff_y for p in canvas_positions]
+        canvas_positions = [(x*coeff_x, y*coeff_y) for x, y in canvas_positions]      
 
         transformed_canvas_positions, links = build_response_json_string_for_make_graph_structure_req(
             G_gt=G_gt, canvas_positions=canvas_positions

@@ -19,13 +19,17 @@ RUN apt install protobuf-compiler -y \
 RUN apt install protobuf-compiler-grpc -y \
     && apt install libgrpc-dev -y \
     && apt install libgrpc++-dev -y \
-    && apt install build-essential -y
+    && apt install build-essential -y \
+    && apt install libopenblas-dev -y
 
 RUN apt install dos2unix -y
 
 RUN apt install python3 -y \
     && apt install python3-pip -y \
-    && pip install numpy gurobipy scipy
+    && pip install numpy gurobipy scipy pytest
+
+RUN apt install octave -y \
+    && apt install mpirun
 
 WORKDIR /app
 

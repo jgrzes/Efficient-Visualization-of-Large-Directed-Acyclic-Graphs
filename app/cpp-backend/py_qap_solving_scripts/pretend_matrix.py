@@ -33,7 +33,8 @@ class PretendMatrix:
                 self.except_fields = kwargs["except_cells_dict"]
 
 
-    def __getitem__(self, i: int, j: int) -> Any:
+    def __getitem__(self, index_tuple: Tuple[int, int]) -> Any:
+        i, j = index_tuple
         if self.mode == PretendMatrixMode.DYNAMIC_CALCULATION:
             return self.dynamic_calculator(i, j)
         else:
@@ -43,7 +44,8 @@ class PretendMatrix:
             return self.default_value
 
 
-    def __setitem__(self, i: int, j: int, val: Any) -> None:
+    def __setitem__(self, index_tuple: Tuple[int, int], val: Any) -> None:
+        i, j = index_tuple
         if self.mode == PretendMatrixMode.DYNAMIC_CALCULATION: return 
         else:
             self.except_fields[(i, j)] = val                  

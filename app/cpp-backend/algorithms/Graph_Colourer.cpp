@@ -775,6 +775,17 @@ void GraphColourer::fillColourHierarchyNodesVector(
     }
 }
 
+
+void countTheNumberOfColoursInColourHierarchyTree(
+    const GraphColourer::ColourHierarchyNode& colourHierarchyNode, 
+    uint32_t& outputNumberOfNodes
+) {
+    ++outputNumberOfNodes;
+    for (const auto& childNodePtr : colourHierarchyNode.childrenPtrs) {
+        countTheNumberOfColoursInColourHierarchyTree(*childNodePtr, outputNumberOfNodes);
+    }
+}
+
 #undef _underlyingValueNotNullptr
 #undef _findEnabledVerticesFromErodingContainer
 #undef _findEnabledDEdgesFromErodingContainer
