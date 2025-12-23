@@ -1,5 +1,7 @@
 #include "algorithm_params_creation.hpp"
 
+#include <random>
+
 namespace algorithms {
 
 #define SIGNUM_EPS 1e-6
@@ -38,26 +40,48 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
         return {p.first * 0.75, 0};
     };
 
-    layoutAlgorithmParams.epsilonForColourRootCalculator = [boxWidthCoeff = 2.1](uint32_t maxWidth) -> double {
+    layoutAlgorithmParams.epsilonForColourRootCalculator = [boxWidthCoeff = 3.0](uint32_t maxWidth) -> double {
         return static_cast<double>(maxWidth) * boxWidthCoeff;
     };
 
-    layoutAlgorithmParams.maxVertexCountFromEpsilonCalculator = [inverseBoxWidthCoeff = 1.0 / 2.1](double epsilon) -> uint32_t {
+    layoutAlgorithmParams.maxVertexCountFromEpsilonCalculator = [inverseBoxWidthCoeff = 1.0 / 3.0](double epsilon) -> uint32_t {
         return static_cast<uint32_t>(epsilon * inverseBoxWidthCoeff);
+    };
+
+    layoutAlgorithmParams.maxNoiseEpsilonCalculator = [intervalWidthPercentage = 0.1](uint32_t n, double intervalWidth) -> double {
+        double eps0 = intervalWidth * intervalWidthPercentage;
+        return eps0 / std::log2(static_cast<double>(n+1));
+    };
+
+    layoutAlgorithmParams.randomDeltaNoiseCoeffCalculator = [low=0.2, high=0.4]() -> double {
+        static std::random_device rd;
+        static std::mt19937 rng(rd());
+        static std::uniform_real_distribution<double> dist(low, high);
+        return dist(rng);
+    };
+
+    layoutAlgorithmParams.numberOfBucketsCalculator = [targetNumOfElementsPerBucket = 12.0](uint32_t cumNumberOfElements) -> uint32_t {
+        return static_cast<uint32_t>(
+            std::ceil(static_cast<double>(cumNumberOfElements) / targetNumOfElementsPerBucket)
+        );
     };
 
     layoutAlgorithmParams.firstLevelChildPadding = 2.5;
     layoutAlgorithmParams.gAcceleration = 9.81;
     layoutAlgorithmParams.baseVerexWeight = 1.0;
-    layoutAlgorithmParams.addWeightFromChildrenCoeff = 0.04;
+    // layoutAlgorithmParams.addWeightFromChildrenCoeff = 0.04;
+    layoutAlgorithmParams.addWeightFromChildrenCoeff = 0;
     layoutAlgorithmParams.kInitialLayoutCoeff = 1.8;
-    layoutAlgorithmParams.nextLevelDownCoeff = 0.45;
+    layoutAlgorithmParams.nextLevelDownCoeffForPredicted = 0.45;
+    layoutAlgorithmParams.minDistanceBetweenLevelsCoeff = 0.75;
 
     layoutAlgorithmParams.sCoeff = 1.05; 
     layoutAlgorithmParams.defaultAlphaP = 0.5;
     layoutAlgorithmParams.defaultBetaP = 1.5;
     layoutAlgorithmParams.marginPadding = 0.1;
-    layoutAlgorithmParams.pullUpCoeff = 0.1;
+    // layoutAlgorithmParams.pullUpCoeff = 0.1;
+    layoutAlgorithmParams.pullUpCoeff = 0;
+
 
     layoutAlgorithmParams.springFCalculator = [
         springFEps = 1e-6

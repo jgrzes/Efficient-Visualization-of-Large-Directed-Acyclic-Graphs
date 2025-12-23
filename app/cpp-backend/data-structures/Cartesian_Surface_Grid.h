@@ -67,7 +67,7 @@ public:
     }
 
     void moveElementByVector(const T& t, const std::pair<double, double> mVec) {
-        moveElementToNewPosition(findCurrentPositionForElement(t) + mVec);
+        moveElementToNewPosition(t, findCurrentPositionForElement(t) + mVec);
     }
 
     void removeElement(const T& t) {

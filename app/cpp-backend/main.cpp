@@ -140,7 +140,9 @@ int main(int argc, char** argv) {
   GrpcLayoutService grpcLayoutService(
     createDefaultGraphColourerAlgParams(), 
     createDefaultLayoutDrawerAlgParams(), 
-    1, 2.0
+    // std::numeric_limits<uint32_t>::max(), 
+    1, 
+    2.0
   );
   grpc::ServerBuilder builder;
   builder.AddListeningPort(

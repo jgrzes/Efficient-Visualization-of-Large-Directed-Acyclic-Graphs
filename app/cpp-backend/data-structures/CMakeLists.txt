@@ -12,8 +12,10 @@ target_sources(
     Graph_Interface.cpp Graph_Interface.h
     # Other data structure classes
     Cartesian_Surface_Grid.cpp Cartesian_Surface_Grid.h
+    Bucketified_Line_Segment.cpp Bucketified_Line_Segment.hpp
     Sparse_Matrix.cpp Sparse_Matrix.h
     Sparse_Array.cpp Sparse_Array.hpp
+    One_Pair_Field_Array_Wrapper.cpp One_Pair_Field_Array_Wrapper.hpp
 )
 
 target_include_directories(

@@ -6,6 +6,7 @@ RUN apt update \
     && apt install libgtest-dev -y
     
 RUN apt install gdb -y \ 
+    && apt install gcc -y \
     && apt install g++ -y \
     && apt install libboost-all-dev -y
 
@@ -25,7 +26,7 @@ RUN apt install protobuf-compiler-grpc -y \
 RUN apt install dos2unix -y
 
 RUN apt install python3 -y \
-    && apt install python3-pip -y \
+    && apt install python3-pip --fix-missing -y \
     && pip install numpy gurobipy scipy pytest
 
 RUN apt install octave -y \
@@ -39,16 +40,6 @@ RUN chmod +x /app/compile_project.sh \
     && chmod +x /app/run_project.sh
 
 RUN find /app -type f -exec dos2unix {} +    
-
-# RUN ls /app/net | grep net-compiled || mkdir /app/net/net-compiled
-    
-# RUN mkdir -p /app/net/net-compiled
-
-# RUN protoc -I=. --cpp_out=/app/net/net-compiled/ /app/proto/cpp_to_py_backend.proto 
-
-# RUN chmod +x "$(which grpc_cpp_plugin)"
-
-# RUN protoc -I=. --grpc_out=/app/net/net-compiled/ --plugin=protoc-gen-grpc="$(which grpc_cpp_plugin)" /app/proto/cpp_to_py_backend.proto 
 
 EXPOSE 30311
 EXPOSE 30312

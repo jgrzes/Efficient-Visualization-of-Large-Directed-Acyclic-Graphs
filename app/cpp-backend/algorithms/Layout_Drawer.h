@@ -11,6 +11,8 @@
 #include "../data-structures/Coloured_Graph.h"
 #include "Graph_Colourer.h"
 #include "../data-structures/Sparse_Array.hpp"
+#include "../data-structures/Bucketified_Line_Segment.hpp"
+#include "../data-structures/One_Pair_Field_Array_Wrapper.hpp"
 #include "../graph-preprocessing/edge_and_vertex_processing_functions.h"
 #include "../data-structures/Cartesian_Surface_Grid.h"
 #include "../utils/arithmetic_ops_for_pair_overloads.h"
@@ -28,6 +30,10 @@ using ArrayOfArraysInterface = data_structures::ArrayOfArraysInterface<T>;
 using Vertex = data_structures::GraphInterface::Vertex;
 template <typename T, typename LC, typename I>
 using CartesianSurfaceGrid = data_structures::CartesianSurfaceGrid<T, LC, I>;
+template <typename T, typename LC, typename I>
+using BucketifiedLineSegment = data_structures::BucketifiedLineSegment<T, LC, I>;
+template <typename T, typename R, typename S, size_t PairIndex>
+using OnePairFieldArrayWrapper = data_structures::OnePairFieldArrayWrapper<T, R, S, PairIndex>; 
 
 // TODO: Adapt the class to work with recursive colours
 class LayoutDrawer {
@@ -44,18 +50,24 @@ public:
         using EpsilonForColourRootCalculatorT = std::function<double(uint32_t)>;
         // epsilon -> max_vertex_count_on_a_single_level
         using MaxVertexCountFromEpsilonCalculatorT = std::function<uint32_t(double)>;
+        // number_of_vertices_in_F_collection, interval_width -> max noise epsilon 
+        using MaxNoiseEpsilonCalculatorT = std::function<double(uint32_t, double)>;
 
         FInterspringCalculatorT FInterspringCalculator;
         FInterspringPushUpwardsValueCalculatorT FInterspringPushUpwardsValueCalculator;
         EpsilonForColourRootCalculatorT epsilonForColourRootCalculator;
         MaxVertexCountFromEpsilonCalculatorT maxVertexCountFromEpsilonCalculator;
+        MaxNoiseEpsilonCalculatorT maxNoiseEpsilonCalculator;
+        std::function<double()> randomDeltaNoiseCoeffCalculator;
+        std::function<uint32_t(uint32_t)> numberOfBucketsCalculator;
 
         double firstLevelChildPadding;
         double gAcceleration;
         double baseVerexWeight;
         double addWeightFromChildrenCoeff;
         double kInitialLayoutCoeff;
-        double nextLevelDownCoeff;
+        double nextLevelDownCoeffForPredicted;
+        double minDistanceBetweenLevelsCoeff;
         
         double sCoeff;
         double defaultAlphaP;
@@ -78,12 +90,14 @@ public:
         m_algorithmParams{algorithmParams},
         m_graph{nullptr}, m_rootColourNode{nullptr}, 
         m_cumFInterspring{1}, m_epsilonsForVertices{0},
+        m_layoutXPositionsWrapperPtr{nullptr},
         m_optLogGraphId{std::nullopt} {}
 
     LayoutDrawer(AlgorithmParams&& algorithmParams) : 
         m_algorithmParams{std::move(algorithmParams)},
         m_graph{nullptr}, m_rootColourNode{nullptr}, 
         m_cumFInterspring{1}, m_epsilonsForVertices{0},
+        m_layoutXPositionsWrapperPtr{nullptr},
         m_optLogGraphId{std::nullopt} {}
 
     std::vector<CartesianCoords> findLayoutForGraph(
@@ -163,6 +177,32 @@ private:
 
     };
 
+    struct FCollection : public std::vector<std::unique_ptr<F>> {
+
+        using BaseClass = std::vector<std::unique_ptr<F>>;
+
+        // Note: Does not check if the real underlying value is of type Fp
+        void emplace_back_fp(std::unique_ptr<F>&& uniqueFPtrRValue, uint32_t vIndex) {
+            BaseClass::emplace_back(std::move(uniqueFPtrRValue));
+            ++FpCount;    
+            FpVertexIndices.emplace_back(vIndex);
+        }
+
+        // Note: Does not check if the real underlying value is of type Fcs
+        void emplace_back_fcs(std::unique_ptr<F>&& uniqueFPtrRValue, uint32_t vIndex) {
+            BaseClass::emplace_back(std::move(uniqueFPtrRValue));
+            ++FcsCount;
+        }
+
+        std::vector<uint32_t> getFpVertexIndices() const {return FpVertexIndices;}
+        std::vector<uint32_t> extractFpVertexIndices() {return std::move(FpVertexIndices);}
+
+        uint32_t FpCount;
+        uint32_t FcsCount;
+        std::vector<uint32_t> FpVertexIndices;
+        std::vector<uint32_t> FcsVertexIndices;
+    };
+
     void findVerticesWithCustomEpsilonsAndFixColourRoots(
         std::vector<uint32_t>& verticesWithCustomEpsilons,
         std::optional<std::reference_wrapper<ColourHierarchyNode>> optColourNode = std::nullopt
@@ -216,7 +256,24 @@ private:
         const std::pair<double, double>& boxBounds
     );
 
-    std::vector<std::unique_ptr<F>> buildFCollectionForVertex(
+    void moveVerticeFormXOptBasedOnNoise(
+        double xOpt, double noise, 
+        BucketifiedLineSegment<
+            uint32_t, OnePairFieldArrayWrapper<double, double, double, 1>&, size_t
+        >& xPositionsBucketified
+    );
+
+    // `otherBorderInfSign` can be either 1 (for +inf) or -1 (for -inf)
+    void moveAllVerticesInXRangeToNewXRange(
+        const std::pair<double, double>& baseXRange, double newXRangeBorder, 
+        int8_t otherBorderInfSign, double moveDistanceFunctionSubtrahend, double moveDistanceFunctionCoeff, 
+        BucketifiedLineSegment<
+            uint32_t, OnePairFieldArrayWrapper<double, double, double, 1>&, size_t
+        >& xPositionsBucketified, 
+        std::optional<std::reference_wrapper<std::vector<uint32_t>>> precomputedVerticesInXRangeIndices = std::nullopt
+    );
+
+    FCollection buildFCollectionForVertex(
         uint32_t vIndex, const std::unordered_set<uint32_t>& alreadyDrawnVerticesSet, double wPrim
     );
 
@@ -227,6 +284,11 @@ private:
 
     double findPositionXThatMinimizesFCollection(
         const std::vector<std::unique_ptr<F>>& FCollection, uint32_t k
+    ) const;
+
+    void moveElementsToTheInterval(
+        const std::pair<double, double>& intervalBounds, 
+        std::vector<std::pair<uint32_t, double>>& VkVerticesXPositions 
     ) const;
 
     void createGapsAlongXAxisBetweenVertices(
@@ -260,6 +322,8 @@ private:
     SparseArray<double> m_epsilonsForVertices;
 
     std::vector<std::pair<double, double>> m_layoutPositions;
+    std::unique_ptr<OnePairFieldArrayWrapper<double, double, double, static_cast<uint8_t>(1)>> m_layoutXPositionsWrapperPtr;
+    std::vector<std::pair<int64_t, std::vector<uint32_t>>> m_lastFpIndices;
 
     std::optional<std::string> m_optLogGraphId;
 

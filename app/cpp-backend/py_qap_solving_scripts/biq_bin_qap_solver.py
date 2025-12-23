@@ -176,6 +176,7 @@ def fill_colour_remapping_by_performing_qap(
             #         child_i_colour = node.children_nodes[i].colour
             #         colour_remapping[child_i_colour] = counter
             #         counter += 1
+            successful = True
             if not successful:
                 write_biq_bin_source_path(
                     F_for_subquestion, D_for_subquestion,
