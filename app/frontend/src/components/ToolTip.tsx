@@ -15,19 +15,30 @@ const ToolTip: React.FC<ToolTipProps> = ({ visible, x, y, content }) => {
       className="
         absolute pointer-events-none
         z-10
-        px-3 py-2 
-        text-sm text-gray-100 font-medium
+        px-3 py-2
+        text-sm font-medium
         rounded-xl
-        shadow-[0_4px_20px_rgba(0,0,0,0.45)]
         backdrop-blur-md
-        border border-white/20
-        bg-gradient-to-br from-black/70 to-black/40
         max-w-[280px] whitespace-normal
+
+        shadow-[0_4px_20px_rgba(0,0,0,0.18)]
+        dark:shadow-[0_4px_20px_rgba(0,0,0,0.45)]
+
+        border border-black/10
+        dark:border-white/20
+
+        text-gray-900
+        dark:text-gray-100
+
+        bg-gradient-to-br
+        from-white/90 to-slate-100/75
+        dark:from-black/70 dark:to-black/40
       "
       style={{
         left: x,
         top: y,
       }}
+      role="tooltip"
     >
       {content}
     </div>

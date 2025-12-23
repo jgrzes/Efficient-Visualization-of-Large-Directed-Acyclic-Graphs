@@ -1,9 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Star, MessageCirclePlus } from "lucide-react";
 import { useFavorites } from "../../hooks/useFavorites";
 import { useComments } from "../../hooks/useComments";
@@ -16,21 +11,13 @@ export interface NodeInfoProps {
   index?: number;
   isFavorite?: boolean;
   onToggleFavorite?: (node: NodeInfoProps) => void;
-  onAddComment?: (
-    node: NodeInfoProps,
-    data: { name: string; text: string }
-  ) => void;
+  onAddComment?: (node: NodeInfoProps, data: { name: string; text: string }) => void;
   [key: string]: any;
 }
 
 const NodeInfo: React.FC<NodeInfoProps> = (props) => {
-  const {
-    name,
-    isFavorite: isFavoriteProp,
-    onAddComment,
-    onToggleFavorite,
-    ...rawProps
-  } = props;
+  const { name, isFavorite: isFavoriteProp, onAddComment, onToggleFavorite, ...rawProps } =
+    props;
 
   const nodeIndex = rawProps.index as number | undefined;
 
@@ -38,15 +25,11 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
   const [commentOpen, setCommentOpen] = useState(false);
   const copiedTimerRef = useRef<number | null>(null);
 
-  const { isFavorite: isFavHook, toggleFavorite, isLoading, isSaving } =
-    useFavorites();
+  const { isFavorite: isFavHook, toggleFavorite, isLoading, isSaving } = useFavorites();
   const { addComment } = useComments();
 
   const fav =
-    nodeIndex !== undefined
-      ? isFavHook(nodeIndex)
-      : (isLoading ? !!isFavoriteProp : false);
-
+    nodeIndex !== undefined ? isFavHook(nodeIndex) : isLoading ? !!isFavoriteProp : false;
 
   useEffect(() => {
     return () => {
@@ -90,7 +73,8 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
     [addComment, nodeIndex, name, onAddComment, props]
   );
 
-  const HIDDEN_KEYS = new Set([ // keys that we receive but don't want to show
+  const HIDDEN_KEYS = new Set([
+    // keys that we receive but don't want to show
     "index",
   ]);
 
@@ -99,8 +83,7 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
 
     // for long strings -> scrollable div with copy on click
     if (typeof value === "string") {
-      const isLong =
-        value.length > 20;
+      const isLong = value.length > 20;
 
       if (isLong) {
         return (
@@ -113,8 +96,12 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
                 // ignore
               }
             }}
-            className="text-sm whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto pr-1
-                        hover:bg-white/[0.02] rounded-md p-1 cursor-copy transition"
+            className="
+              text-sm whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto pr-1
+              rounded-md p-1 cursor-copy transition
+              hover:bg-black/[0.04]
+              dark:hover:bg-white/[0.02]
+            "
             title="Click to copy"
           >
             {value}
@@ -137,7 +124,7 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
     // arrays -> chip per element
     if (Array.isArray(value)) {
       if (value.length === 0) {
-        return <span className="text-xs text-gray-400 overflow-y-auto">[]</span>;
+        return <span className="text-xs text-gray-500 dark:text-gray-400 overflow-y-auto">[]</span>;
       }
       return (
         <div className="flex flex-wrap gap-1.5">
@@ -154,45 +141,62 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
         </div>
       );
     }
+
+    return null;
   };
 
-  const fields = Object.entries(rawProps) // filter out hidden keys and sort
-    .filter(
-      ([key, value]) =>
-        !HIDDEN_KEYS.has(key) && value !== undefined && value !== null
-    )
+  const fields = Object.entries(rawProps)
+    .filter(([key, value]) => !HIDDEN_KEYS.has(key) && value !== undefined && value !== null)
     .sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <section
       id="info-panel"
       aria-labelledby="info-title"
-      className="relative inline-block w-[400px] max-w-[92vw] bg-black/70 backdrop-blur-md
-                 rounded-xl shadow-lg text-gray-200 border border-gray-900/60"
+      className="
+        relative inline-block w-[400px] max-w-[92vw]
+        rounded-xl shadow-lg backdrop-blur-md
+
+        bg-white/80 border border-black/10 text-gray-900
+        dark:bg-black/70 dark:border-gray-900/60 dark:text-gray-200
+      "
     >
       <span
         role="status"
         aria-live="polite"
-        className={`fixed bottom-4 right-4 z-50
-              text-[11px] text-green-400 font-medium
-              bg-black/80 px-3 py-1 rounded-full shadow-lg
-              select-none transition-opacity duration-200
-              pointer-events-none
-              ${copied ? "opacity-100" : "opacity-0"}`}
+        className={`
+          fixed bottom-4 right-4 z-50
+          text-[11px] font-medium
+          px-3 py-1 rounded-full shadow-lg select-none
+          transition-opacity duration-200 pointer-events-none
+          bg-white/90 text-emerald-700 border border-emerald-500/20
+          dark:bg-black/80 dark:text-green-400 dark:border-transparent
+          ${copied ? "opacity-100" : "opacity-0"}
+        `}
       >
         Copied!
       </span>
 
-      <header className="flex items-start justify-between gap-3 p-4 border-b border-gray-900/60 cursor-default">
+      <header
+        className="
+          flex items-start justify-between gap-3 p-4 cursor-default
+          border-b border-black/10
+          dark:border-gray-900/60
+        "
+      >
         <div className="min-w-0 text-left">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
             Name
           </div>
           <CopyChip
             text={name}
             title="Name"
-            className="text-3xl sm:text-xl font-bold px-0 py-0 bg-transparent border-none
-                       hover:bg-transparent hover:text-gray-100 cursor-copy leading-tight"
+            className="
+              text-3xl sm:text-xl font-bold px-0 py-0 bg-transparent border-none
+              hover:bg-transparent cursor-copy leading-tight
+              text-gray-900 hover:text-gray-950
+              dark:text-gray-300 dark:hover:text-gray-100
+            "
             onCopied={showCopied}
             mono={false}
           />
@@ -203,31 +207,41 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
             type="button"
             onClick={handleToggleFav}
             disabled={isSaving || nodeIndex === undefined}
-            className={`shrink-0 p-2 rounded-md transition
-                        focus:outline-none focus:ring-2 focus:ring-gray-700
-                        ${fav
-                ? "text-yellow-400 hover:bg-yellow-400/10"
-                : "text-gray-300 hover:bg-white/10 hover:text-white"
+            className={`
+              shrink-0 p-2 rounded-md transition
+              focus:outline-none focus:ring-2
+              focus:ring-black/20
+              dark:focus:ring-gray-700
+              ${
+                fav
+                  ? "text-yellow-600 hover:bg-yellow-600/10"
+                  : "text-gray-700 hover:bg-black/5 hover:text-gray-950"
               }
-                        ${isSaving || nodeIndex === undefined ? "opacity-60 cursor-not-allowed" : ""}`}
+              ${
+                fav
+                  ? "dark:text-yellow-400 dark:hover:bg-yellow-400/10"
+                  : "dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white"
+              }
+              ${isSaving || nodeIndex === undefined ? "opacity-60 cursor-not-allowed" : ""}
+            `}
             title={fav ? "Remove from favorites" : "Add to favorites"}
             aria-label={fav ? "Remove from favorites" : "Add to favorites"}
             aria-pressed={fav}
             aria-busy={isSaving}
           >
-            <Star
-              size={18}
-              className="block"
-              fill={fav ? "currentColor" : "none"}
-              stroke="currentColor"
-            />
+            <Star size={18} className="block" fill={fav ? "currentColor" : "none"} stroke="currentColor" />
           </button>
 
           <button
             type="button"
             onClick={handleAddCommentOpen}
-            className="shrink-0 p-2 rounded-md transition text-gray-300 hover:text-blue-400 hover:bg-blue-400/10
-                       focus:outline-none focus:ring-2 focus:ring-blue-700"
+            className="
+              shrink-0 p-2 rounded-md transition
+              focus:outline-none focus:ring-2
+
+              text-gray-700 hover:text-blue-700 hover:bg-blue-600/10 focus:ring-blue-300
+              dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-400/10 dark:focus:ring-blue-700
+            "
             title="Add comment"
             aria-label="Add comment"
           >
@@ -250,7 +264,7 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
         open={commentOpen}
         onClose={() => setCommentOpen(false)}
         onSubmit={handleCommentSubmit}
-  title={`Comment for: ${name}`}
+        title={`Comment for: ${name}`}
       />
     </section>
   );

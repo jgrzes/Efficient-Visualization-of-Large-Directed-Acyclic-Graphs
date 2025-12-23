@@ -18,29 +18,42 @@ export function SearchInput({
 }: SearchInputProps) {
   return (
     <div className="relative flex-1">
-      <label className="sr-only" htmlFor="search-query-input">Search</label>
+      <label className="sr-only" htmlFor="search-query-input">
+        Search
+      </label>
 
       <input
         id="search-query-input"
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full bg-black text-gray-200 placeholder-gray-500
-                   border border-gray-700 rounded-md px-3 py-2 text-sm
-                   transition-all duration-200
-                   focus:outline-none focus:ring-1 focus:ring-gray-500"
         onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        className="
+          w-full rounded-md px-3 py-2 text-sm transition-all duration-200
+          focus:outline-none focus:ring-1
+
+          bg-white text-gray-900 placeholder-gray-400
+          border border-black/10
+          focus:ring-blue-500/40
+
+          dark:bg-black dark:text-gray-200 dark:placeholder-gray-500
+          dark:border-gray-700 dark:focus:ring-gray-500
+        "
       />
 
       {value && (
         <button
           type="button"
           onClick={onClear}
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md 
-                     text-gray-400 hover:text-gray-200 hover:bg-gray-800/70 transition"
           aria-label="Clear"
           title="Clear"
+          className="
+            absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md transition
+
+            text-gray-500 hover:text-gray-800 hover:bg-black/5
+            dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800/70
+          "
         >
           <X size={16} />
         </button>

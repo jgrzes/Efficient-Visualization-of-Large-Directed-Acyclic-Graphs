@@ -23,7 +23,7 @@ export const SearchPanel: React.FC<RightSearchPanelProps> = ({
   onOptionsChange,
   filters = [],
   onRemoveFilter,
-  onHoverResultCard
+  onHoverResultCard,
 }) => {
   const handleSearch = React.useCallback(
     (field: string, query: string) => {
@@ -34,13 +34,24 @@ export const SearchPanel: React.FC<RightSearchPanelProps> = ({
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <div className="sticky top-0 z-10 bg-black px-4 pb-4 shadow-[inset_0_-1px_0_rgba(255,255,255,0.08)]">
+      {/* SEARCH HEADER — NO BACKGROUND, NO SHADOW */}
+      <div
+        className="
+          sticky top-0 z-10 px-4 pb-4
+          bg-transparent
+        "
+      >
         <SearchBar
           onSearch={handleSearch}
           onOptionsChange={onOptionsChange}
           hideButton
         />
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+
+        {error && (
+          <p className="text-red-600 dark:text-red-500 text-xs mt-1">
+            {error}
+          </p>
+        )}
 
         {filters.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
@@ -55,6 +66,7 @@ export const SearchPanel: React.FC<RightSearchPanelProps> = ({
         )}
       </div>
 
+      {/* RESULTS */}
       <div className="px-4 py-4">
         <ResultsList
           type="search"

@@ -18,10 +18,11 @@ import LoadGraphModal from "./components/LoadGraphModal";
 import GraphListModal from "./components/GraphListModal";
 import LoadSourceModal from "./components/LoadSourceModal";
 import SettingsModal, { GraphColors } from './components/SettingsModal';
+import LayoutModal from './components/LayoutModal';
 import { useFavorites } from './hooks/useFavorites';
 import { useComments } from './hooks/useComments';
 import type { CommentItem } from './hooks/useComments';
-import { DEFAULT_GRAPH_COLORS, DEFAULT_SPACE_SIZE, DEFAULT_POINT_SIZE } from "./graphConfig";
+import { DEFAULT_GRAPH_COLORS, DEFAULT_POINT_SIZE } from "./graphConfig";
 
 import { useGraph } from './hooks/useGraph';
 import { useStartKeepAlive } from './hooks/useKeepalive';
@@ -33,18 +34,7 @@ export const AppContext = createContext<{
   setCurrentGraphUUID: React.Dispatch<React.SetStateAction<string | null>>
 } | null>(null);
 
-// domyślna paleta kolorów wierzchołków
-// const DEFAULT_GRAPH_COLORS: GraphColors = {
-//   default: "#a1a1aa",   // neutral
-//   parent: "#22c55e",    // green
-//   child: "#38bdf8",     // blue
-//   selected: "#f97316",  // orange
-//   hover: "#facc15",     // yellow
-//   search: "#e879f9"    // pink
-// };
-
 type GraphConfig = {
-  spaceSize: number;
   pointSize: number;
   colors: GraphColors;
 };
@@ -69,16 +59,12 @@ const MainAppContext: React.FC = () => {
   );
   const [selectedNode, setSelectedNode] = useState<NodeInfoProps | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
-  // const [graphConfig, setGraphConfig] = useState<{
-  //   spaceSize: number;
-  //   pointSize: number;
-  // } | null>({spaceSize: 256, pointSize: 0.8});
 
-  const [graphConfig, setGraphConfig] = useState<GraphConfig | null>({
-    spaceSize: DEFAULT_SPACE_SIZE,
+  const [graphConfig, setGraphConfig] = useState<GraphConfig>({
     pointSize: DEFAULT_POINT_SIZE,
     colors: DEFAULT_GRAPH_COLORS,
   });
+
 
   const [nodeNames, setNodeNames] = useState<string[] | null>(null);
   const favorites = useFavorites();
@@ -88,7 +74,7 @@ const MainAppContext: React.FC = () => {
   const currentGraphUUID = appContext!.currentGraphUUID;
   const setCurrentGraphUUID = appContext!.setCurrentGraphUUID;
 
-  const [currentGraphHash, setCurrentGraphHash] = useState<string | null>("");
+  const [currentGraphHash, setCurrentGraphHash] = useState<string | null>(null);
 
   const [syncInitialized, setSyncInitialized] = React.useState(false);
 
@@ -99,6 +85,12 @@ const MainAppContext: React.FC = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [results, setResults] = useState<NodeInfoProps[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Layout selection state
+  const [showLayoutModal, setShowLayoutModal] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingExt, setPendingExt] = useState<"obo" | "txt" | "json" | null>(null);
+  const [selectedLayoutType, setSelectedLayoutType] = useState<"cpp" | "radial">("cpp");
 
   // Search filters state
   type SearchFilter = {
@@ -209,7 +201,6 @@ const MainAppContext: React.FC = () => {
     names?: string[];
     meta?: Record<string, unknown>;
     config?: {
-      space_size?: number;
       point_size?: number;
       favorites?: number[];
       comments?: CommentItem[];
@@ -242,13 +233,13 @@ const MainAppContext: React.FC = () => {
       setNodeNames(null);
     }
 
-    if (data.config) {
-      setGraphConfig({
-        spaceSize: data.config.space_size || 256,
-        pointSize: data.config.point_size || 1,
-        colors: DEFAULT_GRAPH_COLORS,
-      });
+    setGraphConfig((prev) => ({
+      pointSize: data.config?.point_size ?? prev.pointSize,
+      colors: prev.colors,
+    }));
 
+
+    if (data.config) {
       if (Array.isArray(data.config.favorites)) {
         favorites.setFavoritesFromGraph(data.config.favorites);
       } else {
@@ -260,19 +251,18 @@ const MainAppContext: React.FC = () => {
         comments.setCommentsFromGraph([]);
       }
     } else {
-      setGraphConfig(null);
       favorites.clearFavorites();
       comments.setCommentsFromGraph([]);
     }
     
     prevFavsRef.current = Array.isArray(data.config?.favorites)
-      ? data.config!.favorites
+      ? data.config.favorites
       : [];
     prevCommentsRef.current = Array.isArray(data.config?.comments)
-      ? data.config!.comments
+      ? data.config.comments
       : [];
 
-    setSyncInitialized(true);
+    setSyncInitialized(Boolean(data.graph_hash));
 
     if (options?.urlHash) {
       setGraphHashInUrl(options.urlHash);
@@ -285,13 +275,30 @@ const MainAppContext: React.FC = () => {
     }
   }
 
+  async function syncAllCommentsAndFavorites(hash: string) {
+    const payload = {
+      favorites: Array.isArray(favorites.favorites) ? favorites.favorites : [],
+      comments: Array.isArray(comments.comments) ? comments.comments : [],
+    };
+
+    await fetch(`${API_BASE}/update_graph_config/${hash}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    prevFavsRef.current = payload.favorites;
+    prevCommentsRef.current = payload.comments;
+    setSyncInitialized(true);
+  }
+
   // Graph controls
   const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover } = useGraph(
     graphRef,
     pointPositions,
     links,
     setSelectedNode,
-    graphConfig || undefined,
+    graphConfig,
     nodeNames || undefined
   );
 
@@ -315,8 +322,16 @@ const MainAppContext: React.FC = () => {
     const items = Array.isArray(comments.comments) ? comments.comments : [];
 
     if (!syncInitialized) {
-      prevFavsRef.current = favs;
-      prevCommentsRef.current = items;
+      console.log("Performing initial full sync of comments and favorites");
+      void (async () => {
+        try {
+          await syncAllCommentsAndFavorites(currentGraphHash);
+          setSyncInitialized(true);
+        } catch (e) {
+          console.error("Initial full sync failed:", e);
+        }
+      })();
+
       return;
     }
 
@@ -401,12 +416,50 @@ const MainAppContext: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const jsonHasLayout = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        try {
+          const text = reader.result as string;
+          const data = JSON.parse(text);
+
+          const vertices = data?.vertices;
+          const numVertices = data?.num_of_vertices;
+
+          if (!Array.isArray(vertices) || typeof numVertices !== "number") {
+            resolve(false);
+            return;
+          }
+
+          const hasLayout = vertices.every(
+            (v: any) =>
+              Array.isArray(v?.pos) &&
+              v.pos.length === 2 &&
+              typeof v.pos[0] === "number" &&
+              typeof v.pos[1] === "number"
+          );
+
+          resolve(hasLayout);
+        } catch {
+          resolve(false);
+        }
+      };
+
+      reader.onerror = () => resolve(false);
+
+      reader.readAsText(file);
+    });
+  };
+
   /** LOAD GENERAL GRAPH FROM JSON FILE **/
-  const loadJsonGraph = async (file: File) => {
+  const loadJsonGraph = async (file: File, layoutType: "cpp" | "radial") => {
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('layout_type', layoutType);
 
       const res = await fetch(`${API_BASE}/load_graph_from_json`, {
         method: 'POST',
@@ -502,20 +555,49 @@ const MainAppContext: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const ext = file.name.split('.').pop()?.toLowerCase();
+    const ext = file.name.split(".").pop()?.toLowerCase();
 
-    if (ext === 'obo' || ext === 'txt') { // ontology formats
-      setSelectedFile(file);
+    if (ext === "obo" || ext === "txt") {
+      setPendingFile(file);
+      setPendingExt(ext as "obo" | "txt");
+      setShowLayoutModal(true);
+      return;
+    }
+
+    if (ext === "json") {
+      (async () => {
+        const hasLayout = await jsonHasLayout(file);
+
+        if (hasLayout) {
+          await loadJsonGraph(file, "cpp");
+        } else {
+          setPendingFile(file);
+          setPendingExt("json");
+          setShowLayoutModal(true);
+        }
+      })();
+
+      return;
+    }
+
+    alert(`Unhandled file format: .${ext ?? "unknown"}`);
+  };
+
+  const handleLayoutConfirm = (layoutType: "cpp" | "radial") => {
+    if (!pendingFile || !pendingExt) {
+      setShowLayoutModal(false);
+      return;
+    }
+
+    setSelectedLayoutType(layoutType);
+    setShowLayoutModal(false);
+
+    if (pendingExt === "json") {
+      void loadJsonGraph(pendingFile, layoutType);
+    } else {
+      setSelectedFile(pendingFile);
       setShowOntologyOptions(true);
-      return;
     }
-
-    if (ext === 'json') { // custom general graph format
-      loadJsonGraph(file);
-      return;
-    }
-
-    alert(`Unhandled file format: .${ext ?? 'unknown'}`);
   };
 
   const uploadFileWithNamespace = async (namespace: string) => {
@@ -527,6 +609,7 @@ const MainAppContext: React.FC = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('root', namespace);
+      formData.append('layout_type', selectedLayoutType);
 
       const response = await fetch(`${API_BASE}/flask_make_graph_structure`, {
         method: 'POST',
@@ -543,8 +626,11 @@ const MainAppContext: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
 
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   /** RESET VIEW **/
   const handleResetView = () => {
     setPointPositions(new Float32Array(initialLayout));
@@ -713,17 +799,9 @@ const MainAppContext: React.FC = () => {
       names?: string[];
       meta?: Record<string, unknown>;
       config?: {
-        space_size?: number;
         point_size?: number;
         favorites?: number[];
         comments?: CommentItem[];
-        // opcjonalnie backend może tu dorzucać kolory
-        default_color?: string;
-        parent_color?: string;
-        child_color?: string;
-        selected_color?: string;
-        hover_color?: string;
-        search_color?: string;
       };
     }>;
   }
@@ -740,7 +818,6 @@ const MainAppContext: React.FC = () => {
       links,
       graph_hash: currentGraphHash,
       point_size: graphConfig?.pointSize ?? null,
-      space_size: graphConfig?.spaceSize ?? null,
       favorites: favorites.favorites,
       comments: comments.comments,
     };
@@ -905,6 +982,19 @@ const MainAppContext: React.FC = () => {
           className="hidden"
         />
 
+        <LayoutModal
+          open={showLayoutModal}
+          onCancel={() => {
+            setShowLayoutModal(false);
+            setPendingFile(null);
+            setPendingExt(null);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+          }}
+          onConfirm={handleLayoutConfirm}
+        />
+
         {showOntologyOptions && selectedFile && (
           <OntologyModal
             fileName={selectedFile.name}
@@ -986,11 +1076,10 @@ const MainAppContext: React.FC = () => {
         <SettingsModal
           open={settingsModalOpen}
           onClose={() => setSettingsModalOpen(false)}
-          spaceSize={graphConfig?.spaceSize || 8192}
           pointSize={graphConfig?.pointSize || 1}
           colors={graphConfig?.colors || DEFAULT_GRAPH_COLORS}
-          onApply={(spaceSize, pointSize, colors) => {
-            setGraphConfig({ spaceSize, pointSize, colors });
+          onApply={( pointSize, colors) => {
+            setGraphConfig({ pointSize, colors });
             setSettingsModalOpen(false);
           }}
         />
@@ -999,20 +1088,10 @@ const MainAppContext: React.FC = () => {
   );
 };
 
-// export default function App() {
-//   const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
-//   return (
-//     <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
-//       <MainAppContext />
-//     </AppContext.Provider>
-//   )
-// }
-
 const AppKeepAliveComponent = () => {
   useStartKeepAlive(`${API_BASE}/session_keepalive`, 10_000); 
   return <MainAppContext />;
-}
-
+};
 
 const App: React.FC = () => {
   const [currentGraphUUID, setCurrentGraphUUID] = useState<string | null>("");
@@ -1025,7 +1104,7 @@ const App: React.FC = () => {
   // )
 
   return (
-    <AppContext.Provider value={{currentGraphUUID, setCurrentGraphUUID}}>
+    <AppContext.Provider value={{ currentGraphUUID, setCurrentGraphUUID }}>
       <AppKeepAliveComponent />
     </AppContext.Provider>
   );

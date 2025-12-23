@@ -20,7 +20,10 @@ export default function OntologyModal({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        className="
+          fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm
+          bg-black/30 dark:bg-black/60
+        "
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -30,11 +33,19 @@ export default function OntologyModal({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           transition={{ type: "spring", stiffness: 220, damping: 20 }}
-          className="p-6 w-96 bg-gradient-to-b from-zinc-900/90 to-zinc-950/90
-                     rounded-2xl border border-white/10 shadow-2xl shadow-black/50 backdrop-blur-md"
+          className="
+            p-6 w-96 rounded-2xl border shadow-2xl backdrop-blur-md
+
+            bg-white/95 border-black/10 shadow-black/10
+            dark:bg-gradient-to-b dark:from-zinc-900/90 dark:to-zinc-950/90
+            dark:border-white/10 dark:shadow-black/50
+          "
         >
-          <p className="text-gray-300 text-base font-medium mb-6 text-center leading-relaxed">
-            Choose category <span className="text-gray-100 font-semibold">{fileName}</span>
+          <p className="text-base font-medium mb-6 text-center leading-relaxed text-gray-700 dark:text-gray-300">
+            Choose category{" "}
+            <span className="text-gray-900 dark:text-gray-100 font-semibold">
+              {fileName}
+            </span>
           </p>
 
           <div className="flex flex-col gap-3">
@@ -42,9 +53,15 @@ export default function OntologyModal({
               <button
                 key={key}
                 onClick={() => onSelect(key)}
-                className="px-4 py-2 rounded-lg border border-white/10 bg-white/[0.05]
-                           text-gray-200 font-medium text-sm hover:bg-white/[0.12]
-                           focus:outline-none focus:ring-2 focus:ring-blue-400/40 transition"
+                className="
+                  px-4 py-2 rounded-lg border
+                  font-medium text-sm transition
+                  focus:outline-none focus:ring-2
+
+                  border-black/10 bg-black/[0.04] text-gray-800 hover:bg-black/[0.07] focus:ring-blue-300
+                  dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-200 dark:hover:bg-white/[0.12]
+                  dark:focus:ring-blue-400/40
+                "
               >
                 {label}
               </button>
@@ -53,8 +70,12 @@ export default function OntologyModal({
 
           <button
             onClick={onCancel}
-            className="mt-6 w-full px-4 py-2 rounded-lg bg-red-600/90 text-white font-semibold
-                       hover:bg-red-700 transition focus:outline-none focus:ring-2 focus:ring-red-500/50"
+            className="
+              mt-6 w-full px-4 py-2 rounded-lg
+              bg-red-600/90 text-white font-semibold
+              hover:bg-red-700 transition
+              focus:outline-none focus:ring-2 focus:ring-red-500/50
+            "
           >
             Cancel
           </button>

@@ -1,3 +1,4 @@
+// useGraph.ts
 import {
   Dispatch,
   SetStateAction,
@@ -10,6 +11,7 @@ import {
 import { Graph, GraphConfigInterface } from "@cosmograph/cosmos";
 import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
 import { AppContext } from "../App";
+import { DEFAULT_GRAPH_COLORS } from "../graphConfig";
 
 const API_BASE = "http://localhost:30301";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -22,6 +24,21 @@ type NodeTooltip = {
 };
 
 type RGBA = [number, number, number, number];
+
+type GraphColors = {
+  default: string;
+  parent: string;
+  child: string;
+  selected: string;
+  hover: string;
+  search: string;
+  background: string;
+};
+
+type UseGraphInitialConfig = {
+  pointSize?: number;
+  colors?: GraphColors;
+};
 
 const hexToRgba01 = (hex: string, alpha = 0.9): RGBA => {
   let h = hex.trim();
@@ -41,21 +58,17 @@ const hexToRgba01 = (hex: string, alpha = 0.9): RGBA => {
     return [r / 255, g / 255, b / 255, alpha];
   }
 
-  // fallback – gdyby hex był zły
   return [1, 1, 1, alpha];
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Colors & defaults
+// Defaults
 // ─────────────────────────────────────────────────────────────────────────────
 const COLOR_DEFAULT_LINK: RGBA = [0.6, 0.6, 0.6, 0.8];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-
-
 const fetchNodeData = async (uuid: string, index: number) => {
   const response = await fetch(`${API_BASE}/node/${uuid}/${index}`);
 
@@ -94,22 +107,6 @@ const computeParentsChildren = (
   return { parents, children };
 };
 
-type GraphColors = {
-  default: string;
-  parent: string;
-  child: string;
-  selected: string;
-  hover: string;
-  search: string;
-};
-
-type UseGraphInitialConfig = {
-  spaceSize?: number;
-  pointSize?: number;
-  colors?: GraphColors;
-};
-
-
 export function useGraph(
   graphRef: React.RefObject<HTMLDivElement | null>,
   pointPositions: Float32Array,
@@ -125,6 +122,7 @@ export function useGraph(
   const selectedIndexRef = useRef<number | null>(null);
 
   // Currently highlighted indices (for selection tooltips)
+  // (selected + parents + children)
   const highlightedIndicesRef = useRef<number[]>([]);
 
   // Cache index -> name
@@ -152,14 +150,24 @@ export function useGraph(
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext?.currentGraphUUID;
   const currentGraphUUIDRef = useRef<string | null>(currentGraphUUID ?? null);
-  const colorsRef = useRef<GraphColors | undefined>(initialConfig?.colors);
+
+  // IMPORTANT: colorsRef MUST always be defined → no fallbacks later
+  const colorsRef = useRef<GraphColors>(
+    initialConfig?.colors ?? DEFAULT_GRAPH_COLORS
+  );
+
+  // Helper: does this node already have a pinned tooltip?
+  // (i.e. it's in selected/parents/children)
+  const hasPinnedTooltip = useCallback((index: number) => {
+    return highlightedIndicesRef.current.includes(index);
+  }, []);
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Effects: UUID / links / names
+  // Effects: sync refs
   // ───────────────────────────────────────────────────────────────────────────
   useEffect(() => {
-      colorsRef.current = initialConfig?.colors;
-    }, [initialConfig?.colors]);
+    colorsRef.current = initialConfig?.colors ?? DEFAULT_GRAPH_COLORS;
+  }, [initialConfig?.colors]);
 
   useEffect(() => {
     currentGraphUUIDRef.current = currentGraphUUID ?? null;
@@ -173,7 +181,6 @@ export function useGraph(
   // ───────────────────────────────────────────────────────────────────────────
   // Tooltip recomputation for selection tooltips
   // ───────────────────────────────────────────────────────────────────────────
-
   const recomputeTooltipsPositions = useCallback(() => {
     const g = graphInstance.current;
     const el = graphRef.current;
@@ -228,7 +235,6 @@ export function useGraph(
   // ───────────────────────────────────────────────────────────────────────────
   // Graph view controls
   // ───────────────────────────────────────────────────────────────────────────
-
   const fitView = useCallback(() => {
     const g = graphInstance.current;
     g?.fitView();
@@ -238,7 +244,6 @@ export function useGraph(
   // ───────────────────────────────────────────────────────────────────────────
   // Hover tooltip position: also used to follow node while dragging
   // ───────────────────────────────────────────────────────────────────────────
-
   const updateHoverTooltipPosition = useCallback(
     (index: number, pointPos?: [number, number]) => {
       const g = graphInstance.current;
@@ -272,7 +277,6 @@ export function useGraph(
   // ───────────────────────────────────────────────────────────────────────────
   // Coloring logic
   // ───────────────────────────────────────────────────────────────────────────
-
   const applyColors = useCallback(
     (
       selectedIndices: number[],
@@ -290,14 +294,7 @@ export function useGraph(
       const flatLinks = linksRef.current;
       const linkCount = flatLinks.length / 2;
 
-      const cfgColors = colorsRef.current ?? {
-        default: "#808080",
-        parent: "#e34a4a",
-        child: "#4ae34a",
-        selected: "#2633e7",
-        hover: "#ff66cc",
-        search: "#00e6e6",
-      };
+      const cfgColors = colorsRef.current;
 
       const DEFAULT_POINT: RGBA = hexToRgba01(cfgColors.default, 0.8);
       const SELECTED_POINT: RGBA = hexToRgba01(cfgColors.selected, 0.9);
@@ -305,8 +302,6 @@ export function useGraph(
       const CHILD_POINT: RGBA = hexToRgba01(cfgColors.child, 0.9);
       const HOVER_POINT: RGBA = hexToRgba01(cfgColors.hover, 0.95);
       const SEARCH_POINT: RGBA = hexToRgba01(cfgColors.search, 0.9);
-
-      // const SEARCH_POINT: RGBA = COLOR_SEARCH_POINT
 
       const pointColors = new Float32Array(pointCount * 4);
       const linkColors = new Float32Array(linkCount * 4);
@@ -318,9 +313,10 @@ export function useGraph(
       const searchSet = searchIndicesRef.current;
 
       const hoveredCardIndex = hoveredCardIndexRef.current;
-      const hoveredCardSet = hoveredCardIndex != null
-        ? new Set<number>([hoveredCardIndex])
-        : new Set<number>();
+      const hoveredCardSet =
+        hoveredCardIndex != null
+          ? new Set<number>([hoveredCardIndex])
+          : new Set<number>();
 
       // Links
       for (let i = 0; i < flatLinks.length; i += 2) {
@@ -349,27 +345,21 @@ export function useGraph(
       // hoveredCard > selected > parent > child > searched > default
       for (let i = 0; i < pointCount; i++) {
         let color: RGBA = DEFAULT_POINT;
-        if (hoveredCardSet.has(i)) {
-          color = HOVER_POINT;
-        } else if (selectedSet.has(i)) {
-          color = SELECTED_POINT;
-        } else if (parentsSet.has(i)) {
-          color = PARENT_POINT;
-        } else if (childrenSet.has(i)) {
-          color = CHILD_POINT;
-        } else if (searchSet.has(i)) {
-          color = SEARCH_POINT;
-        }
+
+        if (hoveredCardSet.has(i)) color = HOVER_POINT;
+        else if (selectedSet.has(i)) color = SELECTED_POINT;
+        else if (parentsSet.has(i)) color = PARENT_POINT;
+        else if (childrenSet.has(i)) color = CHILD_POINT;
+        else if (searchSet.has(i)) color = SEARCH_POINT;
 
         pointColors.set(color, i * 4);
       }
-
 
       g.setPointColors(pointColors);
       g.setLinkColors(linkColors);
       g.setLinkWidths(linkWidths);
 
-      // Always update which nodes have selection tooltips
+      // Update which nodes have "pinned" selection tooltips
       const indicesSet = new Set<number>([
         ...selectedIndices,
         ...parents,
@@ -377,13 +367,19 @@ export function useGraph(
       ]);
       highlightedIndicesRef.current = Array.from(indicesSet);
 
+      // If hoverTooltip is currently on a node that became pinned, hide it
+      const hoverIdx = hoverIndexRef.current;
+      if (hoverIdx != null && highlightedIndicesRef.current.includes(hoverIdx)) {
+        hoverIndexRef.current = null;
+        setHoverTooltip(null);
+      }
+
       const zoomToSelected = opts?.zoomToSelected ?? false;
 
       if (zoomToSelected && selectedIndices.length > 0) {
         const zoomDuration = 700;
         const zoomScale = 30;
 
-        // Clear tooltips while zoom animates
         setTooltips([]);
 
         const token = ++highlightTokenRef.current;
@@ -397,17 +393,15 @@ export function useGraph(
         });
       } else {
         g.render();
-        // Instant recompute when not zooming
         recomputeTooltipsPositions();
       }
     },
-    [recomputeTooltipsPositions, initialConfig]
+    [recomputeTooltipsPositions]
   );
 
   // ───────────────────────────────────────────────────────────────────────────
   // Node selection
   // ───────────────────────────────────────────────────────────────────────────
-
   const clearSelection = useCallback(() => {
     setSelectedNode(null);
     selectedIndexRef.current = null;
@@ -426,7 +420,6 @@ export function useGraph(
 
   const selectNodeByIndex = useCallback(
     async (index?: number, options?: { zoom?: boolean }) => {
-      // default zoom = true
       const zoom = options?.zoom ?? true;
 
       if (index === undefined || index === null) {
@@ -445,7 +438,7 @@ export function useGraph(
 
         setSelectedNode({
           index,
-          ...data, // e.g. name, type, attributes, etc.
+          ...data,
         });
 
         selectedIndexRef.current = index;
@@ -456,9 +449,7 @@ export function useGraph(
 
         const flatLinks = linksRef.current;
         const { parents, children } = computeParentsChildren([index], flatLinks);
-        applyColors([index], parents, children, {
-          zoomToSelected: zoom,
-        });
+        applyColors([index], parents, children, { zoomToSelected: zoom });
       } catch (err) {
         console.error("Node fetch error:", err);
       }
@@ -469,9 +460,8 @@ export function useGraph(
   // ───────────────────────────────────────────────────────────────────────────
   // Hover highlight z result card
   // ───────────────────────────────────────────────────────────────────────────
-
   const highlightResultHover = useCallback(
-    async (index?: number)=> {
+    async (index?: number) => {
       hoveredCardIndexRef.current = index ?? null;
 
       const g = graphInstance.current;
@@ -493,18 +483,15 @@ export function useGraph(
   );
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Graph init & cleanup
+  // Graph init & cleanup (ONCE)
   // ───────────────────────────────────────────────────────────────────────────
-
   useEffect(() => {
     if (!graphRef.current) return;
 
     const config: GraphConfigInterface = {
-      // spaceSize: initialConfig?.spaceSize ?? 256,
-      spaceSize: 8192, 
-      backgroundColor: "#000",
+      spaceSize: 8192,
+      backgroundColor: colorsRef.current.background,
       pointSize: initialConfig?.pointSize ?? 1,
-      pointColor: [128, 128, 128, 255],
       pointGreyoutOpacity: 0.1,
       linkWidth: 0.8,
       linkColor: "#a1a1a1",
@@ -517,13 +504,10 @@ export function useGraph(
       simulationGravity: 0,
       simulationDecay: 0,
 
-      // CLICK ON NODE: select but DO NOT zoom (tooltips still appear)
+      // CLICK ON NODE: select but DO NOT zoom
       onClick: (index) => {
-        if (index === null || index === undefined) {
-          selectNodeByIndex(undefined);
-        } else {
-          selectNodeByIndex(index, { zoom: false });
-        }
+        if (index === null || index === undefined) selectNodeByIndex(undefined);
+        else selectNodeByIndex(index, { zoom: false });
       },
 
       // Hover tooltip – allowed during drag
@@ -533,6 +517,13 @@ export function useGraph(
         if (!g || !el) return;
 
         if (index == null || !pointPos) {
+          hoverIndexRef.current = null;
+          setHoverTooltip(null);
+          return;
+        }
+
+        // If this node already has a pinned tooltip, don't show hover tooltip
+        if (hasPinnedTooltip(index)) {
           hoverIndexRef.current = null;
           setHoverTooltip(null);
           return;
@@ -549,31 +540,31 @@ export function useGraph(
         setHoverTooltip(null);
       },
 
-      // Selection tooltips on zoom
-      onZoom: () => {
-        recomputeTooltipsPositions();
-      },
-      onZoomEnd: () => {
-        recomputeTooltipsPositions();
-      },
+      // Tooltips recompute on zoom
+      onZoom: () => recomputeTooltipsPositions(),
+      onZoomEnd: () => recomputeTooltipsPositions(),
 
       // Drag: keep ALL tooltips attached to their nodes
       onDrag: () => {
         isDraggingRef.current = true;
 
-        // 1. Move selection tooltips (parents/children/selected)
         recomputeTooltipsPositions();
 
-        // 2. Move hover tooltip if applicable
-        const index = hoverIndexRef.current ?? selectedIndexRef.current;
-        if (index == null) return;
+        const hoverIdx = hoverIndexRef.current;
 
-        updateHoverTooltipPosition(index);
+        if (hoverIdx == null) return;
+
+        if (hasPinnedTooltip(hoverIdx)) {
+          hoverIndexRef.current = null;
+          setHoverTooltip(null);
+          return;
+        }
+
+        updateHoverTooltipPosition(hoverIdx);
       },
 
       onDragEnd: () => {
         isDraggingRef.current = false;
-        // One more recompute in case positions changed at the very end
         recomputeTooltipsPositions();
       },
     };
@@ -586,33 +577,35 @@ export function useGraph(
       graphInstance.current?.destroy?.();
       graphInstance.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // init only once
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Update graph data when positions / links / config change
+  // Live config updates: pointSize + backgroundColor
   // ───────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const g = graphInstance.current;
+    if (!g) return;
 
+    g.setConfig({
+      pointSize: initialConfig?.pointSize ?? 1,
+      backgroundColor: colorsRef.current.background,
+    });
+
+    g.render();
+  }, [initialConfig?.pointSize, initialConfig?.colors?.background]);
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Update graph data when positions / links change
+  // ───────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     const g = graphInstance.current;
     if (!g || !pointPositions || !links) return;
-
-    // Update basic config from props
-    g.config.spaceSize = initialConfig?.spaceSize ?? 256;
-    g.config.pointSize = initialConfig?.pointSize ?? 1;
-
-    console.log(
-      "Updating graph data:",
-      pointPositions.length / 2,
-      "nodes,",
-      links.length / 2,
-      "edges"
-    );
 
     g.setPointPositions(pointPositions);
     g.setLinks(links);
     g.render();
 
-    // Refresh colors for current selection + search
     const selectedIndex = selectedIndexRef.current;
     const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
     const { parents, children } = computeParentsChildren(
@@ -620,19 +613,11 @@ export function useGraph(
       linksRef.current
     );
     applyColors(selectedIndices, parents, children, { zoomToSelected: false });
-  }, [
-    pointPositions,
-    links,
-    initialConfig?.spaceSize,
-    initialConfig?.pointSize,
-    fitView,
-    applyColors,
-  ]);
+  }, [pointPositions, links, applyColors]);
 
   // ───────────────────────────────────────────────────────────────────────────
   // Highlight search results
   // ───────────────────────────────────────────────────────────────────────────
-
   const highlightSearchResults = useCallback(
     (indices: number[]) => {
       const g = graphInstance.current;
@@ -647,9 +632,7 @@ export function useGraph(
         linksRef.current
       );
 
-      applyColors(selectedIndices, parents, children, {
-        zoomToSelected: false,
-      });
+      applyColors(selectedIndices, parents, children, { zoomToSelected: false });
     },
     [applyColors]
   );

@@ -1,12 +1,22 @@
-import ReactDOM from 'react-dom/client';
-import App from './App.tsx';
-// Import the provider directly. Including extension helps some tooling resolve .tsx modules.
-// import FavoritesProvider from './hooks/useFavorites';
+import ReactDOM from "react-dom/client";
+import App from "./App.tsx";
+import "./style.css";
 
+function applyInitialTheme() {
+  const saved = localStorage.getItem("theme");
+  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
 
-const root = ReactDOM.createRoot(document.getElementById('root')!);
+  const theme = saved ?? (prefersDark ? "dark" : "light");
+
+  if (theme === "dark") document.documentElement.classList.add("dark");
+  else document.documentElement.classList.remove("dark");
+}
+
+applyInitialTheme();
+
+const root = ReactDOM.createRoot(document.getElementById("root")!);
 root.render(
-	// <FavoritesProvider>
-		<App />
-	// </FavoritesProvider>
+  // <FavoritesProvider>
+  <App />
+  // </FavoritesProvider>
 );
