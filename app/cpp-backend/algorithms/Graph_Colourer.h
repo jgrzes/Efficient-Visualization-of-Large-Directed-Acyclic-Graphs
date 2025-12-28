@@ -100,7 +100,7 @@ public:
     void resetForNewRun(); 
     
     // Needed: `maxReucursion` >= 1.
-    std::pair<ColouredGraph, ColourHierarchyNode> assignColoursToGraph(
+    std::pair<ColouredGraph, std::unique_ptr<ColourHierarchyNode>> assignColoursToGraph(
         const GraphInterface& graph, 
         bool recursiveColouring = true, 
         uint32_t maxRecursion = 1,
@@ -158,7 +158,7 @@ private:
 
     // This one calls applyInitialGreedyColouring so it cannot be static either. 
     void buildColourHierarchyRecursivelyRootedAtColour(
-        GraphInterface& graph,
+        ColouredGraph& graph,
         const AlgorithmParams& algorithmParams, 
         ArrayOfArraysInterface<uint32_t>& verticesPerLevel, 
         ArrayOfArraysInterface<Edge>& disputableEdgesPerLevel,

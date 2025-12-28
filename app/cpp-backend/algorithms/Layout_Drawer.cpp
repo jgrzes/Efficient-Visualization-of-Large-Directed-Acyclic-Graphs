@@ -83,6 +83,22 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
         + "..."
     );
     emplaceColourNodesInArray();
+    std::string colourNodesArrayStr = "[";
+    uint32_t colourNodesArrayN = m_colourNodesPtrs.size();
+    for (uint32_t i=0; i<colourNodesArrayN; ++i) {
+        colourNodesArrayStr += (colourNodesArrayStr.size() > 1 ? ", " : "");
+        colourNodesArrayStr += "<index=" + std::to_string(i) + ", ";
+        if (m_colourNodesPtrs[i] == nullptr) colourNodesArrayStr += "null";
+        else colourNodesArrayStr += std::to_string(m_colourNodesPtrs[i]->colour);
+        colourNodesArrayStr += ">";
+    }
+    colourNodesArrayStr += "]";
+
+    logging::log_debug(
+        "Finished emplacing colour nodes in array, this being the final result: " +
+        colourNodesArrayStr + "."
+    );
+
     auto equalColourDepthColourFinder = [this](uint32_t uColour, uint32_t vColour) -> std::pair<uint32_t, uint32_t> {
         uint32_t uDepth = (this->m_colourNodesPtrs)[uColour]->depth;
         uint32_t vDepth = (this->m_colourNodesPtrs)[vColour]->depth;
@@ -145,11 +161,12 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
 
         double WColour = 0.5 * m_epsilonsForVertices.dataAtOrDefault(_getColourRoot((*firstLevelColourNodePtr)));
         offsetFromZero += std::max(previousRightXBorder - (offsetFromZero - WColour) + m_algorithmParams.firstLevelChildPadding, 0.0);
-        findLayoutForColouredSubgraph(
+        double fixedChildRightBoxBound = findLayoutForColouredSubgraph(
             verticesPerLevelForColour, {offsetFromZero, 0}, 
             {offsetFromZero - WColour, offsetFromZero + WColour}
         );
-        previousRightXBorder = offsetFromZero + WColour + m_algorithmParams.firstLevelChildPadding;
+        // previousRightXBorder = offsetFromZero + WColour + m_algorithmParams.firstLevelChildPadding;
+        previousRightXBorder = fixedChildRightBoxBound + m_algorithmParams.firstLevelChildPadding;
         offsetFromZero += (2.0 * WColour) + m_algorithmParams.firstLevelChildPadding;
         rightBoxBoundForUncoloured = offsetFromZero;
     }
@@ -366,7 +383,8 @@ void LayoutDrawer::performEmplacingColourNodesInArrayForColourSubtree(
 
 
 void LayoutDrawer::emplaceColourNodesInArray() {
-    m_colourNodesPtrs.resize(m_maxColour+1);
+    // m_colourNodesPtrs.resize(m_maxColour+1);
+    m_colourNodesPtrs = std::vector<ColourHierarchyNode*>(m_maxColour+1, nullptr);
     performEmplacingColourNodesInArrayForColourSubtree();
 }
 
@@ -481,8 +499,9 @@ void LayoutDrawer::findEpsilonsForColourRoots(
         
     // std::cout << "Colour node: " << colourNode.colour << "\n";
     for (auto& colourNodeChildPtr : colourNode.childrenPtrs) {
-        findEpsilonsForColourRoots(*colourNodeChildPtr);
+        findEpsilonsForColourRoots(std::ref(*colourNodeChildPtr));
     }
+    if (colourNode.verticesOfColour.size() == 0) return;
 
     if (colourNode.parent != nullptr && !colourNode.verticesOfColour.empty()) {
         uint32_t colourRootIndex = _getColourRoot(colourNode);
@@ -491,6 +510,7 @@ void LayoutDrawer::findEpsilonsForColourRoots(
         );
         double childrenEpsilonSum = 0;
         for (auto& colourNodeChild : colourNode.childrenPtrs) {
+            if (colourNodeChild->verticesOfColour.size() == 0) continue;
             childrenEpsilonSum += m_epsilonsForVertices[_getColourRoot((*colourNodeChild))];
         }
         // std::cout << "Epsilon candidates for " << colourRootIndex << ": ";
@@ -501,7 +521,7 @@ void LayoutDrawer::findEpsilonsForColourRoots(
 }
 
 
-void LayoutDrawer::findLayoutForColouredSubgraph(
+double LayoutDrawer::findLayoutForColouredSubgraph(
     const ArrayOfArraysInterface<uint32_t>& verticesPerLevelForColour, 
     const std::pair<double, double>& startingPositionForColourRoot, 
     const std::pair<double, double>& boxBounds
@@ -533,154 +553,37 @@ void LayoutDrawer::findLayoutForColouredSubgraph(
         + ")."
     );
 
-    // Temporarily disabled fine tuning for troubleshooting purposes
-    return;
+    uint32_t hOffsetForNestedLevel = (boxBounds.second - boxBounds.first) * m_algorithmParams.minDistanceBetweenLevelsCoeff;
+    hOffsetForNestedLevel += largestYCoord;
+    ColourHierarchyNode* colourHierarchyNodePtr = m_colourNodesPtrs[colour];
+    double nestedLeftBoxBound = boxBounds.first;
+    double fixedRightBoxBound = boxBounds.second;
 
-    // TODO: Implement force directed tuning
-    // Pad the height if needed just to be extra safe.
-    constexpr size_t gridRowCountDivisior = 3;
-    constexpr size_t gridColumnCountDivisor = 3;
-
-    size_t gridRowCount, gridColumnCount; 
-    if (largestYCoord - startingPositionForColourRoot.second < EPS_FOR_SIGNUM) {
-        largestYCoord += EPS_FOR_SIGNUM;
-        gridColumnCount = 1;
-    } else {
-        gridColumnCount = verticesPerLevelForColour.getNumberOfNestedArrays() / gridRowCountDivisior;
-    }
-    gridRowCount = m_algorithmParams.maxVertexCountFromEpsilonCalculator(
-        boxBounds.second - boxBounds.first
-    ) / gridColumnCountDivisor;
-    if (gridRowCount == 0 || gridColumnCount == 0) return;
-
-    CartesianSurfaceGrid<uint32_t, decltype(&m_layoutPositions), size_t> grid(
-        std::pair<double, double>{boxBounds.first, startingPositionForColourRoot.second}, 
-        std::pair<double, double>{boxBounds.second, largestYCoord}, 
-        gridRowCount, gridColumnCount, &m_layoutPositions
-    );
-
-    uint32_t iter = 0;
-    // TODO: Remember to find better logic for end condition in fine tuning
-
-    logging::log_trace(
-        "Found initial layout for subgraph (colour = " + std::to_string(colour)
-        + " for graph" + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
-        + ")."
-    );
-
-    size_t n = verticesPerLevelForColour.getNumberOfNestedArrays();
-    std::vector<ArrayOfArraysInterface<uint32_t>::NestedArrayView> verticesLevelArrayViews;
-    verticesLevelArrayViews.reserve(n);
-    for (size_t level=0; level<n; ++level) {
-        verticesLevelArrayViews.emplace_back(const_cast<ArrayOfArraysInterface<uint32_t>&>(
-            verticesPerLevelForColour
-        ).getNestedArrayView(level));    
-    }
-
-    ArrayOfArrays<std::pair<double, double>> forcesAffectingVertices(
-        verticesPerLevelForColour.getSizesOfNestedArrays()
-    );
-    std::vector<ArrayOfArraysInterface<std::pair<double, double>>::NestedArrayView> forceAffectingVerticesArrayViews;
-    forceAffectingVerticesArrayViews.reserve(n);
-    for (size_t level=0; level<n; ++level) {
-        forceAffectingVerticesArrayViews.emplace_back(
-            forcesAffectingVertices.getNestedArrayView(level)
-        );
-    }
-
-    for (size_t level=0; level<n; ++level) {
-        auto& verticeLevelViewI = verticesLevelArrayViews[level];
-        auto& forceEffectLevelViewI = forceAffectingVerticesArrayViews[level];
-        size_t ni = verticeLevelViewI.size();
-        // Apply forces
-        for (size_t j=0; j<ni; ++j) {
-            uint32_t uIndex = verticeLevelViewI[j];
-            grid.emplaceNewElement(uIndex, m_layoutPositions[uIndex]);
-        }
-    }
-
-    logging::log_trace(
-        "Entering fine tuning layout computation stage for subgraph (colour = " + std::to_string(colour)
-        + " for graph" + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
-        + "..."
-    );
-
-    while (!checkIfFineTuningStageEndConditionMet(iter)) {
-        // std::cout << "Iter " << iter << " of fine tuning...\n";
-        for (size_t level=0; level<n; ++level) {
-            auto& verticeLevelViewI = verticesLevelArrayViews[level];
-            auto& forceEffectLevelViewI = forceAffectingVerticesArrayViews[level];
+    #define _getColourRoot(_colourNode) (_colourNode.verticesOfColour.front())
+    for (const auto& childNodePtr : colourHierarchyNodePtr->childrenPtrs) {
+        if (!childNodePtr->verticesOfColour.empty()) {
+            double childColour = childNodePtr->colour;
+            uint32_t childColourRoot = _getColourRoot((*childNodePtr));
+            double childSubboxWidth = m_epsilonsForVertices.dataAtOrDefault(childColourRoot);
+            double nestedRightBoxBound = nestedLeftBoxBound + childSubboxWidth;
+            double colourRootXPosition = (nestedRightBoxBound + nestedLeftBoxBound) * 0.5;
             
-            // Calculate spring and repulsion forces on each vertex 
-            size_t ni = verticeLevelViewI.size();
-            for (size_t j=0; j<ni; ++j) {
-                uint32_t uIndex = verticeLevelViewI[j];
-                std::pair<double, double> forceAffectingU(0, 0);
-                auto uPosition = m_layoutPositions[uIndex];
-                auto uLevel = graph.getVertex(uIndex).level;
-                auto Nu = graph.N(uIndex);
-                auto Nru = graph.NR(uIndex);
-                
-                // Calculating spring forces - temporarily disabled to see if returned layouts are better 
-
-                // for (uint32_t vIndex : Nu) {
-                //     if (graph.getVertexColour(vIndex) != colour) continue;
-                //     forceAffectingU += m_algorithmParams.springFCalculator(
-                //         m_layoutPositions[vIndex] - uPosition
-                //     ) * std::pair<double, double>{1, (uLevel > graph.getVertex(vIndex).level ? 0 : 1)};
-                // }
-
-                // for (uint32_t wIndex : Nru) {
-                //     if (graph.getVertexColour(wIndex) != colour) continue;
-                //     forceAffectingU += m_algorithmParams.springFCalculator(
-                //         m_layoutPositions[wIndex] - uPosition
-                //     ) * std::pair<double, double>{1, (uLevel > graph.getVertex(wIndex).level ? 0 : 1)};
-                // }
-
-                // Calculating 
-                auto verticesInRepulsionFieldOfU = grid.getElementsAtMaxDisFromElement(
-                    uIndex, m_algorithmParams.maxRadiusOfRepulsionField
-                );
-                for (uint32_t pIndex : verticesInRepulsionFieldOfU) {
-                    // TODO: Decide if this should be included
-                    // if (Nu.contains(pIndex) || Nru.contains(pIndex)) continue;
-                    forceAffectingU += m_algorithmParams.repulsionFCalculator(
-                        uPosition - m_layoutPositions[pIndex], 
-                        (Nu.contains(pIndex) || Nru.contains(pIndex))
-                    );
-                }
-
-                forceEffectLevelViewI[j] = forceAffectingU;
-            }
+            ArrayOfArrays<uint32_t> verticesPerLevelForNestedColour = graph_preprocessing::findVerticesPerLevels(
+                childNodePtr->verticesOfColour, graph, true
+            );
+            nestedLeftBoxBound = std::max(
+                findLayoutForColouredSubgraph(
+                    verticesPerLevelForNestedColour, {colourRootXPosition, hOffsetForNestedLevel}, 
+                    {nestedLeftBoxBound, nestedRightBoxBound}
+                ), nestedRightBoxBound + m_algorithmParams.nestedColourChildPadding
+            );
+            // nestedLeftBoxBound = nestedRightBoxBound + m_algorithmParams.nestedColourChildPadding;
         }
-
-        for (size_t level=0; level<n; ++level) {
-            auto& verticeLevelViewI = verticesLevelArrayViews[level];
-            auto& forceEffectLevelViewI = forceAffectingVerticesArrayViews[level];
-            size_t ni = verticeLevelViewI.size();
-            // Apply forces
-            for (size_t j=0; j<ni; ++j) {
-                uint32_t uIndex = verticeLevelViewI[j];
-                auto forceAffectingU = forceEffectLevelViewI[j];
-                m_layoutPositions[uIndex] += m_algorithmParams.fineTuningForceMoveCoeff * forceAffectingU;
-                auto& uPositionX = m_layoutPositions[uIndex].first;
-                auto& uPositionY = m_layoutPositions[uIndex].second;
-                // m_layoutPositions[uIndex].first = std::min(std::max(boxBounds.first, m_la))
-                uPositionX = std::min(std::max(boxBounds.first, uPositionX), boxBounds.second);
-                uPositionY = std::min(std::max(startingPositionForColourRoot.second, uPositionY), largestYCoord);
-
-                grid.moveElementToNewPosition(uIndex, m_layoutPositions[uIndex]);
-            }
-        }
-
-        ++iter;
     }
 
-    logging::log_debug(
-        "Concluded fine tuning layout computation stage for subgraph (colour = " + std::to_string(colour)
-        + " for graph" + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
-        + "."
-    );
+    fixedRightBoxBound = std::max(fixedRightBoxBound, nestedLeftBoxBound);
+    #undef _getColourRoot
+    return fixedRightBoxBound;
 }
 
 
@@ -780,7 +683,7 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
             uint32_t vIndex = Vk[i];
             uint32_t vLevel = graph.getVertex(vIndex).level;
             // TODO: Optimize function call by precomputing W / m_algorithmParams.sCoeff
-            logging::log_trace(
+            logging::log_trace_vv(
                 "Building FCollection and preparing to find xOpt for vertice " +
                 std::to_string(vIndex) + " at level " + std::to_string(vLevel) + 
                 " in the graph" + std::string(m_optLogGraphId.has_value() ? " with id " + m_optLogGraphId.value() : "") +
@@ -812,9 +715,11 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
                             }
                         }
                     }
-                    logging::log_debug(
-                        "Will skip adding noise for vertex " + std::to_string(vIndex) + "."
-                    );
+                    if (skipAddingNoise) {
+                        logging::log_trace_v(
+                            "Will skip adding noise for vertex " + std::to_string(vIndex) + "."
+                        );
+                    }
                 } catch (const std::runtime_error& e) {
                     logging::log_warning(
                         "Got the following error when attempting to check Fp consistency for vertex " +
@@ -835,14 +740,14 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
                 vPositionX = (W - m_algorithmParams.marginPadding) * _signum(FInterspringX);
                 vPositionX = std::max(leftBoxBound, std::min(rightBoxBound, vPositionX));
             }
-            logging::log_trace(
+            logging::log_trace_vv(
                 "Found xOpt for vertice " +
                 std::to_string(vIndex) + " at level " + std::to_string(vLevel) + 
                 " in the graph" + std::string(m_optLogGraphId.has_value() ? " with id " + m_optLogGraphId.value() : "") +
                 ", it is as follows: " + std::to_string(vPositionX) + "."
             );
 
-            logging::log_trace(
+            logging::log_trace_vv(
                 "Adding noise to xOpt for vertice " +
                 std::to_string(vIndex) + " at level " + std::to_string(vLevel) + 
                 " in the graph" + std::string(m_optLogGraphId.has_value() ? " with id " + m_optLogGraphId.value() : "") +
@@ -855,7 +760,7 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
                 double maxNoiseEpsilonM = m_algorithmParams.maxNoiseEpsilonCalculator(m, W);
                 std::uniform_real_distribution<double> dist(-maxNoiseEpsilonM, maxNoiseEpsilonM);
                 double noise = dist(rng);
-                moveVerticeFormXOptBasedOnNoise(vPositionX, noise, xPositionsBucketifiedK);
+                moveVerticeFromXOptBasedOnNoise(vPositionX, noise, xPositionsBucketifiedK);
                 vPositionX += noise;
             }
 
@@ -863,7 +768,7 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
             alreadyDrawnInVk.emplace(vIndex);
             m_lastFpIndices[vIndex] = {colour, FCollectionV.extractFpVertexIndices()};
 
-            logging::log_trace(
+            logging::log_trace_vv(
                 "Added noise to xOpt for vertice " +
                 std::to_string(vIndex) + " at level " + std::to_string(vLevel) + 
                 " in the graph" + std::string(m_optLogGraphId.has_value() ? " with id " + m_optLogGraphId.value() : "") +
@@ -884,9 +789,21 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
                     return a.second < b.second;
                 } 
             );
+            logging::log_trace(
+                "Moving elements to the interval for colour " + std::to_string(colour) +
+                " at level " + std::to_string(k) + " in graph" +
+                std::string(m_optLogGraphId.has_value() ? " with id " + m_optLogGraphId.value() : "") + "..."
+            );
+            moveElementsToTheInterval(boxBounds, VkVerticesXPositions);
+            logging::log_debug(
+                "Moving elements to the interval for colour " + std::to_string(colour) +
+                " at level " + std::to_string(k) + " in graph" +
+                std::string(m_optLogGraphId.has_value() ? " with id " + m_optLogGraphId.value() : "") + "..."
+            );
+
             // TODO: Make sure there no colour subgraph overlaps when having recursive colours
-            // double gapEpsilon = (0.5 * W) / (Vk.size() - 1);
-            double gapEpsilon = m_epsilonsForVertices.getDefaultValue();
+            double gapEpsilon = (0.5 * W) / (Vk.size() - 1);
+            // double gapEpsilon = m_epsilonsForVertices.getDefaultValue();
             createGapsAlongXAxisBetweenVertices(VkVerticesXPositions, boxBounds, gapEpsilon);
             for (const auto& [vIndex, newVPositionX] : VkVerticesXPositions) {
                 m_layoutPositions[vIndex].first = newVPositionX;
@@ -900,11 +817,15 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
             for (uint32_t uIndex : Nrv) {
                 if (graph.getVertexColour(uIndex) != colour) continue;
                 if (graph.getVertex(uIndex).level+1 != k) continue;
-                // std::cout << "A\n";
                 maxDistanceAlongXAxisBetweenChildAndParent = std::max(
                     maxDistanceAlongXAxisBetweenChildAndParent, 
                     std::abs(m_layoutPositions[vIndex].first - m_layoutPositions[uIndex].first)
                 );
+                // logging::log_trace(
+                //     "Max distance after checking for " + std::to_string(vIndex) + " and " +
+                //     std::to_string(uIndex) + ", colour: " + std::to_string(colour) + ": " +
+                //     std::to_string(maxDistanceAlongXAxisBetweenChildAndParent) + "\n"
+                // );
             }
         }
 
@@ -954,7 +875,7 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
 }
 
 
-void LayoutDrawer::moveVerticeFormXOptBasedOnNoise(
+void LayoutDrawer::moveVerticeFromXOptBasedOnNoise(
     double xOpt, double noise, 
     BucketifiedLineSegment<
         uint32_t, OnePairFieldArrayWrapper<double, double, double, 1>&, size_t
@@ -964,6 +885,11 @@ void LayoutDrawer::moveVerticeFormXOptBasedOnNoise(
     double xOptNoisy = xOpt + noise;
     double intervalBegin = std::min(xOpt, xOptNoisy);
     double intervalEnd = std::max(xOpt, xOptNoisy);
+    logging::log_trace_vv(
+        "Will move elements from interval (" + std::to_string(intervalBegin) + 
+        ", " + std::to_string(intervalEnd) + ")..."
+    );
+
     auto XOptToOptNoisy = xPositionsBucketified.getElementsBetween(intervalBegin, intervalEnd);
     double deltaCoeff = m_algorithmParams.randomDeltaNoiseCoeffCalculator();
 
@@ -1005,6 +931,13 @@ void LayoutDrawer::moveAllVerticesInXRangeToNewXRange(
     >& xPositionsBucketified, 
     std::optional<std::reference_wrapper<std::vector<uint32_t>>> precomputedVerticesInXRangeIndices
 ) {
+    logging::log_trace_vv(
+        "Will move elements from interval (" + std::to_string(baseXRange.first) + 
+        ", " + std::to_string(baseXRange.second) + ") to a new interval with borders " +
+        (otherBorderInfSign == 1 ? std::string(std::to_string(newXRangeBorder) + ", inf)") : std::string("(-inf, " + std::to_string(newXRangeBorder))) + 
+        "."
+    );
+
     std::vector<uint32_t> verticesInXRangeIndices;
     if (!precomputedVerticesInXRangeIndices.has_value()) {
         verticesInXRangeIndices = xPositionsBucketified.getElementsBetween(baseXRange.first, baseXRange.second);
@@ -1171,18 +1104,38 @@ void LayoutDrawer::moveElementsToTheInterval(
 ) const {
 
     auto&& [leftBoxBound, rightBoxBound] = intervalBounds;
+    uint32_t n = VkVerticesXPositions.size();
+    for (uint32_t i=0; i<n; ++i) {
+        if (VkVerticesXPositions[i].second >= leftBoxBound) break;
+        VkVerticesXPositions[i].second = leftBoxBound;
+    }
+
+    uint32_t i = n-1;
+    while (true) {
+        if (VkVerticesXPositions[i].second <= rightBoxBound) break;
+        VkVerticesXPositions[i].second = rightBoxBound; 
+        if (i == 0) break;
+        --i;
+    }
+
+    return; // TODO: Try to fix the implementation below
+
     double center = (rightBoxBound - leftBoxBound) * 0.5;
     double W = rightBoxBound - leftBoxBound;
 
-    double minX = std::numeric_limits<double>::max();
-    double maxX = std::numeric_limits<double>::min();
+    double minX = leftBoxBound;
+    double maxX = rightBoxBound;
     int64_t minXIndex{-1}, maxXIndex{-1};
 
-    double minXLargerThanLeftBorder = std::numeric_limits<double>::max();
-    double maxXSmallerThanRightBorder = std::numeric_limits<double>::min();
+    double minXLargerThanLeftBorder = rightBoxBound;
+    double maxXSmallerThanRightBorder = leftBoxBound;
     bool anyVerticeInBoxBounds = false;
 
-    uint32_t n = VkVerticesXPositions.size();
+    logging::log_trace(
+        "Box bounds = (" + std::to_string(leftBoxBound) + ", " + std::to_string(rightBoxBound) + ").\n"
+    );
+
+    // uint32_t n = VkVerticesXPositions.size();
     for (uint32_t i=0; i<n; ++i) {
         double xi = VkVerticesXPositions[i].second;
         if (xi >= leftBoxBound && xi <= rightBoxBound) {
@@ -1200,24 +1153,44 @@ void LayoutDrawer::moveElementsToTheInterval(
         }
     }
 
+    logging::log_debug(
+        "In move elements to the interval in graph: minX = " +
+        std::to_string(minX) + ", (index = " + std::to_string(minXIndex) + "), maxX = " +
+        std::to_string(maxX) + ", (index = " + std::to_string(maxXIndex) + "), minXLargerThanLeftBorder = " +
+        std::to_string(minXLargerThanLeftBorder) + ", maxXSmallerThanRightBorder = " +
+        std::to_string(maxXSmallerThanRightBorder) + "."
+    );
+
     if (minXIndex == -1 && maxXIndex == -1) return;
-    else if (minXIndex == -1) {
+    else if (maxXIndex != -1) {
         double rightBoxBoundSpill = maxX - rightBoxBound;
+        logging::log_debug("Right box bound spill = " + std::to_string(rightBoxBoundSpill) + ".");
         for (uint32_t i=0; i<n; ++i) {
             VkVerticesXPositions[i].second -= rightBoxBoundSpill;
             minX = std::min(minX, VkVerticesXPositions[i].second);
         }
         if (minX < leftBoxBound) {
+            logging::log_debug(
+                "After fixing for minXIndex == -1 and maxXIndex != -1 there has been a left box bound spill detected (boxBounds = ("
+                + std::to_string(leftBoxBound) + ", " + std::to_string(rightBoxBound) + "), minX = " +
+                std::to_string(minX) + "), fixing..."
+            );
             VkVerticesXPositions[maxXIndex].second += 1e-4;
             moveElementsToTheInterval(intervalBounds, VkVerticesXPositions);
         }
-    } else if (maxXIndex == -1) {
+    } else if (minXIndex != -1) {
         double leftBoxBoundSpill = leftBoxBoundSpill - minX;
+        logging::log_debug("Left box bound spill = " + std::to_string(leftBoxBoundSpill) + ".");
         for (uint32_t i=0; i<n; ++i) {
             VkVerticesXPositions[i].second += leftBoxBoundSpill;
             maxX = std::max(maxX, VkVerticesXPositions[i].second);
         }
         if (maxX > rightBoxBound) {
+            logging::log_debug(
+                "After fixing for minXIndex != -1 and maxXIndex == -1 there has been a right box bound spill detected, (boxBounds = ("
+                + std::to_string(leftBoxBound) + ", " + std::to_string(rightBoxBound) + "), minX = " +
+                std::to_string(minX) + "), fixing..."
+            );
             VkVerticesXPositions[minXIndex].second -= 1e-4;
             moveElementsToTheInterval(intervalBounds, VkVerticesXPositions);
         }
@@ -1362,11 +1335,14 @@ void LayoutDrawer::drawUncolouredPartOfGraph(
     std::vector<uint32_t> edgesToColourSum(nkl, 0);
     std::vector<uint32_t> edgesToAnyColourCounts(nkl, 0);
 
+    // TODO: fix the get the level for first level colour 
+    // (i.e. colour which satisfies parent == null)
     for (size_t i=0; i<nkl; ++i) {
         uint32_t uIndex = Vkl[i];
         auto Nu = graph.N(uIndex);
         for (uint32_t vIndex : Nu) {
             uint32_t vColour = graph.getVertexColour(vIndex);
+            std::cout << uIndex << " " << vIndex << " " << vColour << " " << m_colourNodesPtrs[vColour]->parent->colour << "\n";
             if (vColour != 0 && m_colourNodesPtrs[vColour]->parent->colour == 0) {
                 edgesToColourSum[i] += vColour;
                 ++edgesToAnyColourCounts[i];
@@ -1380,7 +1356,7 @@ void LayoutDrawer::drawUncolouredPartOfGraph(
         E.emplace_back(
             Vkl[i], 
             (edgesToAnyColourCounts[i] != 0) 
-                ? (edgesToColourSum[i] / edgesToAnyColourCounts[i])
+                ? (static_cast<double>(edgesToColourSum[i]) / static_cast<double>(edgesToAnyColourCounts[i]))
                 : std::numeric_limits<double>::max()
         );
     }
@@ -1391,15 +1367,31 @@ void LayoutDrawer::drawUncolouredPartOfGraph(
         }
     );
 
+    std::string firstUncolouredLevelOrderStr = "";
     double s = W / (static_cast<double>(nkl+1));
     for (size_t i=0; i<nkl; ++i) {
-        const auto& [vIndex, _] = E[i];
+        const auto& [vIndex, vIndexValue] = E[i];
         uncolouredVerticesOrderOnTheirLevel[vIndex] = i+1;
         m_layoutPositions[vIndex] = {
             leftBoxBound + static_cast<double>(i)*s, 
             -h
         };
+
+        if (firstUncolouredLevelOrderStr.size() != 0) {
+            firstUncolouredLevelOrderStr += ", ";
+        }
+        firstUncolouredLevelOrderStr += std::to_string(vIndex) + "(" + std::to_string(vIndexValue) + ")";
     }
+
+    logging::log_debug(
+        "First uncoloured level order: " + firstUncolouredLevelOrderStr + "."
+    );
+
+    logging::log_trace(
+        "Checking h for first uncoloured level in graph" +
+        std::string(m_optLogGraphId.has_value() ? " with id = " + m_optLogGraphId.value() : "") +
+        "..."
+    );
 
     double maxDistanceAlongXAxisBetweenChildAndParent = 0;
     for (size_t i=0; i<nkl; ++i) {
@@ -1411,11 +1403,22 @@ void LayoutDrawer::drawUncolouredPartOfGraph(
                 maxDistanceAlongXAxisBetweenChildAndParent, 
                 std::abs(m_layoutPositions[vIndex].first - m_layoutPositions[uIndex].first) 
             );
+            logging::log_trace(
+                "After comparing between " + std::to_string(vIndex) + " and " +
+                std::to_string(uIndex) + ", max distance along x axis bcap is " +
+                std::to_string(maxDistanceAlongXAxisBetweenChildAndParent) + "."
+            );
         }
     }
 
     h = std::max(
         h, m_algorithmParams.minDistanceBetweenLevelsCoeff * maxDistanceAlongXAxisBetweenChildAndParent
+    );
+    std::cout << "h for first uncoloured in graph: " << h << "\n";
+    logging::log_trace(
+        "Checked h for first uncoloured level in graph" +
+        std::string(m_optLogGraphId.has_value() ? " with id = " + m_optLogGraphId.value() : "") +
+        ", h = " + std::to_string(h) + "."
     );
 
     for (size_t i=0; i<nkl; ++i) {
@@ -1429,7 +1432,7 @@ void LayoutDrawer::drawUncolouredPartOfGraph(
     //     Vkl.size() / sqrt2
     // );
     int k = kl-1;
-    while (k >= 1) {
+    while (k >= 0) {
         auto Vk = const_cast<ArrayOfArraysInterface<uint32_t>&>(verticesPerLevel).getNestedArrayView(k);
         size_t nk = Vk.size();
         edgesToColourSum = std::vector<uint32_t>(nk, 0);
@@ -1504,8 +1507,8 @@ void LayoutDrawer::drawUncolouredPartOfGraph(
         --k;
     }
 
-    uint32_t rootIndex = const_cast<ArrayOfArraysInterface<uint32_t>&>(verticesPerLevel).getNestedArrayView(0)[0];
-    m_layoutPositions[rootIndex] = {leftBoxBound + W*0.5, -h};
+    // uint32_t rootIndex = const_cast<ArrayOfArraysInterface<uint32_t>&>(verticesPerLevel).getNestedArrayView(0)[0];
+    // m_layoutPositions[rootIndex] = {leftBoxBound + W*0.5, -h};
 }
 
 #undef EPS_FOR_SIGNUM

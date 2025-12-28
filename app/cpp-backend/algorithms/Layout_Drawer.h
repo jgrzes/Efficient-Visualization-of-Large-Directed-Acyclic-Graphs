@@ -62,6 +62,7 @@ public:
         std::function<uint32_t(uint32_t)> numberOfBucketsCalculator;
 
         double firstLevelChildPadding;
+        double nestedColourChildPadding;
         double gAcceleration;
         double baseVerexWeight;
         double addWeightFromChildrenCoeff;
@@ -240,7 +241,10 @@ private:
         std::optional<std::reference_wrapper<ColourHierarchyNode>> optColourNode = std::nullopt
     );
 
-    void findLayoutForColouredSubgraph(
+    // Returns fixed right box bound, which may become larger than `boxBounds.second`
+    // because of nested level padding between child colour boxes, 
+    // see (`m_algorithmParams.nestedColourChildPadding`).
+    double findLayoutForColouredSubgraph(
         const ArrayOfArraysInterface<uint32_t>& verticesPerLevelForColour, 
         const std::pair<double, double>& startingPositionForColourRoot, 
         const std::pair<double, double>& boxBounds
@@ -256,7 +260,7 @@ private:
         const std::pair<double, double>& boxBounds
     );
 
-    void moveVerticeFormXOptBasedOnNoise(
+    void moveVerticeFromXOptBasedOnNoise(
         double xOpt, double noise, 
         BucketifiedLineSegment<
             uint32_t, OnePairFieldArrayWrapper<double, double, double, 1>&, size_t

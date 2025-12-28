@@ -6,8 +6,9 @@
 
 #include "../graph-preprocessing/assign_levels.h"
 #include "../utils/input_generation_for_qap.h"
-#include "../qap-solver/Codes/QAP.h"
 #include "../data-structures/Pretend_Matrix.hpp"
+
+#define DEBUGGING true
 
 namespace net {
 
@@ -34,7 +35,10 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
             this, context, edgeList, response, &graphUUIDInStrForm, &computationSuccessful
         ]() -> void {
             std::vector<std::pair<uint32_t, uint32_t>> edgeListInGraphCompatibleForm;
+            #if DEBUGGING
+            #else 
             try {
+            #endif
                 size_t numberOfEdges = edgeList->edges_size();
                 edgeListInGraphCompatibleForm.reserve(numberOfEdges);
 
@@ -69,21 +73,28 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                 );
                 GraphColourer graphColourer(m_colouringAlgParams);
                 graphColourer.setLogGraphId(graphUUIDInStrForm);
-                auto&& [colouredGraph, colourHierarchyRoot] = graphColourer.assignColoursToGraph(
-                    graph, m_maxRecursionDepthInGraphColouring
+                auto&& [colouredGraph, colourHierarchyRootPtr] = graphColourer.assignColoursToGraph(
+                    graph, true, m_maxRecursionDepthInGraphColouring
                 );
                 logging::log_info(
                     "Concluded colouring vertices in graph with id = " + graphUUIDInStrForm + "."
                 );
 
-                if (!colourHierarchyRoot.childrenPtrs.empty()) {
+                if (!colourHierarchyRootPtr->childrenPtrs.empty()) {
                     logging::log_trace(
                         "Preparing to run QAP for graph with id = " + graphUUIDInStrForm + "..."
                     );
-                    callQAPPythonScript(colouredGraph, colourHierarchyRoot);
+                    callQAPPythonScript(colouredGraph, *colourHierarchyRootPtr);
                     // callQAPCppScript(colouredGraph, colourHierarchyRoot);
                     logging::log_info(
                         "Ran QAP for graph with id = " + graphUUIDInStrForm + "."
+                    );
+
+                    std::string colourHierarchyString;
+                    buildColourHierarchyString(*colourHierarchyRootPtr, colourHierarchyString);
+                    logging::log_info(
+                        "Result colour hierarchy structure for graph with id = " + graphUUIDInStrForm + ":\n" +
+                        colourHierarchyString + "."
                     );
                 }
 
@@ -93,7 +104,7 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                 LayoutDrawer layoutDrawer(m_layoutAlgParams);
                 layoutDrawer.setLogGraphId(graphUUIDInStrForm);
                 auto layoutPositons = layoutDrawer.findLayoutForGraph(
-                    colouredGraph, colourHierarchyRoot, m_defaultEpsilonInLayoutDrawing
+                    colouredGraph, *colourHierarchyRootPtr, m_defaultEpsilonInLayoutDrawing
                 );
                 logging::log_trace("Trimming helper colour roots for " + graphUUIDInStrForm + ".");
                 layoutPositons.resize(numberOfVertices); // Trimming vertices that may have been added as helper colour roots
@@ -117,12 +128,15 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                     + graphUUIDInStrForm + "."
                 );
                 computationSuccessful = true;
+            #if DEBUGGING
+            #else
             } catch (const std::exception& e) {
                 logging::log_error(
                     "An error occured when trying to compute layout for graph with id = "
                     + graphUUIDInStrForm + ": " + e.what()
                 );
             }
+            #endif
     });
     executionThread.join();
 
@@ -149,105 +163,8 @@ void GrpcLayoutService::fillFileWithColourHierarchy(
 }
 
 
-void GrpcLayoutService::callQAPCppScript(
-    const ColouredGraph& graph, 
-    GraphColourer::ColourHierarchyNode& colourHierarchyRoot
-) {
-    std::cout << "X1\n";
-    auto [F, FPrim] = utils::createFMatricesForColoursQAP(
-        colourHierarchyRoot, graph
-    );
-    std::cout << "X2\n";
-
-    uint32_t n = F.getRowCount();
-    uint32_t numberOfColourNodes = 0;
-    algorithms::countTheNumberOfColoursInColourHierarchyTree(
-        colourHierarchyRoot, numberOfColourNodes
-    );
-    std::cout << "X3\n";
-
-    std::vector<uint32_t> newColourRemapping(numberOfColourNodes);
-    for (uint32_t i=0; i<numberOfColourNodes; ++i) {
-        newColourRemapping[i] = i;    
-    }
-
-    std::queue<GraphColourer::ColourHierarchyNode*> Q;
-    Q.emplace(&colourHierarchyRoot);
-    uint32_t counter = 0;
-
-    std::cout << "X4\n";
-
-    while (!Q.empty()) {
-        GraphColourer::ColourHierarchyNode* colourNodePtr = Q.front();
-        Q.pop();
-        uint32_t m = colourNodePtr->childrenPtrs.size();
-
-        std::cout << "Extracted from queue: " << colourNodePtr->colour << "\n";
-        if (colourNodePtr->parent == nullptr) {
-            std::vector<std::vector<int>> FForSubquestion(
-                m, std::vector<int>(m, 0)
-            );
-
-            for (uint32_t i=0; i<m; ++i) {
-                uint32_t colourI = colourNodePtr->childrenPtrs[i]->colour;
-                for (uint32_t j=0; j<m; ++j) {
-                    uint32_t colourJ = colourNodePtr->childrenPtrs[j]->colour;
-                    FForSubquestion[i][j] = F.dataAtOr(i, j, 0);
-                }
-            }
-            std::cout << "A ";
-
-            std::vector<std::vector<int>> DForSubquestion(
-                m, std::vector<int>(m, 0)
-            );
-
-            for (int64_t i=0; i<m; ++i) {
-                for (int64_t j=0; j<m; ++j) {
-                    DForSubquestion[i][j] = std::abs(i-j);
-                }
-            }
-
-            std::cout << "B ";
-
-            std::vector<int> initialSolution;
-            constexpr uint32_t InitSolutionIter = 100;
-            constexpr uint32_t TabuSearchMaxIter = 100;
-            constexpr uint32_t TabuSearchMinTabuTenure = 7;
-            constexpr uint32_t TabuSearchMaxTabuTenure = 10;
-            QAPSolver qapSolver(&FForSubquestion, &DForSubquestion, &m);
-            qapSolver.genInitSol("random", &initialSolution, InitSolutionIter);
-            qapSolver.TS(
-                initialSolution, TabuSearchMaxIter, 
-                TabuSearchMinTabuTenure, TabuSearchMaxTabuTenure
-            );
-
-            std::cout << "C ";
-
-            std::vector<int> bestSolutionPermutation = qapSolver.getPerm();
-            for (uint32_t i=0; i<m; ++i) {
-                newColourRemapping[colourNodePtr->childrenPtrs[i]->colour] = ++counter;
-            }
-
-            std::cout << "D\n";
-        }
-
-        for (uint32_t i=0; i<m; ++i) {
-            Q.emplace(colourNodePtr->childrenPtrs[i].get());
-        }
-    }
-
-    std::vector<GraphColourer::ColourHierarchyNode*> colourHierarchyNodesPtrs(numberOfColourNodes, nullptr);
-    fillVectorOfColourHierarchyNodesPtr(colourHierarchyRoot, colourHierarchyNodesPtrs);
-    for (uint32_t i=0; i<numberOfColourNodes; ++i) {
-        colourHierarchyNodesPtrs[i]->colour = newColourRemapping[i];
-    }
-
-    sortChildrenInColourHierarchyNodeWithRecursion(colourHierarchyRoot);
-}
-
-
 void GrpcLayoutService::callQAPPythonScript(
-    const ColouredGraph& graph, 
+    ColouredGraph& graph, 
     GraphColourer::ColourHierarchyNode& colourHierarchyRoot
 ) const {
     boost::uuids::random_generator graphUUIDGenerator;
@@ -272,19 +189,20 @@ void GrpcLayoutService::callQAPPythonScript(
         for (auto it=Fi.begin(); it!=Fi.end(); ++it) {
             auto [j, fij] = it.getIndexAndValuePtr();
             if (*fij != 0) {
-                std::cout << "F " << i << " " << j << " " << *fij << "\n";
+                // std::cout << "F " << i << " " << j << " " << *fij << "\n";
                 f << "F " << i << " " << j << " " << *fij << "\n"; 
             }
         }
     }
 
     f.close();
-    callQAPScriptAndModifyColourHierarchy(colourHierarchyRoot, p.string());
+    callQAPScriptAndModifyColourHierarchy(graph, colourHierarchyRoot, p.string());
     boost::filesystem::remove(p);
 }
 
 
 void GrpcLayoutService::callQAPScriptAndModifyColourHierarchy(
+    ColouredGraph& graph, 
     GraphColourer::ColourHierarchyNode& colourHierarchyRoot, 
     const std::string& colourHierarchyAndFMatrixPathFile
 ) const {
@@ -342,7 +260,11 @@ void GrpcLayoutService::callQAPScriptAndModifyColourHierarchy(
 
         previousColour = std::stoi(previousColourStr);
         newColour = std::stoi(newColourStr);
-        colourHierarchyNodesPtrs[previousColour]->colour = newColour;
+        auto examinedColourHierarchyNode = colourHierarchyNodesPtrs[previousColour];
+        examinedColourHierarchyNode->colour = newColour;
+        for (uint32_t vIndex : examinedColourHierarchyNode->verticesOfColour) {
+            graph.setVertexColour(vIndex, newColour);
+        }
     }
 
     logging::log_debug(
@@ -414,5 +336,32 @@ void GrpcLayoutService::pushLayoutToFirstQuarterOfCartesianSpace(
         graphLayout[uIndex] += translationVec;
     }
 }
+
+
+void GrpcLayoutService::buildColourHierarchyString(
+    const GraphColourer::ColourHierarchyNode& colourHierarchyNode, 
+    std::string& colourHierarchyString, uint32_t indent
+) const {
+
+    colourHierarchyString += " ";
+    for (uint32_t i=0; i<indent; ++i) {
+        colourHierarchyString += "-";
+    }
+    colourHierarchyString += " " + std::to_string(colourHierarchyNode.colour);
+    colourHierarchyString += " vertices: [";
+    uint32_t n = colourHierarchyNode.verticesOfColour.size();
+    for (uint32_t i=0; i<n; ++i) {
+        colourHierarchyString += (i == 0 ? "" : ", ") + std::to_string(colourHierarchyNode.verticesOfColour[i]);
+    }
+    colourHierarchyString += "]\n";
+
+    for (const auto& childNodePtr : colourHierarchyNode.childrenPtrs) {
+        buildColourHierarchyString(
+            *childNodePtr, colourHierarchyString, indent+1
+        );
+    }
+}
+
+#undef DEBUGGING
 
 }

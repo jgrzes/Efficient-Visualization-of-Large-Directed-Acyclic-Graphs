@@ -9,7 +9,8 @@ namespace algorithms {
 
 GraphColourer::AlgorithmParams createDefaultGraphColourerAlgParams() {
     return GraphColourer::AlgorithmParams(
-        [dEdgesThresholdCoeff = 3](uint32_t level, uint32_t cumDisputableEdgesAtLevel, uint32_t cumVerticesAtLevel) -> bool {
+        [dEdgesThresholdCoeff = 3, minCumCountOfVertices = 3](uint32_t level, uint32_t cumDisputableEdgesAtLevel, uint32_t cumVerticesAtLevel) -> bool {
+            if (cumVerticesAtLevel < minCumCountOfVertices) return false;
             return level >= 1 && (cumDisputableEdgesAtLevel * dEdgesThresholdCoeff) > cumVerticesAtLevel;
         }, 
         [](uint32_t level, uint32_t commonVerticesCount) -> bool {
@@ -48,7 +49,7 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
         return static_cast<uint32_t>(epsilon * inverseBoxWidthCoeff);
     };
 
-    layoutAlgorithmParams.maxNoiseEpsilonCalculator = [intervalWidthPercentage = 0.1](uint32_t n, double intervalWidth) -> double {
+    layoutAlgorithmParams.maxNoiseEpsilonCalculator = [intervalWidthPercentage = 0.04](uint32_t n, double intervalWidth) -> double {
         double eps0 = intervalWidth * intervalWidthPercentage;
         return eps0 / std::log2(static_cast<double>(n+1));
     };
@@ -67,6 +68,7 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
     };
 
     layoutAlgorithmParams.firstLevelChildPadding = 2.5;
+    layoutAlgorithmParams.nestedColourChildPadding = 0.4;
     layoutAlgorithmParams.gAcceleration = 9.81;
     layoutAlgorithmParams.baseVerexWeight = 1.0;
     // layoutAlgorithmParams.addWeightFromChildrenCoeff = 0.04;

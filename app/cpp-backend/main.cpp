@@ -38,7 +38,8 @@ po::options_description createOptionsDescription() {
     ("ls_min_tp_size", po::value<int>(), "min size of grpc layout service thread pool")
     ("ls_max_tp_size", po::value<int>(), "max size of grpc layout service thread pool")
     ("console_logging_level", po::value<std::string>(), "severity logging level on std output")
-    ("file_logging_level", po::value<std::string>(), "severity logging level in file");
+    ("file_logging_level", po::value<std::string>(), "severity logging level in file")
+    ("max_colouring_depth", po::value<std::string>(), "max depth in the colouring stage, default is 1, inputting the word MAX will result in no depth limit");
 
   return desc;  
 }
@@ -79,8 +80,6 @@ bool checkIfRequiredParamMissing(const po::variables_map& vm) {
 }
 
 
-
-
 void handleSigTStp(int sigtstp) {
   logging::log_info("Received SIGTSTP, will attempt to close the service...");
   // grpcLayoutServicePtr->Shutdown();
@@ -118,6 +117,14 @@ int main(int argc, char** argv) {
   minLayoutServiceThreadPoolSize = vm["ls_min_tp_size"].as<int>();
   maxLayoutServiceThreadPoolSize = vm["ls_max_tp_size"].as<int>();
 
+  uint32_t maxColouringDepth = 1;
+  if (vm.count("max_colouring_depth") != 0) {
+    std::string maxColouringDepthStr = vm["max_colouring_depth"].as<std::string>();
+    maxColouringDepth = (maxColouringDepthStr == "MAX") 
+      ? std::numeric_limits<uint32_t>::max()
+      : std::stoi(maxColouringDepthStr);
+  }
+
   if (minLayoutServiceThreadPoolSize > maxLayoutServiceThreadPoolSize) {
     std::cerr << "Invalid values for thread pool size specification: min cannot be greater than max";
     return 1;
@@ -140,8 +147,7 @@ int main(int argc, char** argv) {
   GrpcLayoutService grpcLayoutService(
     createDefaultGraphColourerAlgParams(), 
     createDefaultLayoutDrawerAlgParams(), 
-    // std::numeric_limits<uint32_t>::max(), 
-    1, 
+    maxColouringDepth,
     2.0
   );
   grpc::ServerBuilder builder;

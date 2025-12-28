@@ -14,39 +14,43 @@ std::mutex BoostLogger::s_instanceCreationMutex = std::mutex();
 
 namespace expr = boost::log::expressions;
 
-trivial_severity_level convertStrToTrivialSeverity(
-    const std::string& trivialSeverityLevelAsStr
+layout_service_severity_level convertStrToTrivialSeverity(
+    const std::string& layoutServiceSeverityLevelAsStr
 ) {
-    if (trivialSeverityLevelAsStr == "trace") {
-        return trivial_severity_level::trace;
-    } else if (trivialSeverityLevelAsStr == "debug") {
-        return trivial_severity_level::debug;
-    } else if (trivialSeverityLevelAsStr == "info") {
-        return trivial_severity_level::info;
-    } else if (trivialSeverityLevelAsStr == "warning") {
-        return trivial_severity_level::warning;
-    } else if (trivialSeverityLevelAsStr == "error") {
-        return trivial_severity_level::error;
-    } else if (trivialSeverityLevelAsStr == "fatal") {
-        return trivial_severity_level::fatal;
+    if (layoutServiceSeverityLevelAsStr == "trace_vv") {
+        return layout_service_severity_level::trace_vv;
+    } else if (layoutServiceSeverityLevelAsStr == "trace_v") {
+        return layout_service_severity_level::trace_v;
+    } else if (layoutServiceSeverityLevelAsStr == "trace") {
+        return layout_service_severity_level::trace;
+    } else if (layoutServiceSeverityLevelAsStr == "debug") {
+        return layout_service_severity_level::debug;
+    } else if (layoutServiceSeverityLevelAsStr == "info") {
+        return layout_service_severity_level::info;
+    } else if (layoutServiceSeverityLevelAsStr == "warning") {
+        return layout_service_severity_level::warning;
+    } else if (layoutServiceSeverityLevelAsStr == "error") {
+        return layout_service_severity_level::error;
+    } else if (layoutServiceSeverityLevelAsStr == "fatal") {
+        return layout_service_severity_level::fatal;
     }
 
     throw std::runtime_error{
         "Convert String to Trivial Severity Level error: unknown string conversion (cannot convert from "
-        + trivialSeverityLevelAsStr + ")"
+        + layoutServiceSeverityLevelAsStr + ")"
     };
 }
 
 BoostLogger::BoostLogger(
     const std::string& logFileDir,
-    trivial_severity_level consoleSeverityLevel, 
-    trivial_severity_level fileSeverityLevel
+    layout_service_severity_level consoleSeverityLevel, 
+    layout_service_severity_level fileSeverityLevel
 ) {
     
     constexpr size_t logFileRotationSize = 12 * 1024 * 1024; // 12 MB
 
     boost::log::add_common_attributes();   
-    m_logger = boost::make_shared<severity_logger_mt<trivial_severity_level>>();
+    m_logger = boost::make_shared<severity_logger_mt<layout_service_severity_level>>();
     m_consoleSink = boost::make_shared<console_sink_t>();
     boost::shared_ptr<std::ostream> consoleStream(&std::cout, boost::null_deleter());
     m_consoleSink->locked_backend()->add_stream(consoleStream);
@@ -54,12 +58,13 @@ BoostLogger::BoostLogger(
     m_consoleSink->set_formatter(
         expr::stream 
         << "[" << expr::format_date_time<boost::posix_time::ptime>("TimeStamp", "%Y-%m-%d %H:%M:%S") << "] "
-        << "<" << boost::log::trivial::severity << "> "
+        // << "<" << boost::log::trivial::severity << "> "
+        << "<" << expr::attr<layout_service_severity_level>("Severity") << "> "
         << expr::smessage
     );
 
     m_consoleSink->set_filter(
-        boost::log::trivial::severity >= consoleSeverityLevel
+        expr::attr<layout_service_severity_level>("Severity") >= consoleSeverityLevel
     );
 
     boost::log::core::get()->add_sink(m_consoleSink);
@@ -74,12 +79,13 @@ BoostLogger::BoostLogger(
     m_fileSink->set_formatter(
         expr::stream 
         << "[" << expr::format_date_time<boost::posix_time::ptime>("TimeStamp", "%Y-%m-%d %H:%M:%S") << "] "
-        << "<" << boost::log::trivial::severity << "> "
+        // << "<" << boost::log::trivial::severity << "> "
+        << "<" << expr::attr<layout_service_severity_level>("Severity") << "> "
         << expr::smessage
     );
 
     m_fileSink->set_filter(
-        boost::log::trivial::severity >= fileSeverityLevel
+        expr::attr<layout_service_severity_level>("Severity") >= fileSeverityLevel
     );
 
     boost::log::core::get()->add_sink(m_fileSink);
@@ -87,8 +93,8 @@ BoostLogger::BoostLogger(
 
 void initLogging(
     const std::string& logFileDir, 
-    trivial_severity_level consoleSeverityLevel, 
-    trivial_severity_level fileSeverityLevel
+    layout_service_severity_level consoleSeverityLevel, 
+    layout_service_severity_level fileSeverityLevel
 ) {
     BoostLogger::createInstance(logFileDir, consoleSeverityLevel, fileSeverityLevel);
 }

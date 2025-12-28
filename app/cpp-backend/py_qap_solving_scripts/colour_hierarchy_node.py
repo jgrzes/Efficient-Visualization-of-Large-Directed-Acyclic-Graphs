@@ -9,3 +9,11 @@ class ColourHierarchyNode:
 
     def add_child(self, child_colour: int) -> None:
         self.children_nodes.append(ColourHierarchyNode(child_colour, parent=self))    
+
+
+    def __str__(self) -> str:
+        return f"<colour: {self.colour}, parent: {None if self.parent is None else self.parent.colour}>"
+
+
+    def __repr__(self) -> str:
+        return self.__str__()
