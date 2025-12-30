@@ -45,7 +45,7 @@ BoostLogger::BoostLogger(
     const std::string& logFileDir,
     layout_service_severity_level consoleSeverityLevel, 
     layout_service_severity_level fileSeverityLevel
-) {
+) : m_consoleLoggingLevel{consoleSeverityLevel}, m_fileLoggingLevel{fileSeverityLevel} {
     
     constexpr size_t logFileRotationSize = 12 * 1024 * 1024; // 12 MB
 

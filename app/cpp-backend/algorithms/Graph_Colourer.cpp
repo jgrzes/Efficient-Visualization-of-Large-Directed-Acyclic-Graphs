@@ -431,7 +431,8 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
     // ArrayOfArraysInterface<Edge>& disputableEdgesPerLevel,
     uint32_t startingLevel, 
     std::vector<uint32_t>& vertexColours,
-    ColourAcquireFunctionT&& colourAcquirerFunction
+    ColourAcquireFunctionT&& colourAcquirerFunction, 
+    std::optional<int64_t> optNativeColour
 ) {
     
     // TODO: Determine if we should allow a colour to have vertices lower than its child colours
@@ -483,6 +484,11 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
         for (size_t i=0; i<nk; ++i) {
             uint32_t uIndex = verticesAtKIndices[i];
             for (const uint32_t vIndex : graph.N(uIndex)) {
+                if (optNativeColour.has_value() &&
+                    optNativeColour.value() != static_cast<ColouredGraph&>(graph).getVertexColour(vIndex)) {
+                    
+                    continue;
+                }
                 if (vertexMailboxes[vIndex].lastPing != k) {
                     Vnu.emplace_back(vIndex);
                     vertexMailboxes[vIndex].resetForPing(k);
@@ -496,10 +502,21 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
 
         for (const uint32_t vIndex : Vnu) {
             vertexOfferSummaryMap.clear();
-            for (const uint32_t vIndex : vertexMailboxes[vIndex].receivedOfferPackets) {
-                uint32_t c = vertexColours[vIndex];
+            std::string vertexOfferSummaryMapStr = "";
+            for (const uint32_t uIndex : vertexMailboxes[vIndex].receivedOfferPackets) {
+                uint32_t c = vertexColours[uIndex];
                 ++vertexOfferSummaryMap[c]; // uint64_t{} == 0, so explicit vertexOfferSummaryMap[c] = 0 is not needed
+            
+                if (vertexOfferSummaryMapStr.size() != 0) {
+                    vertexOfferSummaryMapStr += ", "; 
+                }
+                vertexOfferSummaryMapStr += "(" + std::to_string(uIndex) + ", c=" + std::to_string(c) + " )";
             }
+
+            logging::log_trace_vv(
+                "Vertex offer summary map for v = " + std::to_string(vIndex) + 
+                ": " + vertexOfferSummaryMapStr + "."
+            );
 
             uint32_t chosenColour = 0;
             uint64_t bestOfferCount = 0;
@@ -509,6 +526,11 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
                     bestOfferCount = cCount;
                 }
             }
+
+            logging::log_trace_v(
+                "Chosen colour for v = " + std::to_string(vIndex) + 
+                ": " + std::to_string(chosenColour) + "."
+            );
 
             vertexColours[vIndex] = chosenColour;
         }
@@ -558,6 +580,9 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
 
             if (C.size() == 1) continue;
             Vmu.clear();
+            std::string setUStr = "{";
+            std::string VmuStr = "{";
+
             for (const uint32_t xIndex : setU) {
                 for (const uint32_t vIndex : graph.N(xIndex)) {
                     auto& mailboxV = vertexMailboxes[vIndex];
@@ -567,7 +592,13 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
                         Vmu.emplace_back(vIndex);
                     }
                 }
+
+                if (setUStr.size() > 1) {
+                    setUStr += ", ";
+                }
+                setUStr += std::to_string(xIndex);
             }
+            setUStr += "}";
 
             // Resetting -1 pings
             for (const uint32_t xIndex : setU) {
@@ -586,12 +617,27 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
 
             std::vector<std::pair<uint32_t, uint32_t>> baseColouring;
             baseColouring.reserve(setU.size() + Vmu.size());
+            std::string baseColouringStr = "[";
+
             for (const uint32_t xIndex : setU) {
                 baseColouring.emplace_back(xIndex, vertexColours[xIndex]);
+                baseColouringStr += "{" + std::to_string(xIndex) + ": " + std::to_string(vertexColours[xIndex]) + "} ";
             }
             for (const uint32_t vIndex : Vmu) {
                 baseColouring.emplace_back(vIndex, vertexColours[vIndex]);
+                if (VmuStr.size() > 1) {
+                    VmuStr += ", ";
+                }
+                VmuStr += std::to_string(vIndex);
+                baseColouringStr += "{" + std::to_string(vIndex) + ": " + std::to_string(vertexColours[vIndex]) + "} ";
             }
+            
+            VmuStr += "}";
+            baseColouringStr += "]";
+            logging::log_trace(
+                "Attempting recolouring for setU = " + setUStr + ", Vmu = " +
+                VmuStr + ", colouring = " + baseColouringStr + "."
+            );
 
             for (const uint32_t c : C) {
                 for (const uint32_t xIndex : setU) vertexColours[xIndex] = c;
@@ -622,6 +668,49 @@ std::pair<uint32_t, uint32_t> GraphColourer::applyGreedyColouring(
             + " (local colour fix up, call number " 
             + std::to_string(m_greedyColouringApplyCalls) + ")."
         );
+    }
+
+    // TODO: Potential debugging needed 
+    if (!optNativeColour.has_value()) return std::make_pair(minC, maxC);
+
+    for (uint32_t k=startingLevel; k<n; ++k) {
+        verticesAtKIndices = verticesPerLevel.getNestedArrayView(k);
+        uint32_t nk = verticesAtKIndices.size();
+        for (uint32_t i=0; i<nk; ++i) {
+            uint32_t uIndex = verticesAtKIndices[i];
+            uint32_t uColour = vertexColours[uIndex];
+            if (uColour >= minC && uColour <= maxC) continue;
+            auto Nu = graph.N(uIndex);
+            auto Nru = graph.N(uIndex);
+
+            std::unordered_map<uint32_t, uint32_t> uColourAdjacentColourMap;
+            for (uint32_t vIndex : Nu) {
+                uint32_t vColour = vertexColours[vIndex];
+                if (vColour < minC && vColour > maxC) continue;
+                ++uColourAdjacentColourMap[vColour];
+            }
+
+            for (uint32_t wIndex : Nru) {
+                uint32_t wColour = vertexColours[wIndex];
+                if (wColour < minC && wColour > maxC) continue;
+                ++uColourAdjacentColourMap[wColour];
+            }
+
+            int64_t bestColour{-1}, bestColourScore{-1};
+            for (const auto& [c, cScore] : uColourAdjacentColourMap) {
+                if (cScore > static_cast<int64_t>(bestColourScore)) {
+                    bestColour = c;
+                    bestColourScore = cScore;
+                }
+            }
+
+            vertexColours[uIndex] = bestColour;
+            if (bestColour == -1) {
+                // TODO: Change it to become `minC` / `maxC` depending on interspring
+                // TODO: On second thoughts it probably doesn't matter.
+                vertexColours[uIndex] = minC;
+            }
+        }
     }
 
     return std::make_pair(minC, maxC);
@@ -699,8 +788,10 @@ void GraphColourer::buildColourHierarchyRecursivelyRootedAtColour(
     std::tie(minC, maxC) = applyGreedyColouring(
         graph, algorithmParams, verticesPerLevel, 
         startingLevel, vertexColours, 
-        std::forward<ColourAcquireFunctionT>(colourAcquireFunction)
+        std::forward<ColourAcquireFunctionT>(colourAcquireFunction), 
+        rootColour
     );
+    graph.disableColourHighlighting();
 
     n = verticesPerLevel.getNumberOfNestedArrays();
     for (size_t i=0; i<n; ++i) {

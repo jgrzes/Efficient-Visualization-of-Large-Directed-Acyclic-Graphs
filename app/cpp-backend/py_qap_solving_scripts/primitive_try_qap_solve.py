@@ -258,21 +258,8 @@ def primitive_try_qap_solve(
             union(i, j, parent_map=parent, rank_map=rank)
 
         elif (in_nrll_sets_i and not in_nrll_sets_j) or (not in_nrll_sets_i and in_nrll_sets_j):
-            # print("Only one")
             if not in_nrll_sets_i: i, j = j, i
             nrll_i: NoRemovalLinkedList = mapped_elements[i].list_ref 
-            # head_i_index = nrll_i.head.index
-            # tail_i_index = nrll_i.tail.index
-            # i_index = mapped_elements[i].index 
-
-            # number_of_elements_to_the_left = i_index - head_i_index
-            # number_of_elements_to_the_right = tail_i_index - i_index 
-            # if number_of_elements_to_the_left <= number_of_elements_to_the_right:
-            #     nrll_i.add_first(j)
-            #     mapped_elements[j] = nrll_i.head 
-            # else:
-            #     nrll_i.add_last(j)
-            #     mapped_elements[j] = nrll_i.tail 
 
             cum_sum_for_add_as_head = 0
             cum_sum_for_add_as_tail = 0
@@ -294,7 +281,6 @@ def primitive_try_qap_solve(
 
         # Alternatively: mapped_elements[i].list_ref is mapped_elements[j].list_ref
         elif find_parent(i, parent) != find_parent(j, parent):
-            # print("Both but in different")
             nrll_i: NoRemovalLinkedList = mapped_elements[i].list_ref
             nrll_j: NoRemovalLinkedList = mapped_elements[j].list_ref 
             size_i = nrll_i.size 
@@ -303,20 +289,6 @@ def primitive_try_qap_solve(
             cum_sum_2 = 0
             cum_sum_3 = 0
             cum_sum_4 = 0
-
-            # head_i_index = nrll_i.head.index
-            # tail_i_index = nrll_i.tail.index 
-            # i_index = mapped_elements[i].index 
-            # head_j_index = nrll_j.head.index 
-            # tail_j_index = nrll_j.tail.index 
-            # j_index = mapped_elements[j].index 
-
-            # if i_index - head_i_index < tail_i_index - i_index:
-            #     nrll_i.reverse()
-            # if tail_j_index - j_index < j_index - head_j_index:
-            #     nrll_j.reverse()
-
-            # nrll_i.merge_another_onto_tail(nrll_j)
 
             for x, node_x in nrll_j.contents_map.items():
                 index_x = node_x.index
@@ -383,12 +355,12 @@ def primitive_try_qap_solve(
     if n <= 4:
         return remapping, True        
 
-    non_adjacent_value = calculate_value_for_non_adjacent(remapping, F_matrix, D_matrix)
-    threshold = calculate_acceptable_threshold_for_non_adjacent(n)         
-    if non_adjacent_value > threshold:
-        return None, False 
-    else:
-        return remapping, True
+    # non_adjacent_value = calculate_value_for_non_adjacent(remapping, F_matrix, D_matrix)
+    # threshold = calculate_acceptable_threshold_for_non_adjacent(n)         
+    # if non_adjacent_value > threshold:
+    #     return None, False 
+    # else:
+    return remapping, True
 
 
 # Does not use D_matrix, assumes that for each i, j, k: |i-j| > |i-k| => D[i, j] > D[i, k] 

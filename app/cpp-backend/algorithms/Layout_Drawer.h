@@ -212,14 +212,14 @@ private:
     std::vector<uint32_t> getColourRoots(ColourHierarchyNode& colourNode, bool pushRootsToTheFront = true);
 
     void performPinkIndicesConstruction(
-        // std::vector<uint32_t>& pinkIndices, 
-        uint32_t currentPink = 0,
+        uint32_t& currentPink, 
+        std::optional<std::reference_wrapper<std::string>> optPinkIndicesStrRef = std::nullopt, 
         std::optional<std::reference_wrapper<ColourHierarchyNode>> optColourNode = std::nullopt
     );
 
     void performBlueIndicesConstruction(
-        // std::vector<uint32_t>& blueIndices, 
-        uint32_t currentBlue = 0,
+        uint32_t& currentBlue,
+        std::optional<std::reference_wrapper<std::string>> optBlueIndicesStrRef = std::nullopt, 
         std::optional<std::reference_wrapper<ColourHierarchyNode>> optColopurNode = std::nullopt
     );
 

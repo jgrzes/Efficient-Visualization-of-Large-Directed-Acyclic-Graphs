@@ -98,6 +98,14 @@ public:
         return getInstanceAsPtr()->m_logger.get();    
     }
 
+    static layout_service_severity_level getConsoleLoggingLevel() {
+        return getInstanceAsPtr()->m_consoleLoggingLevel;
+    }
+
+    static layout_service_severity_level getFileLoggingLevel() {
+        return getInstanceAsPtr()->m_fileLoggingLevel;
+    }
+
 private:
 
     friend void initLogging(
@@ -129,10 +137,21 @@ private:
     static std::unique_ptr<BoostLogger> s_boostLoggerInstance;
     static std::mutex s_instanceCreationMutex;
 
+    layout_service_severity_level m_consoleLoggingLevel;
+    layout_service_severity_level m_fileLoggingLevel;
+
     boost::shared_ptr<severity_logger_mt<layout_service_severity_level>> m_logger = nullptr;
     boost::shared_ptr<console_sink_t> m_consoleSink = nullptr;
     boost::shared_ptr<file_sink_t> m_fileSink = nullptr;
 };
+
+inline layout_service_severity_level getConsoleLoggingLevel() {
+    return BoostLogger::getConsoleLoggingLevel();
+}
+
+inline layout_service_severity_level getFileLoggingLevel() {
+    return BoostLogger::getFileLoggingLevel();
+}
 
 inline void log_trace_vv(const std::string& message) {
     BOOST_LOG_SEV(*(BoostLogger::getBoostLoggerInstanceAsPtr()), layout_service_severity_level::trace_vv) << message;

@@ -84,6 +84,13 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                     logging::log_trace(
                         "Preparing to run QAP for graph with id = " + graphUUIDInStrForm + "..."
                     );
+                    std::string preQAPColourHierarchyString;
+                    buildColourHierarchyString(*colourHierarchyRootPtr, preQAPColourHierarchyString);
+                    logging::log_info(
+                        "Colour hierarchy structure before QAP for graph with id = " +
+                        graphUUIDInStrForm + ":\n" + preQAPColourHierarchyString + "."
+                    );
+
                     callQAPPythonScript(colouredGraph, *colourHierarchyRootPtr);
                     // callQAPCppScript(colouredGraph, colourHierarchyRoot);
                     logging::log_info(

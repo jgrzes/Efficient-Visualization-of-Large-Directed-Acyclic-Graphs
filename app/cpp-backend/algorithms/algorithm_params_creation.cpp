@@ -24,8 +24,8 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
     LayoutDrawer::AlgorithmParams layoutAlgorithmParams;
     
     layoutAlgorithmParams.FInterspringCalculator = [
-        w1XInterspring = 0.25, w2XInterspring = 1, 
-        w1YInterspring = 0.25, w2YInterspring = 1, 
+        w1XInterspring = 3, w2XInterspring = 1, 
+        w1YInterspring = 3, w2YInterspring = 1, 
         w3YInterspring = 1, w4YInterspring = 1
     ](uint32_t uColour, uint32_t uLevel, uint32_t vColour, uint32_t vLevel) -> std::pair<double, double> {
         int64_t a = static_cast<int64_t>(uColour) - static_cast<int64_t>(vColour);
@@ -75,7 +75,7 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
     layoutAlgorithmParams.addWeightFromChildrenCoeff = 0;
     layoutAlgorithmParams.kInitialLayoutCoeff = 1.8;
     layoutAlgorithmParams.nextLevelDownCoeffForPredicted = 0.45;
-    layoutAlgorithmParams.minDistanceBetweenLevelsCoeff = 0.75;
+    layoutAlgorithmParams.minDistanceBetweenLevelsCoeff = 0.35;
 
     layoutAlgorithmParams.sCoeff = 1.05; 
     layoutAlgorithmParams.defaultAlphaP = 0.5;

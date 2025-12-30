@@ -153,7 +153,8 @@ private:
         // ArrayOfArraysInterface<Edge>& disputableEdgesPerLevel,
         uint32_t startingLevel, 
         std::vector<uint32_t>& vertexColours,
-        ColourAcquireFunctionT&& colourAcquirerFunction
+        ColourAcquireFunctionT&& colourAcquirerFunction, 
+        std::optional<int64_t> optNativeColour = std::nullopt
     );
 
     // This one calls applyInitialGreedyColouring so it cannot be static either. 
