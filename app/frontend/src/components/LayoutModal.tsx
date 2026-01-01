@@ -126,10 +126,10 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
                   </div>
                   <div>
                     <div className="text-[11px] font-semibold text-gray-900 dark:text-white">
-                      C++ layout
+                      Hierarchical layout
                     </div>
                     <div className="text-[10px] text-gray-600 dark:text-gray-400">
-                      Hierarchical, optimized layout
+                      Emphasizes hierarchy, reduces edge crossings
                     </div>
                   </div>
                 </div>
@@ -157,7 +157,7 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
               <ul className="mt-1.5 space-y-1 text-[10px] text-gray-700 dark:text-gray-300">
                 <li>• Uses the C++ backend layout algorithm.</li>
                 <li>• Emphasizes DAG hierarchy and reduces edge crossings.</li>
-                <li>• Best for exploring large GO DAGs and complex structures.</li>
+                <li>• Best for exploring large DAGs (especially Gene Ontology) and identifying distinct subgraphs.</li>
               </ul>
             </button>
 
