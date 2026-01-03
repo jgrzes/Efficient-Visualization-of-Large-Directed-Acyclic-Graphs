@@ -1,11 +1,18 @@
 import React from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
+import { motion, useDragControls, type PanInfo } from "framer-motion";
 
 interface AnalysisPanelProps {
   result: {
     hierarchy_levels: Record<string, number>;
   };
   onClose: () => void;
+}
+
+type Pos = { x: number; y: number };
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
 }
 
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result, onClose }) => {
@@ -17,8 +24,33 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result, onClose }) => {
 
   const totalNodes = levels.reduce((sum, [, count]) => sum + count, 0);
 
+  // drag state
+  const [pos, setPos] = React.useState<Pos>({ x: 0, y: 0 });
+  const dragControls = useDragControls();
+
+  // (opcjonalnie) żeby po resize nie wylądował poza ekranem
+  React.useEffect(() => {
+    const onResize = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // panel ma mniej więcej 360x(300-400), zostawiamy bezpieczny margines
+      setPos((p) => ({
+        x: clamp(p.x, -(w - 120), w - 120),
+        y: clamp(p.y, -(h - 120), h - 120),
+      }));
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const onDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    setPos((p) => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }));
+  };
+
   return (
-    <aside
+    <motion.aside
       id="analysis-panel"
       className="
         fixed bottom-4 right-4 z-[900]
@@ -37,9 +69,22 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result, onClose }) => {
         dark:text-gray-100
       "
       aria-label="Graph analysis"
+      // drag:
+      drag
+      dragControls={dragControls}
+      dragListener={false} // przeciąganie tylko przez "handle"
+      dragMomentum={false}
+      onDragEnd={onDragEnd}
+      animate={{ x: pos.x, y: pos.y }}
+      transition={{ type: "spring", stiffness: 500, damping: 40 }}
+      style={{ touchAction: "none" }}
     >
-      {/* HEADER */}
-      <header className="flex items-start justify-between px-4 pt-3 pb-2 border-b border-black/10 dark:border-white/10">
+      {/* HEADER = handle */}
+      <header
+        className="flex items-start justify-between px-4 pt-3 pb-2 border-b border-black/10 dark:border-white/10 cursor-grab active:cursor-grabbing select-none"
+        onPointerDown={(e) => dragControls.start(e)}
+        title="Przeciągnij panel"
+      >
         <div className="flex flex-col gap-0.5 min-w-0">
           <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Analysis
@@ -59,7 +104,10 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result, onClose }) => {
 
         <button
           type="button"
-          onClick={onClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
           className="
             ml-2 inline-flex h-7 w-7 items-center justify-center
             rounded-full bg-black/5 text-gray-600
@@ -121,7 +169,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result, onClose }) => {
               </table>
             </div>
 
-            {/* FOOTER SUMMARY */}
             <div className="flex items-center justify-between px-3 py-2 border-t border-black/10 text-[11px] text-gray-500 dark:border-white/10 dark:text-gray-400">
               <span>
                 Max level:{" "}
@@ -136,7 +183,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result, onClose }) => {
           </div>
         )}
       </div>
-    </aside>
+    </motion.aside>
   );
 };
 

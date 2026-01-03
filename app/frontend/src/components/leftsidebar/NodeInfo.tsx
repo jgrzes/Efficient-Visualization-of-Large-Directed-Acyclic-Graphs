@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Star, MessageCirclePlus } from "lucide-react";
 import { useFavorites } from "../../hooks/useFavorites";
 import { useComments } from "../../hooks/useComments";
-import CommentModal from "../CommentModal";
+import CommentModal from "../modals/CommentModal";
 import CopyChip from "./CopyChip";
 import FieldRow from "./FieldRow";
 

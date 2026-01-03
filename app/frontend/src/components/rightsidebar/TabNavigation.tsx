@@ -1,7 +1,7 @@
 import React from "react";
-import { Search, Star, MessageSquare, Info } from "lucide-react";
+import { Search, Star, MessageSquare } from "lucide-react";
 
-type TabKey = "search" | "favorites" | "comments" | "graph";
+type TabKey = "search" | "favorites" | "comments";
 
 interface TabNavigationProps {
   activeTab: TabKey;
@@ -15,7 +15,6 @@ const TABS: { key: TabKey; label: string; Icon: IconType }[] = [
   { key: "search", label: "Search", Icon: Search },
   { key: "favorites", label: "Favorites", Icon: Star },
   { key: "comments", label: "Comments", Icon: MessageSquare },
-  { key: "graph", label: "Graph", Icon: Info },
 ];
 
 const baseBtn =
@@ -32,7 +31,6 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
     search: null,
     favorites: null,
     comments: null,
-    graph: null,
   });
 
   return (

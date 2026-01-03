@@ -3,7 +3,7 @@ import { Star, MessageCirclePlus } from "lucide-react";
 import { NodeInfoProps } from "../leftsidebar/NodeInfo";
 import { useFavorites } from "../../hooks/useFavorites";
 import { useComments } from "../../hooks/useComments";
-import CommentModal from "../CommentModal";
+import CommentModal from "../modals/CommentModal";
 
 export interface ResultCardProps {
   node: NodeInfoProps;
