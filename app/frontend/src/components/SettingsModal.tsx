@@ -1,17 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, SlidersHorizontal, AlertTriangle, Moon, Sun } from "lucide-react";
-import { DEFAULT_GRAPH_COLORS, DEFAULT_BACKGROUND_BY_THEME } from "../graphConfig";
-
-export interface GraphColors {
-  default: string;
-  parent: string;
-  child: string;
-  selected: string;
-  hover: string;
-  search: string;
-  background: string;
-}
+import { DEFAULT_GRAPH_COLORS, DEFAULT_BACKGROUND_BY_THEME } from "../graph/config";
+import type { GraphColors } from "../graph/types";
 
 interface SettingsModalProps {
   open: boolean;
@@ -49,7 +40,9 @@ function persistTheme(theme: Theme) {
 }
 
 const getDefaultBackgroundForTheme = (theme: Theme) =>
-  theme === "light" ? DEFAULT_BACKGROUND_BY_THEME.light : DEFAULT_BACKGROUND_BY_THEME.dark;
+  theme === "light"
+    ? DEFAULT_BACKGROUND_BY_THEME.light
+    : DEFAULT_BACKGROUND_BY_THEME.dark;
 
 const cx = (...parts: Array<string | false | null | undefined>) =>
   parts.filter(Boolean).join(" ");
@@ -153,7 +146,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   // --- PREVIEW CLASSES (NO `dark:`) ---
   const isDark = pendingTheme === "dark";
 
-  const overlayCls = "fixed inset-0 z-[1000] flex items-center justify-center backdrop-blur-sm bg-black/40";
+  const overlayCls =
+    "fixed inset-0 z-[1000] flex items-center justify-center backdrop-blur-sm bg-black/40";
 
   const cardCls = cx(
     "relative w-[min(92vw,460px)] rounded-2xl border p-6 shadow-2xl",
@@ -242,11 +236,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             {/* Header */}
             <div className="flex items-start justify-between gap-3 mb-2 pr-8">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal size={18} className={isDark ? "text-blue-400" : "text-blue-600"} />
+                <SlidersHorizontal
+                  size={18}
+                  className={isDark ? "text-blue-400" : "text-blue-600"}
+                />
                 <div>
-                  <h2 className={cx("text-sm font-semibold", headerTitleCls)}>Graph settings</h2>
+                  <h2 className={cx("text-sm font-semibold", headerTitleCls)}>
+                    Graph settings
+                  </h2>
                   <p className={cx("text-xs", subtleTextCls)}>
-                    Preview changes here — apply globally only after you press Apply.
+                    Preview changes here — apply globally only after you press
+                    Apply.
                   </p>
                 </div>
               </div>
@@ -256,7 +256,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 type="button"
                 onClick={handleToggleTheme}
                 className={toggleBtnCls}
-                aria-label={`Switch to ${pendingTheme === "dark" ? "light" : "dark"} theme`}
+                aria-label={`Switch to ${
+                  pendingTheme === "dark" ? "light" : "dark"
+                } theme`}
                 title="Toggle theme (preview; applies on Apply)"
               >
                 {/* icons */}
@@ -283,7 +285,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 <motion.span
                   className={cx(
                     "absolute top-1/2 -translate-y-1/2 h-7 w-7 rounded-full shadow-md border",
-                    isDark ? "bg-zinc-950 border-white/10" : "bg-white border-black/10"
+                    isDark
+                      ? "bg-zinc-950 border-white/10"
+                      : "bg-white border-black/10"
                   )}
                   animate={{ left: pendingTheme === "dark" ? 52 : 6 }}
                   transition={{ type: "spring", stiffness: 420, damping: 32 }}
@@ -291,7 +295,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span
                     className={cx(
                       "absolute inset-[3px] rounded-full",
-                      isDark ? "bg-gradient-to-b from-zinc-900 to-black" : "bg-gradient-to-b from-white to-zinc-100"
+                      isDark
+                        ? "bg-gradient-to-b from-zinc-900 to-black"
+                        : "bg-gradient-to-b from-white to-zinc-100"
                     )}
                   />
                 </motion.span>
@@ -300,7 +306,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <div className={cx("mb-4 text-[11px]", subtleTextCls)}>
               Theme preview:{" "}
-              <span className={cx("font-medium", isDark ? "text-gray-100" : "text-gray-900")}>
+              <span
+                className={cx(
+                  "font-medium",
+                  isDark ? "text-gray-100" : "text-gray-900"
+                )}
+              >
                 {themeLabel}
               </span>
             </div>
@@ -309,9 +320,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* point_size */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <label className={cx("text-[11px]", labelTextCls)}>point_size</label>
+                  <label className={cx("text-[11px]", labelTextCls)}>
+                    point_size
+                  </label>
                   <div className="flex items-center gap-2">
-                    <span className={cx("text-[10px]", isDark ? "text-gray-500" : "text-gray-500")}>px</span>
+                    <span
+                      className={cx(
+                        "text-[10px]",
+                        isDark ? "text-gray-500" : "text-gray-500"
+                      )}
+                    >
+                      px
+                    </span>
                     <input
                       type="number"
                       min={0.4}
@@ -337,7 +357,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                 />
 
-                <div className={cx("flex justify-between text-[10px]", isDark ? "text-gray-500" : "text-gray-500")}>
+                <div
+                  className={cx(
+                    "flex justify-between text-[10px]",
+                    isDark ? "text-gray-500" : "text-gray-500"
+                  )}
+                >
                   <span>0.4</span>
                   <span>4</span>
                 </div>
@@ -346,10 +371,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Colors */}
               <div className={colorsBoxCls}>
                 <div className="flex items-center justify-between mb-1 gap-2">
-                  <span className={cx("text-[11px] font-medium", isDark ? "text-gray-200" : "text-gray-800")}>
+                  <span
+                    className={cx(
+                      "text-[11px] font-medium",
+                      isDark ? "text-gray-200" : "text-gray-800"
+                    )}
+                  >
                     Colors
                   </span>
-                  <button type="button" onClick={handleResetColors} className={resetBtnCls}>
+                  <button
+                    type="button"
+                    onClick={handleResetColors}
+                    className={resetBtnCls}
+                  >
                     Reset to defaults
                   </button>
                 </div>
@@ -436,14 +470,24 @@ interface ColorRowProps {
   onChange: (value: string) => void;
 }
 
-const ColorRow: React.FC<ColorRowProps> = ({ theme, label, description, value, onChange }) => {
+const ColorRow: React.FC<ColorRowProps> = ({
+  theme,
+  label,
+  description,
+  value,
+  onChange,
+}) => {
   const isDark = theme === "dark";
 
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col">
-        <span className={cx("text-[11px]", isDark ? "text-gray-200" : "text-gray-800")}>{label}</span>
-        <span className={cx("text-[10px]", isDark ? "text-gray-500" : "text-gray-500")}>{description}</span>
+        <span className={cx("text-[11px]", isDark ? "text-gray-200" : "text-gray-800")}>
+          {label}
+        </span>
+        <span className={cx("text-[10px]", isDark ? "text-gray-500" : "text-gray-500")}>
+          {description}
+        </span>
       </div>
       <div className="flex items-center gap-2">
         <div
