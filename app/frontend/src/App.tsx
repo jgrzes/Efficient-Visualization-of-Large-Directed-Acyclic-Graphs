@@ -17,12 +17,13 @@ import SaveGraphModal from "./components/SaveGraphModal";
 import LoadGraphModal from "./components/LoadGraphModal";
 import GraphListModal from "./components/GraphListModal";
 import LoadSourceModal from "./components/LoadSourceModal";
-import SettingsModal, { GraphColors } from './components/SettingsModal';
+import SettingsModal from './components/SettingsModal';
 import LayoutModal from './components/LayoutModal';
 import { useFavorites } from './hooks/useFavorites';
 import { useComments } from './hooks/useComments';
 import type { CommentItem } from './hooks/useComments';
-import { DEFAULT_GRAPH_COLORS, DEFAULT_POINT_SIZE } from "./graphConfig";
+import type { GraphColors } from './graph/types';
+import { DEFAULT_GRAPH_COLORS, DEFAULT_POINT_SIZE } from "./graph/config";
 
 import { useGraph } from './hooks/useGraph';
 import { useStartKeepAlive } from './hooks/useKeepalive';
@@ -927,7 +928,10 @@ const MainAppContext: React.FC = () => {
 
   return (
     <AppContext.Provider value={{ currentGraphUUID, setCurrentGraphUUID }}>
-      <div id="layout" className="flex h-screen flex-col bg-black text-gray-200">
+      <div
+        id="layout"
+        className="flex h-screen flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-200"
+      >
         <div ref={canvasRef} className="flex-grow" />
         <div
           ref={graphRef}

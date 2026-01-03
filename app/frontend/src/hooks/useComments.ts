@@ -23,19 +23,19 @@ export type NewCommentPayload = {
 type CommentsState = {
   // data
   comments: CommentItem[];
-  isLoading: boolean;
-  isSaving: boolean;
+  isLoading: boolean; // kept for UI compatibility, but sync now
+  isSaving: boolean;  // kept for UI compatibility, but sync now
   error: string | null;
 
-  // actions (async)
-  loadComments: () => Promise<void>;
+  // actions (sync now)
+  loadComments: () => void;
   addComment: (
     node: Pick<NodeInfoProps, "index" | "name">,
     comment: NewCommentPayload
-  ) => Promise<void>;
-  editComment: (id: string, text: string) => Promise<void>;
-  removeComment: (id: string) => Promise<void>;
-  clearAll: () => Promise<void>;
+  ) => void;
+  editComment: (id: string, text: string) => void;
+  removeComment: (id: string) => void;
+  clearAll: () => void;
 
   setCommentsFromGraph: (items: CommentItem[]) => void;
 
@@ -49,81 +49,58 @@ export const useComments = create<CommentsState>((set, get) => ({
   isSaving: false,
   error: null,
 
-  loadComments: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      await new Promise((r) => setTimeout(r, 300));
-      set({ comments: [], isLoading: false });
-    } catch (e) {
-      set({ isLoading: false, error: "Failed to load comments" });
-    }
+  // If you don't load from API, this can just clear errors / no-op
+  loadComments: () => {
+    set({ isLoading: false, error: null });
   },
 
-  addComment: async (node, comment) => {
+  addComment: (node, comment) => {
     const trimmedText = comment.text.trim();
     const trimmedTitle = comment.name.trim();
     if (!trimmedText || !trimmedTitle) return;
 
     const idx = node.index;
-    if (typeof idx !== "number" || idx < 0) {
-      return;
-    }
+    if (typeof idx !== "number" || idx < 0) return;
 
     const item: CommentItem = {
       id: nanoid(),
       nodeIndex: idx,
-      nodeName: node.name,
+      nodeName: node.name ?? `Node ${idx}`,
       title: trimmedTitle,
       text: trimmedText,
       createdAt: Date.now(),
     };
 
-    const prev = get().comments;
-    set({ comments: [item, ...prev], isSaving: true, error: null });
-    try {
-      await new Promise((r) => setTimeout(r, 120));
-      set({ isSaving: false });
-    } catch {
-      set({ isSaving: false, error: "Failed to add comment" });
-    }
+    set((s) => ({
+      comments: [item, ...s.comments],
+      isSaving: false,
+      error: null,
+    }));
   },
 
-  editComment: async (id, text) => {
+  editComment: (id, text) => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    const next = get().comments.map((c) =>
-      c.id === id ? { ...c, text: trimmed, updatedAt: Date.now() } : c
-    );
-
-    set({ comments: next, isSaving: true, error: null });
-    try {
-      await new Promise((r) => setTimeout(r, 120));
-      set({ isSaving: false });
-    } catch {
-      set({ isSaving: false, error: "Failed to edit comment" });
-    }
+    set((s) => ({
+      comments: s.comments.map((c) =>
+        c.id === id ? { ...c, text: trimmed, updatedAt: Date.now() } : c
+      ),
+      isSaving: false,
+      error: null,
+    }));
   },
 
-  removeComment: async (id) => {
-    const next = get().comments.filter((c) => c.id !== id);
-    set({ comments: next, isSaving: true, error: null });
-    try {
-      await new Promise((r) => setTimeout(r, 120));
-      set({ isSaving: false });
-    } catch {
-      set({ isSaving: false, error: "Failed to remove comment" });
-    }
+  removeComment: (id) => {
+    set((s) => ({
+      comments: s.comments.filter((c) => c.id !== id),
+      isSaving: false,
+      error: null,
+    }));
   },
 
-  clearAll: async () => {
-    set({ comments: [], isSaving: true, error: null });
-    try {
-      await new Promise((r) => setTimeout(r, 120));
-      set({ isSaving: false });
-    } catch {
-      set({ isSaving: false, error: "Failed to clear comments" });
-    }
+  clearAll: () => {
+    set({ comments: [], isSaving: false, error: null });
   },
 
   setCommentsFromGraph: (items) => {
@@ -132,10 +109,14 @@ export const useComments = create<CommentsState>((set, get) => ({
       .map((c) => ({
         ...c,
         id: c.id ?? nanoid(),
-        createdAt: c.createdAt ?? Date.now(),
+        nodeName:
+          typeof c.nodeName === "string" && c.nodeName.trim().length > 0
+            ? c.nodeName
+            : `Node ${c.nodeIndex}`,
+        createdAt: typeof c.createdAt === "number" ? c.createdAt : Date.now(),
       }));
 
-    set({ comments: normalized });
+    set({ comments: normalized, error: null });
   },
 
   getCommentsForNode: (nodeIndex) =>
