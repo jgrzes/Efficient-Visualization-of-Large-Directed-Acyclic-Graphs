@@ -9,7 +9,7 @@ import {
 } from "react";
 import { Graph, GraphConfigInterface } from "@cosmograph/cosmos";
 import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
-import { AppContext } from "../App";
+import { AppContext } from "../context/AppContext";
 import { DEFAULT_GRAPH_COLORS } from "../graph/config";
 
 import { fetchNodeData } from "../graph/api/node";
@@ -274,6 +274,7 @@ export function useGraph(
         setSelectedNode({
           index,
           ...data,
+          name: data.name ?? `Node ${index}`,
         });
 
         selectedIndexRef.current = index;

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, SlidersHorizontal, AlertTriangle, Moon, Sun } from "lucide-react";
-import { DEFAULT_GRAPH_COLORS, DEFAULT_BACKGROUND_BY_THEME } from "../graph/config";
-import type { GraphColors } from "../graph/types";
+import { DEFAULT_GRAPH_COLORS, DEFAULT_BACKGROUND_BY_THEME } from "../../graph/config";
+import type { GraphColors } from "../../graph/types";
 
 interface SettingsModalProps {
   open: boolean;

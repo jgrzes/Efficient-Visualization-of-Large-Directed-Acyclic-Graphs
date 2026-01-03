@@ -1,5 +1,5 @@
 import { useRef, useContext, useEffect } from "react";
-import { AppContext } from "../App";
+import { AppContext } from "../context/AppContext";
 
 // export function usePageVisibility(onChange: (visible: boolean) => void) {
 //     useEffect(() => {
