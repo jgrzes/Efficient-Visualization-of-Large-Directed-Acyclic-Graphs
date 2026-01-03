@@ -1,16 +1,35 @@
 FROM ubuntu:22.04
 
-ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update \
+    && apt install cmake -y \
+    && apt install git -y \
+    && apt install libgtest-dev -y
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    cmake git libgtest-dev gdb g++ libboost-all-dev \
-    autoconf libtool pkg-config \
-    protobuf-compiler libprotobuf-dev \
-    protobuf-compiler-grpc libgrpc-dev libgrpc++-dev \
-    build-essential \
-    dos2unix \
-    python3 python3-pip \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt install gdb -y \ 
+    && apt install g++ -y \
+    && apt install libboost-all-dev -y
+
+RUN apt install autoconf -y \
+    && apt install libtool -y \
+    && apt install pkg-config -y
+
+RUN apt install protobuf-compiler -y \
+    && apt install libprotobuf-dev -y 
+
+RUN apt install protobuf-compiler-grpc -y \
+    && apt install libgrpc-dev -y \
+    && apt install libgrpc++-dev -y \
+    && apt install build-essential -y \
+    && apt install libopenblas-dev -y
+
+RUN apt install dos2unix -y
+
+RUN apt install python3 -y \
+    && apt install python3-pip -y \
+    && pip install numpy gurobipy scipy pytest
+
+RUN apt install octave -y \
+    && apt install mpirun
 
 RUN pip3 install --no-cache-dir numpy gurobipy scipy
 
