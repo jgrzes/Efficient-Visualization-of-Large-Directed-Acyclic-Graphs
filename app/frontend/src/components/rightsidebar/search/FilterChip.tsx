@@ -14,7 +14,7 @@ export const FilterChip: React.FC<FilterChipProps> = ({ label, onRemove }) => {
         inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs
         transition cursor-pointer
 
-        border-black/10 bg-white/70 hover:bg-black/[0.04]
+        border-black/10 bg-white/70 hover:bg-black/4
         dark:border-gray-700 dark:bg-black/60 dark:hover:bg-gray-900
       "
     >

@@ -53,8 +53,8 @@ const ResultCard: React.FC<ResultCardProps> = ({
           border-black/10 bg-white/70
           hover:bg-white hover:border-black/20
 
-          dark:border-gray-900/60 dark:bg-white/[0.03]
-          dark:hover:bg-white/[0.06] dark:hover:border-gray-700
+          dark:border-gray-900/60 dark:bg-white/3
+          dark:hover:bg-white/6 dark:hover:border-gray-700
         "
       >
         <div className="flex items-start justify-between gap-3">

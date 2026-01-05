@@ -35,7 +35,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center"
+      className="fixed inset-0 z-1000 flex items-center justify-center"
       aria-modal="true"
       role="dialog"
       aria-labelledby="comment-modal-title"
@@ -50,7 +50,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
       {/* modal */}
       <div
         className="
-          relative z-[1001] w-[min(92vw,560px)] rounded-xl border shadow-2xl
+          relative z-1001 w-[min(92vw,560px)] rounded-xl border shadow-2xl
           border-black/10 bg-white/95
           dark:border-white/10 dark:bg-[#0b0b0b]
         "
@@ -80,7 +80,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 bg-white text-gray-900 placeholder:text-gray-400
                 border-black/10 focus:outline-none focus:ring-2 focus:ring-blue-300
 
-                dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-100 dark:placeholder:text-gray-500
+                dark:border-white/10 dark:bg-white/3 dark:text-gray-100 dark:placeholder:text-gray-500
                 dark:focus:ring-white/20
               "
               placeholder='For example, "Note on definition"'
@@ -103,7 +103,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 bg-white text-gray-900 placeholder:text-gray-400
                 border-black/10 focus:outline-none focus:ring-2 focus:ring-blue-300
 
-                dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-100 dark:placeholder:text-gray-500
+                dark:border-white/10 dark:bg-white/3 dark:text-gray-100 dark:placeholder:text-gray-500
                 dark:focus:ring-white/20
               "
               placeholder="Enter comment text…"
@@ -117,8 +117,8 @@ const CommentModal: React.FC<CommentModalProps> = ({
             onClick={onClose}
             className="
               px-3 py-2 text-sm rounded-md border transition
-              border-black/10 text-gray-700 hover:bg-black/[0.04]
-              dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/[0.06]
+              border-black/10 text-gray-700 hover:bg-black/4
+              dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/6
             "
           >
             Cancel
@@ -138,7 +138,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
             className={`px-3 py-2 text-sm rounded-md transition ${
               isValid
                 ? "bg-blue-500/90 text-white hover:bg-blue-500"
-                : "bg-black/[0.04] text-gray-400 cursor-not-allowed dark:bg-white/[0.06] dark:text-gray-400"
+                : "bg-black/4 text-gray-400 cursor-not-allowed dark:bg-white/6 dark:text-gray-400"
             }`}
           >
             Save comment

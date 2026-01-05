@@ -29,7 +29,7 @@ const GraphListModal: React.FC<GraphListModalProps> = ({
     <AnimatePresence>
       <motion.div
         className="
-          fixed inset-0 z-[1000] flex items-center justify-center backdrop-blur-sm
+          fixed inset-0 z-1000 flex items-center justify-center backdrop-blur-sm
           bg-black/30 dark:bg-black/70
         "
         initial={{ opacity: 0 }}
@@ -55,7 +55,7 @@ const GraphListModal: React.FC<GraphListModalProps> = ({
             shadow-black/10
 
             dark:border-white/10
-            dark:bg-gradient-to-b dark:from-zinc-900/95 dark:to-zinc-950/95
+            dark:bg-linear-to-b dark:from-zinc-900/95 dark:to-zinc-950/95
             dark:text-gray-100
             dark:shadow-black/80
           "
@@ -102,7 +102,7 @@ const GraphListModal: React.FC<GraphListModalProps> = ({
               space-y-1.5
 
               border-black/10
-              bg-black/[0.02]
+              bg-black/2
 
               dark:border-white/5
               dark:bg-black/20
@@ -125,7 +125,7 @@ const GraphListModal: React.FC<GraphListModalProps> = ({
                   transition
                   flex flex-col gap-1
 
-                  bg-white hover:bg-black/[0.03]
+                  bg-white hover:bg-black/3
                   hover:border-blue-600/30
 
                   dark:bg-zinc-900/60 dark:hover:bg-zinc-800/80
@@ -169,7 +169,7 @@ const GraphListModal: React.FC<GraphListModalProps> = ({
                 inline-flex items-center gap-1.5
                 rounded-lg px-3 py-1.5
                 text-xs font-medium transition
-                border border-black/10 bg-black/[0.04] text-gray-700 hover:bg-black/[0.08]
+                border border-black/10 bg-black/4 text-gray-700 hover:bg-black/8
 
                 dark:border-transparent dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10
               "

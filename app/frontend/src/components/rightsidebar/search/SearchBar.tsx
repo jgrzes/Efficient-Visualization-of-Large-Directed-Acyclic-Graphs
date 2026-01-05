@@ -93,12 +93,12 @@ export default function SearchBar({
               isDisabled
                 ? [
                     "cursor-not-allowed",
-                    "border-black/10 bg-black/[0.02] text-gray-400",
+                    "border-black/10 bg-black/2 text-gray-400",
                     "dark:border-gray-700 dark:bg-black dark:text-gray-500",
                   ].join(" ")
                 : [
-                    "border-black/10 bg-black/[0.03] text-gray-800 hover:bg-black/[0.06]",
-                    "dark:border-gray-700 dark:bg-white/[0.02] dark:text-gray-100 dark:hover:bg-white/[0.06]",
+                    "border-black/10 bg-black/3 text-gray-800 hover:bg-black/6",
+                    "dark:border-gray-700 dark:bg-white/2 dark:text-gray-100 dark:hover:bg-white/6",
                   ].join(" "),
             ].join(" ")}
             aria-label="Search"

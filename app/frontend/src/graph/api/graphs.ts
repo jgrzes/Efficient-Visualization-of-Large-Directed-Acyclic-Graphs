@@ -63,14 +63,7 @@ export type SaveGraphBody = {
   point_size: number | null;
   favorites: number[];
   comments: CommentItem[];
-
-  default_color?: string;
-  parent_color?: string;
-  child_color?: string;
-  selected_color?: string;
-  hover_color?: string;
-  search_color?: string;
-
+  
   group_name?: string;
   group_password?: string;
 };

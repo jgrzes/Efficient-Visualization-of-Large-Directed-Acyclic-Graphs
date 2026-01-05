@@ -22,7 +22,7 @@ export default function LoadingModal() {
             rounded-2xl border shadow-2xl backdrop-blur-md
 
             bg-white/95 border-black/10 shadow-black/10
-            dark:bg-gradient-to-b dark:from-zinc-900/90 dark:to-zinc-950/90
+            dark:bg-linear-to-b dark:from-zinc-900/90 dark:to-zinc-950/90
             dark:border-white/10 dark:shadow-black/50
           "
         >

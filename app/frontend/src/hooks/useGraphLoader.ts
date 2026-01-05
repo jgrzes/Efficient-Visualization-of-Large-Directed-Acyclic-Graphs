@@ -261,7 +261,7 @@ export function useGraphLoader(params: {
         setSaveModalHash(null);
 
         const body: SaveGraphBody = {
-          canvas_positions: [], // uzupełnisz w MainApp
+          canvas_positions: [],
           links: [],
           graph_hash: currentGraphHash,
           point_size: graphConfig?.pointSize ?? null,

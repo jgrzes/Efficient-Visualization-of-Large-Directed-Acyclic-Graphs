@@ -12,7 +12,11 @@ export const DEFAULT_GRAPH_COLORS: GraphColors = {
   selected: "#3B82F6",
   hover: "#A855F7",
   search: "#06B6D4",
-  background: DEFAULT_BACKGROUND_BY_THEME.light,
+  background: typeof document !== "undefined" &&
+  document.documentElement.classList.contains("dark")
+  ? DEFAULT_BACKGROUND_BY_THEME.dark
+  : DEFAULT_BACKGROUND_BY_THEME.light
+
 };
 
 export const DEFAULT_POINT_SIZE = 1;
