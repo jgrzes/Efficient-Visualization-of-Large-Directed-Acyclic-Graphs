@@ -77,4 +77,16 @@ operator*=(std::pair<T, R>& tr1, const std::pair<T, R>& tr2) {
 
 }
 
+namespace traits {
+
+template <typename T>
+std::enable_if_t<std::is_arithmetic_v<T>, T>
+cartesian_distance(const std::pair<T, T>& A, const std::pair<T, T>& B) {
+    double xDiff = A.first - B.first;
+    double yDiff = A.second - B.second;
+    return std::sqrt(xDiff * xDiff + yDiff * yDiff);
+}
+
+}
+
 #endif

@@ -10,12 +10,12 @@
 
 #include "../data-structures/Coloured_Graph.h"
 #include "Graph_Colourer.h"
-#include "../data-structures/Sparse_Array.hpp"
+#include "../data-structures/Sparse_Matrix.h"
 #include "../data-structures/Bucketified_Line_Segment.hpp"
 #include "../data-structures/One_Pair_Field_Array_Wrapper.hpp"
 #include "../graph-preprocessing/edge_and_vertex_processing_functions.h"
 #include "../data-structures/Cartesian_Surface_Grid.h"
-#include "../utils/arithmetic_ops_for_pair_overloads.h"
+#include "../utils/arithmetic_ops_for_pair_overloads.hpp"
 #include "../logging/boost_logging.hpp"
 
 namespace algorithms {
@@ -23,6 +23,8 @@ namespace algorithms {
 using CartesianCoords = std::pair<double, double>;
 using ColouredGraph = data_structures::ColouredGraph;
 using ColourHierarchyNode = GraphColourer::ColourHierarchyNode;
+template <typename T, bool Symmetrical>
+using SparseMatrix = data_structures::SparseMatrix<T, Symmetrical, true>;
 template <typename T>
 using SparseArray = data_structures::SparseArray<T, true>;
 template <typename T>
@@ -69,6 +71,10 @@ public:
         double kInitialLayoutCoeff;
         double nextLevelDownCoeffForPredicted;
         double minDistanceBetweenLevelsCoeff;
+
+        // Expressed in degrees (0, 2PI)
+        float minRequiredEdgeAngleRequriedRad;
+        double minRequiredDistanceBetweenAdjacentLevels;
         
         double sCoeff;
         double defaultAlphaP;
@@ -225,6 +231,8 @@ private:
 
     void emplaceColourNodesInArray();
 
+    void buildfirstVertexOfColourForLevelMarkers();
+
     void performEmplacingColourNodesInArrayForColourSubtree(
         std::optional<std::reference_wrapper<ColourHierarchyNode>> optColourNode = std::nullopt
     );
@@ -250,13 +258,25 @@ private:
         const std::pair<double, double>& boxBounds
     );
 
+    void drawNestedColourSubgraphs(
+        const std::vector<uint32_t>& colourOrder
+    );
+
+    void fixUpwardPointingEdgesInColourNodeChildren(const ColourHierarchyNode& colourNode);
+
+    void pushAllVerticesBeyondLevelInChildrenColours(
+        const ColourHierarchyNode& colourNode, uint32_t level, double yPush
+    );
+
+    void adjustAllYCoordinatesToSatisifyDownwardFlow();
+
     // TODO: Find better implementation for terminating fine tuning stage
     bool checkIfFineTuningStageEndConditionMet(uint32_t iter) {return iter >= 20;}
 
     // Returns higehst y coord assigned to any vertice during the execution of the method
     double findInitialLayoutForColouredSubgraph(
         ArrayOfArraysInterface<uint32_t>& verticesPerLevelForColour, 
-        const std::pair<double, double>& startingPositionForColourRoot, 
+        std::pair<double, double> startingPositionForColourRoot, 
         const std::pair<double, double>& boxBounds
     );
 
@@ -318,7 +338,16 @@ private:
     ColouredGraph* m_graph;
     ColourHierarchyNode* m_rootColourNode;
     std::vector<ColourHierarchyNode*> m_colourNodesPtrs;
+    std::vector<bool> m_colourSubgraphAlreadyDrawn;
+    std::vector<std::pair<double, double>> m_colourSubgraphsXBoxBounds;
+    std::vector<double> m_colourSubgraphsLargestYCoords;
     uint32_t m_maxColour;
+
+    // rows - colours, columns - levels
+    SparseMatrix<uint32_t, false> m_firstVertexOfColourForLevelMarkers;
+    std::vector<double> m_maxYCoordForALevel;
+    std::vector<long double> m_cumYCoordDiffForLevels;
+    std::vector<uint32_t> m_termCountForLevels;
 
     std::vector<uint32_t> m_pinkIndices;
     std::vector<uint32_t> m_blueIndices;

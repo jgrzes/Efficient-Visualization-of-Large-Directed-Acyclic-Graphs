@@ -50,14 +50,17 @@ public:
 
         AlgorithmParams(
             StartingLevelFunctionT&& startingLevelFunction, 
-            ShouldMergeFunctionT&& shouldMergeFunction
+            ShouldMergeFunctionT&& shouldMergeFunction, 
+            uint32_t minNumberOfVerticesAtStartingLevel
         ) : startingLevelFunction{std::forward<StartingLevelFunctionT>(startingLevelFunction)}, 
-            shouldMergeFunction{std::forward<ShouldMergeFunctionT>(shouldMergeFunction)} {}
+            shouldMergeFunction{std::forward<ShouldMergeFunctionT>(shouldMergeFunction)}, 
+            minNumberOfVerticesAtStartingLevel{minNumberOfVerticesAtStartingLevel} {}
 
         // Level, cum. disputable edges, cum. vertices per level -> bool
         StartingLevelFunctionT startingLevelFunction;
         // level, common vertices count -> bool
         ShouldMergeFunctionT shouldMergeFunction;
+        uint32_t minNumberOfVerticesAtStartingLevel;
 
     };
 

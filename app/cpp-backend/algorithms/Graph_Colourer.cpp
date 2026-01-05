@@ -381,20 +381,24 @@ std::pair<bool, uint32_t> GraphColourer::determineTheStartingLevel(
         ++level;
     }
     // ++level; // maybe?
-    // Skipping the levels with one or no vertices 
+    size_t levelSkipOffset = level;
+    
+    // TODO: Fix - skipped the root and there was a sufficiently high number of 
+    // vertices on level 1, but because of line after the loop level 1 becomes indexed 0
+    // and is skipped, thus the error appears
     while (level < n && verticesPerLevel.getSizeOfArr(level) <= 1) {
         cumVerticesAtLevelCount += verticesPerLevel.getSizeOfArr(level);
         cumDisputableEdgesAtLevelCount += disputableEdgesPerLevel.getSizeOfArr(level);
         ++level;
     }
-    size_t upToOneLevelsSkipOffset = level;
 
     while (level < n) {
-        cumVerticesAtLevelCount += verticesPerLevel.getSizeOfArr(level);
+        uint32_t numberOfVerticesAtLevel = verticesPerLevel.getSizeOfArr(level);
+        cumVerticesAtLevelCount += numberOfVerticesAtLevel;
         cumDisputableEdgesAtLevelCount += disputableEdgesPerLevel.getSizeOfArr(level);
-        if (algorithmParams.startingLevelFunction(
-            // level, m_cumDisputableEdgesPerLevelCounts.value(), m_cumVerticesPerLevelCounts.value()
-            level - upToOneLevelsSkipOffset, cumDisputableEdgesAtLevelCount, cumVerticesAtLevelCount
+        if (numberOfVerticesAtLevel >= algorithmParams.minNumberOfVerticesAtStartingLevel
+            && algorithmParams.startingLevelFunction(
+            level - levelSkipOffset, cumDisputableEdgesAtLevelCount, cumVerticesAtLevelCount
         )) break;
         ++level;
     }

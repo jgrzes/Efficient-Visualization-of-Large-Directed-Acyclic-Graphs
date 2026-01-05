@@ -27,6 +27,7 @@ public:
 
     struct Vertex {
 
+        constexpr Vertex() : index{0}, level{-1} {}
         constexpr Vertex(uint32_t vIndex) : index{vIndex}, level{-1} {}
 
         uint32_t index;
@@ -145,6 +146,8 @@ public:
     virtual void addNewEdge(uint32_t uIndex, uint32_t vIndex) = 0;
     virtual void addNewEdge(const Vertex& u, const Vertex& v) = 0;
     virtual void addNewVertex() = 0;
+
+    virtual void removeLastNVertices(uint32_t n) = 0;
 
     virtual bool shouldSkipVertex(uint32_t vIndex) const {return false;}
     virtual bool shouldSkipVertex(const Vertex& v) const {return false;}

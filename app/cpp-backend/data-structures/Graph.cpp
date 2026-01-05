@@ -75,6 +75,36 @@ void Graph::addNewVertex() {
 }
 
 
+void Graph::removeLastNVertices(uint32_t n) {
+    uint32_t vertexCountBeforeRemoval = m_V.size();
+    if (n >= vertexCountBeforeRemoval) {
+        throw std::runtime_error{
+            "Graph error: cannot remove more vertices than the graph has overall"
+        };
+    }
+
+    uint32_t startingIndex = vertexCountBeforeRemoval - n;
+    for (uint32_t uIndex=startingIndex; uIndex<vertexCountBeforeRemoval; ++uIndex) {
+        auto Nu = N(uIndex);
+        for (uint32_t vIndex : Nu) {
+            if (vIndex >= startingIndex) continue;
+            else m_ER[vIndex].erase(uIndex);
+        }
+
+        auto Nru = NR(uIndex);
+        for (uint32_t wIndex : Nru) {
+            if (wIndex >= startingIndex) continue;
+            else m_E[wIndex].erase(uIndex);
+        }
+    }
+
+    m_V.resize(startingIndex);
+    m_E.resize(startingIndex);
+    m_ER.resize(startingIndex);
+}
+
+
+
 void Graph::createRootsList() {
     m_rootList.clear();
     size_t rootCount = 0;

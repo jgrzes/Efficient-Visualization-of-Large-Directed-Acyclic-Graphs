@@ -5,6 +5,8 @@
 #include <tuple>
 #include <iostream>
 
+#include "../logging/boost_logging.hpp"
+
 namespace graph_preprocessing {
 
 void assignLevelsInGraph(GraphInterface& graph) {
@@ -15,13 +17,12 @@ void assignLevelsInGraph(GraphInterface& graph) {
 
     std::deque<std::pair<uint32_t, int>> q;
     std::deque<std::pair<uint32_t, int>> qPrim;
-    // std::cout << "Number of roots: " << rootPointerList.size() << "\n";
     for (const auto root : rootPointerList) {
-        // std::cout << "Root: " << root << "\n";
         q.push_back({root, 0});
     }
 
     std::vector<bool> shouldInspect(graph.getVertexCount(), true);
+    int64_t remainingInspectionsCount = shouldInspect.size();
     std::vector<uint32_t> liveIvCollection;
     liveIvCollection.reserve(graph.getVertexCount());
     for (size_t u=0; u<graph.getVertexCount(); ++u) {
@@ -33,7 +34,13 @@ void assignLevelsInGraph(GraphInterface& graph) {
         uint32_t u;
         int uLevel;
         if (!q.empty()) _extractFront(q, u, uLevel);
-        else _extractFront(qPrim, u, uLevel);
+        else {
+            _extractFront(qPrim, u, uLevel);
+            logging::log_warning(
+                "Taken out " + std::to_string(u) + ", level = " + std::to_string(uLevel) +
+                " from secondary (qPrim) queue when assigning levels."
+            );
+        }
 
         if (shouldInspect[u]) {
             shouldInspect[u] = false;
@@ -48,6 +55,9 @@ void assignLevelsInGraph(GraphInterface& graph) {
             }
             
         }
+
+        --remainingInspectionsCount;
+        if (remainingInspectionsCount == 0) break;
     }
 
     #undef _extractFront

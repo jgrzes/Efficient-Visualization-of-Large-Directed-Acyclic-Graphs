@@ -6,7 +6,7 @@
 
 #include "Sparse_Matrix.h"
 #include "../utils/traits.h"
-#include "../utils/arithmetic_ops_for_pair_overloads.h"
+#include "../utils/arithmetic_ops_for_pair_overloads.hpp"
 
 namespace data_structures {
 

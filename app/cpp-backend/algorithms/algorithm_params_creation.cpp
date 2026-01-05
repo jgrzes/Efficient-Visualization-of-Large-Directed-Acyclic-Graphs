@@ -1,6 +1,7 @@
 #include "algorithm_params_creation.hpp"
 
 #include <random>
+#include <math.h>
 
 namespace algorithms {
 
@@ -15,7 +16,7 @@ GraphColourer::AlgorithmParams createDefaultGraphColourerAlgParams() {
         }, 
         [](uint32_t level, uint32_t commonVerticesCount) -> bool {
             return commonVerticesCount >= 3;
-        }
+        }, 3
     );
 }
 
@@ -75,7 +76,10 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
     layoutAlgorithmParams.addWeightFromChildrenCoeff = 0;
     layoutAlgorithmParams.kInitialLayoutCoeff = 1.8;
     layoutAlgorithmParams.nextLevelDownCoeffForPredicted = 0.45;
-    layoutAlgorithmParams.minDistanceBetweenLevelsCoeff = 0.35;
+    layoutAlgorithmParams.minDistanceBetweenLevelsCoeff = 0.25;
+
+    layoutAlgorithmParams.minRequiredEdgeAngleRequriedRad = 20 * (M_PI/180);
+    layoutAlgorithmParams.minRequiredDistanceBetweenAdjacentLevels = 10.0;
 
     layoutAlgorithmParams.sCoeff = 1.05; 
     layoutAlgorithmParams.defaultAlphaP = 0.5;

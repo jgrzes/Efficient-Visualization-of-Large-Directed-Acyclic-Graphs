@@ -86,6 +86,12 @@ public:
         m_graphView->addNewVertex();
     }
 
+    void removeLastNVertices(uint32_t n) override {
+        uint32_t newSize = m_disabledFlags.size() - n;
+        m_graphView->removeLastNVertices(n);
+        m_disabledFlags.resize(newSize);
+    }
+
     GraphStoringPolicy getGraphStroingPolicy() const {return m_storingPolicy;}
     void forgetUnderlyingGraphImpl() {
         m_storingPolicy = GraphStoringPolicy::RAW_POINTER_NON_OWNING;
