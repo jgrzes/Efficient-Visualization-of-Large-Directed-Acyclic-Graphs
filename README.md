@@ -1,8 +1,8 @@
 # Efficient Visualization of Large Directed Acyclic Graphs
 
-<p align="center">
+<!-- <p align="center">
   <img src="docs/screenshots/hero_light.png" width="800" />
-</p>
+</p> -->
 
 A web-based application for efficient visualization, analysis, and interactive exploration of large **Directed Acyclic Graphs (DAGs)**.  
 The system is designed to handle graphs with **thousands of nodes and edges**, focusing on **scalability, clarity, and performance** ⚡
