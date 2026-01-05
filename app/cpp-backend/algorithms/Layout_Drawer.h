@@ -210,13 +210,6 @@ private:
         std::vector<uint32_t> FcsVertexIndices;
     };
 
-    void findVerticesWithCustomEpsilonsAndFixColourRoots(
-        std::vector<uint32_t>& verticesWithCustomEpsilons,
-        std::optional<std::reference_wrapper<ColourHierarchyNode>> optColourNode = std::nullopt
-    );
-
-    std::vector<uint32_t> getColourRoots(ColourHierarchyNode& colourNode, bool pushRootsToTheFront = true);
-
     void performPinkIndicesConstruction(
         uint32_t& currentPink, 
         std::optional<std::reference_wrapper<std::string>> optPinkIndicesStrRef = std::nullopt, 
@@ -264,14 +257,7 @@ private:
 
     void fixUpwardPointingEdgesInColourNodeChildren(const ColourHierarchyNode& colourNode);
 
-    void pushAllVerticesBeyondLevelInChildrenColours(
-        const ColourHierarchyNode& colourNode, uint32_t level, double yPush
-    );
-
     void adjustAllYCoordinatesToSatisifyDownwardFlow();
-
-    // TODO: Find better implementation for terminating fine tuning stage
-    bool checkIfFineTuningStageEndConditionMet(uint32_t iter) {return iter >= 20;}
 
     // Returns higehst y coord assigned to any vertice during the execution of the method
     double findInitialLayoutForColouredSubgraph(

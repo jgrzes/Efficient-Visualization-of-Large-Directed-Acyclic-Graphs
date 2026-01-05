@@ -28,36 +28,7 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
     m_graph = &graph;
     m_rootColourNode = &rootColourNode;
 
-
-    // logging::log_trace(
-    //     "Fixing root colour nodes for graph"
-    //     + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
-    //     + "..."
-    // );
-    // std::vector<uint32_t> verticesWithCustomEpsilons;
-    // uint32_t vertexCountBeforeColourRootFixing = graph.getVertexCount();
-    // findVerticesWithCustomEpsilonsAndFixColourRoots(verticesWithCustomEpsilons);
-    // logging::log_debug(
-    //     "Fixed root colour nodes for graph"
-    //     + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
-    //     + "."
-    // );
-
     size_t n = graph.getVertexCount();
-    // if (vertexCountBeforeColourRootFixing != n) {
-    //     logging::log_trace(
-    //       "Recomputing node levels for graph"
-    //         + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
-    //         + "(neccessary because new root colour nodes have been added)."
-    //     );
-    //     assignLevelsInGraph(graph);
-    //     logging::log_trace(
-    //       "Successfully recomputed node levels for graph"
-    //         + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
-    //         + "."
-    //     );
-    // }
-
     uint32_t maxColourIndex = findMaxColourIndexInColourHierarchy(rootColourNode);
     m_pinkIndices = std::vector<uint32_t>(maxColourIndex+1);
     m_blueIndices = std::vector<uint32_t>(maxColourIndex+1);
@@ -321,121 +292,6 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
     if (nestedColoursExist) adjustAllYCoordinatesToSatisifyDownwardFlow();
 
     return m_layoutPositions;
-}
-
-
-void LayoutDrawer::findVerticesWithCustomEpsilonsAndFixColourRoots(
-    std::vector<uint32_t>& verticesWithCustomEpsilons, 
-    std::optional<std::reference_wrapper<ColourHierarchyNode>> optColourNode
-) {
-
-    auto& colourNode = optColourNode.has_value()
-        ? optColourNode.value().get() 
-        : *m_rootColourNode;
-
-    std::vector<uint32_t> colourRoots = getColourRoots(colourNode, false); // TODO: change to true after fixing
-    size_t n = colourRoots.size();
-    std::string colourRootsStr = "[";
-    for (uint32_t cr : colourRoots) {
-        if (colourRootsStr.size() > 1) colourRootsStr += ", ";
-        colourRootsStr += std::to_string(cr);
-    }
-    colourRootsStr += "]";
-
-    logging::log_trace(
-        "Colour roots for colour " + std::to_string(colourNode.colour) +
-        ":" + colourRootsStr + "."
-    );
-
-    if (n >= 2) {
-        auto& graph = *m_graph;
-        uint32_t newColourRootIndex = graph.getVertexCount();
-        graph.addNewVertex();
-        graph.setVertexColour(newColourRootIndex, colourNode.colour);
-        
-        std::string NForNewColourRootStr = "[";
-        std::string NrForNewColourRootStr = "["; 
-
-        for (uint32_t rcIndex : colourRoots) {
-            for (uint32_t vIndex : graph.NR(rcIndex)) {
-                // TODO: Decide if should include:
-                // graph.removeEdge(vIndex, rcIndex);
-                NrForNewColourRootStr += (NrForNewColourRootStr.size() > 1 ? ", " : "") + std::to_string(vIndex);
-                graph.addNewEdge(vIndex, newColourRootIndex);
-            }
-            NForNewColourRootStr += (NForNewColourRootStr.size() > 1 ? ", " : "") + std::to_string(rcIndex);
-            graph.addNewEdge(newColourRootIndex, rcIndex);
-        }
-
-        NForNewColourRootStr += "]";
-        NrForNewColourRootStr += "]";
-        verticesWithCustomEpsilons.emplace_back(newColourRootIndex);
-        std::swap(verticesWithCustomEpsilons.front(), verticesWithCustomEpsilons.back());
-        colourNode.verticesOfColour.emplace_back(newColourRootIndex);
-
-        logging::log_debug(
-            "Adding new colour graph root for graph"
-            + (m_optLogGraphId.has_value() ? (" with id = " + m_optLogGraphId.value()) : "")
-            + ", v = " + std::to_string(newColourRootIndex) + ", N(v) = "
-            + NForNewColourRootStr + ", Nr(v) = " + NrForNewColourRootStr + "."
-        );
-
-    } else if (n == 1) {
-        verticesWithCustomEpsilons.emplace_back(colourRoots.front());
-    }
-
-    for (auto& colourNodeChildPtr : colourNode.childrenPtrs) {
-        findVerticesWithCustomEpsilonsAndFixColourRoots(
-            verticesWithCustomEpsilons, std::ref(*colourNodeChildPtr)
-        );
-    }
-}
-
-
-std::vector<uint32_t> LayoutDrawer::getColourRoots(ColourHierarchyNode& colourNode, bool pushRootsToTheFront) {
-    std::vector<uint32_t> colourRoots;
-    int64_t minLevelForColour = std::numeric_limits<int64_t>::max();
-    auto& graph = *m_graph;
-    for (uint32_t uIndex : colourNode.verticesOfColour) {
-        minLevelForColour = std::min(minLevelForColour, graph.getVertex(uIndex).level);
-    }
-
-    size_t n = colourNode.verticesOfColour.size();
-    for (size_t i=0; i<n; ++i) {
-        if (graph.getVertex(colourNode.verticesOfColour[i]).level == minLevelForColour) {
-            colourRoots.emplace_back(i);
-        }
-    }
-
-    n = colourRoots.size();
-    // TODO: fix
-    if (pushRootsToTheFront) {
-        uint32_t j{0}, k{0};
-        for (size_t i=0; i<n; ++i) {
-            if (i == colourRoots[j]) {
-                std::swap(
-                    colourNode.verticesOfColour[k++], 
-                    colourNode.verticesOfColour[i]
-                );
-                ++j;
-            }
-        }
-        
-        for (size_t i=0; i<colourRoots.size(); ++i) {
-            colourRoots[i] = i;
-        }
-    }
-    
-    // Let's just reuse the same vector to avoid unnecessary memory allocations.
-    std::transform(
-        colourRoots.begin(), colourRoots.end(), 
-        colourRoots.begin(), 
-        [&verticesOfColour = colourNode.verticesOfColour](uint32_t colourRootIndex) -> uint32_t {
-            return verticesOfColour[colourRootIndex];
-        }
-    );
-
-    return std::move(colourRoots);
 }
 
 
@@ -741,67 +597,7 @@ double LayoutDrawer::findLayoutForColouredSubgraph(
         + ")."
     );
 
-    // For now the rest will be turned off and moved elsewhere
     return boxBounds.second;
-
-    // double hOffsetForNestedLevel = (boxBounds.second - boxBounds.first) * m_algorithmParams.minDistanceBetweenLevelsCoeff;
-    // hOffsetForNestedLevel += largestYCoord;
-    ColourHierarchyNode* colourHierarchyNodePtr = m_colourNodesPtrs[colour];
-    double nestedLeftBoxBound = boxBounds.first;
-    double fixedRightBoxBound = boxBounds.second;
-
-    #define _getColourRoot(_colourNode) (_colourNode.verticesOfColour.front())
-    double maxAbsDistanceAlongXAxisBPNC = 0;
-
-    for (const auto& childNodePtr : colourHierarchyNodePtr->childrenPtrs) {
-        if (!childNodePtr->verticesOfColour.empty()) {
-            uint32_t childColourRootIndex = _getColourRoot((*childNodePtr));
-            double childSubboxWidth = m_epsilonsForVertices.dataAtOrDefault(childColourRootIndex);
-            double nestedRightBoxBound = nestedLeftBoxBound + childSubboxWidth;
-            double colourRootXPosition = (nestedRightBoxBound + nestedLeftBoxBound) * 0.5;
-            auto NrCR = graph.NR(childColourRootIndex);
-
-            for (uint32_t wIndex : NrCR) {
-                if (graph.getVertexColour(wIndex) != colour) continue;
-                maxAbsDistanceAlongXAxisBPNC = std::max(
-                    maxAbsDistanceAlongXAxisBPNC, 
-                    std::abs(m_layoutPositions[wIndex].first - colourRootXPosition)
-                );
-            }
-
-            nestedLeftBoxBound = nestedRightBoxBound + m_algorithmParams.nestedColourChildPadding;
-        }
-    }
-
-    double standardizedH = largestYCoord + std::max(
-       (m_algorithmParams.baseVerexWeight * m_algorithmParams.gAcceleration) / (m_algorithmParams.kInitialLayoutCoeff * 1.0), 
-       maxAbsDistanceAlongXAxisBPNC * m_algorithmParams.minDistanceBetweenLevelsCoeff
-    );
-
-    for (const auto& childNodePtr : colourHierarchyNodePtr->childrenPtrs) {
-        if (!childNodePtr->verticesOfColour.empty()) {
-            double childColour = childNodePtr->colour;
-            uint32_t childColourRoot = _getColourRoot((*childNodePtr));
-            double childSubboxWidth = m_epsilonsForVertices.dataAtOrDefault(childColourRoot);
-            double nestedRightBoxBound = nestedLeftBoxBound + childSubboxWidth;
-            double colourRootXPosition = (nestedRightBoxBound + nestedLeftBoxBound) * 0.5;
-            
-            ArrayOfArrays<uint32_t> verticesPerLevelForNestedColour = graph_preprocessing::findVerticesPerLevels(
-                childNodePtr->verticesOfColour, graph, true
-            );
-            nestedLeftBoxBound = std::max(
-                findLayoutForColouredSubgraph(
-                    verticesPerLevelForNestedColour, {colourRootXPosition, standardizedH}, 
-                    {nestedLeftBoxBound, nestedRightBoxBound}
-                ), nestedRightBoxBound + m_algorithmParams.nestedColourChildPadding
-            );
-            // nestedLeftBoxBound = nestedRightBoxBound + m_algorithmParams.nestedColourChildPadding;
-        }
-    }
-
-    fixedRightBoxBound = std::max(fixedRightBoxBound, nestedLeftBoxBound);
-    #undef _getColourRoot
-    return fixedRightBoxBound;
 }
 
 
@@ -873,118 +669,10 @@ void LayoutDrawer::drawNestedColourSubgraphs(const std::vector<uint32_t>& colour
             );
 
             nestedLeftBoxBound = nestedRightBoxBound + m_algorithmParams.nestedColourChildPadding;
-        }
-
-        continue;
-        
-        // Temporarily disabled
-        // fixUpwardPointingEdgesInColourNodeChildren(*colourNodeI);
-
-        uint32_t lowestNewlyDrawnColour = colourNodeI->childrenPtrs.front()->colour;
-        uint32_t highestNewlyDrawnColour = colourNodeI->childrenPtrs.back()->colour;
-
-        std::vector<std::pair<uint32_t, uint32_t>> intercolourEdgesToInspect;
-        
-        for (const auto& childNodePtr : colourNodeI->childrenPtrs) {
-            const auto& childNode = *childNodePtr;
-            uint32_t childColour = childNode.colour;
-            
-            // Fixing upward pointing edges for newly added in comparison to preexisiting
-             // First fix (u -> v), where u is newly added and v is preexisiting
-            for (uint32_t uIndex : childNode.verticesOfColour) {
-                auto Nu = graph.N(uIndex);
-                for (uint32_t vIndex : Nu) {
-                    uint32_t vColour = graph.getVertexColour(vIndex);
-                    if (vColour >= lowestNewlyDrawnColour && vColour <= highestNewlyDrawnColour) continue;
-                    else if (!m_colourSubgraphAlreadyDrawn[vColour]) continue;
-                    else {
-                        intercolourEdgesToInspect.emplace_back(uIndex, vIndex);
-                    }
-                }
-
-                // Fixing upward pointing edges for newly added in comparison to preexisiting
-                // Secondly fix (w -> u), where u is newly added and w is preexisiting
-                auto Nru = graph.NR(uIndex);
-                for (uint32_t wIndex : Nru) {
-                    uint32_t wColour = graph.getVertexColour(wIndex);
-                    if (wColour >= lowestNewlyDrawnColour && wColour <= highestNewlyDrawnColour) continue;
-                    else if (!m_colourSubgraphAlreadyDrawn[wColour]) continue;
-                    else {
-                        intercolourEdgesToInspect.emplace_back(wIndex, uIndex);
-                    }
-                }
-            }            
-        }
-
-        std::sort(
-            intercolourEdgesToInspect.begin(), intercolourEdgesToInspect.end(), 
-            [&graph](const auto& p1, const auto& p2) -> bool {
-                const auto vLevelP1 = graph.getVertex(p1.second).level;
-                const auto vLevelP2 = graph.getVertex(p2.second).level;
-                return (vLevelP1 < vLevelP2); // This or the other way around?
-            }
-        );
-
-        const static double sinMinReqAngle = std::sin(m_algorithmParams.minRequiredEdgeAngleRequriedRad);
-        
-        double yAdd;
-        continue;
-
-        // TODO: I honestly don't even know anymore
-        for (const auto& [uIndex, vIndex] : intercolourEdgesToInspect) {
-            const std::pair<double, double>& uPosition = m_layoutPositions[uIndex];
-            const std::pair<double, double>& vPosition = m_layoutPositions[vIndex];
-
-            double d = traits::cartesian_distance(uPosition, vPosition);
-            double absYDiff = std::abs(uPosition.second - vPosition.second);
-            double sinAlpha = std::sin(absYDiff / d);
-            double alpha = std::asin(sinAlpha);
-
-            if (uPosition.second > vPosition.second || alpha < m_algorithmParams.minRequiredEdgeAngleRequriedRad) {
-                logging::log_trace(
-                    "Now will fix " + std::to_string(uIndex) + "->" + std::to_string(vIndex) + "..."
-                );
-                if (uPosition.second > vPosition.second) {
-                    yAdd = d * sinMinReqAngle + absYDiff;
-                }
-                else if (alpha < m_algorithmParams.minRequiredEdgeAngleRequriedRad) {
-                    yAdd = d * sinMinReqAngle - absYDiff;
-                }
-                uint32_t vLevel = graph.getVertex(vIndex).level;
-                uint32_t vColour = graph.getVertexColour(vIndex);
-                const auto& vColourNode = *m_colourNodesPtrs[vColour];
-
-                // Should never really be nullptr, but better safe than sorry
-                const ColourHierarchyNode* const vColourParentNodePtr = vColourNode.parent;
-                if (vColourParentNodePtr == nullptr) {
-                    logging::log_error(
-                        "In graph" + 
-                        std::string(m_optLogGraphId.has_value() ? " with id " + m_optLogGraphId.value() : "") + 
-                        " colour " + std::to_string(vColour) + " has no parent in fixing upward stage."
-                    );
-                } else {
-                    pushAllVerticesBeyondLevelInChildrenColours(*vColourParentNodePtr, vLevel, yAdd);
-                }
-            }
-        }
+        }        
     }
 
     #undef _getColourRoot;
-}
-
-
-void LayoutDrawer::pushAllVerticesBeyondLevelInChildrenColours(
-    const ColourHierarchyNode& colourNode, uint32_t level, double yPush
-) {
-
-    for (const auto& colourChildPtr : colourNode.childrenPtrs) {
-        const auto& colourChild = *colourChildPtr;
-        uint32_t m = colourChild.verticesOfColour.size();
-        uint32_t j = m_firstVertexOfColourForLevelMarkers.dataAtOr(colourChild.colour, level, m);
-        while (j < m) {
-            m_layoutPositions[colourChild.verticesOfColour[j++]].second += yPush;
-        }
-    }
 }
 
 
@@ -1330,11 +1018,6 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
             auto Nrv = graph.NR(vIndex);
             for (uint32_t uIndex : Nrv) {
                 if (graph.getVertexColour(uIndex) != colour) continue;
-                // if (graph.getVertex(uIndex).level+1 != k) continue;
-                // maxDistanceAlongXAxisBetweenChildAndParent = std::max(
-                //     maxDistanceAlongXAxisBetweenChildAndParent, 
-                //     std::abs(m_layoutPositions[vIndex].first - m_layoutPositions[uIndex].first)
-                // );
                 auto newDiff = std::abs(m_layoutPositions[vIndex].first - m_layoutPositions[uIndex].first);
                 if (colour == 3 && newDiff > maxDistanceAlongXAxisBetweenChildAndParent) {
                     logging::log_trace_v(
@@ -1346,10 +1029,6 @@ double LayoutDrawer::findInitialLayoutForColouredSubgraph(
                     );
                     maxDistanceAlongXAxisBetweenChildAndParent = newDiff;
                 } 
-                // maxDistanceAlongXAxisBetweenChildAndParent = std::max(
-                //     maxDistanceAlongXAxisBetweenChildAndParent, 
-                //     std::abs(m_layoutPositions[vIndex].first - m_layoutPositions[uIndex].first)
-                // );
             }
         }
 
