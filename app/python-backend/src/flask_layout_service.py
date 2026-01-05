@@ -12,6 +12,7 @@ from flask import Flask, jsonify, redirect, request
 from flask_cors import CORS
 from generate_graph_structure import make_graph_structure  # To be removed
 from graph_analysis import (
+    analyze_dag_basic,
     compute_hierarchy_levels,  # TODO: Make better graph analysis functionality
 )
 from graph_data_storage import GraphDataStorage
@@ -241,20 +242,24 @@ def flask_make_graph_structure():
     ) 
 
 
-# TODO: Weird endpoint name
 @app.route("/analyze_graph/<string:graph_uuid>", methods=["POST"])
 def analyze_graph(graph_uuid: str):
     logger.info(f"Received request on endpoint /analyze_graph/<graph_uuid={graph_uuid}>")
-    G_gt: gt.Graph = None
     try:
         graph_data = temp_graph_data_storage.get_graph_data_for_id(graph_uuid)
-        G_gt = graph_data["graph"]
+        G_gt: gt.Graph = graph_data["graph"]
     except RuntimeError:
         return jsonify({"error": "Graph not found"}), 404
 
     hierarchy_levels = compute_hierarchy_levels(G_gt)
-    logger.info(f"Successfully analyzed graph with uuid as follows: {graph_uuid}")
-    return jsonify({"hierarchy_levels": hierarchy_levels}), 200
+    basic = analyze_dag_basic(G_gt)
+
+    logger.info(f"Successfully analyzed graph with uuid: {graph_uuid}")
+    return jsonify({
+        "basic": basic,
+        "hierarchy_levels": hierarchy_levels,
+    }), 200
+
 
 
 @app.route("/search_node/<string:graph_uuid>", methods=["POST"])

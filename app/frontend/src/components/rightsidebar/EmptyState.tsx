@@ -18,7 +18,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ type }) => {
           mx-auto w-10 h-10 rounded-2xl border border-dashed
           flex items-center justify-center mb-3
 
-          border-black/15 bg-black/[0.02] text-gray-600
+          border-black/15 bg-black/2 text-gray-600
           dark:border-white/20 dark:bg-transparent dark:text-gray-500
         "
       >

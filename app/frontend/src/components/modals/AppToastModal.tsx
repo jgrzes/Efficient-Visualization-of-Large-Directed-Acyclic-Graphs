@@ -1,4 +1,3 @@
-import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, AlertTriangle, Info } from "lucide-react";
 
@@ -60,7 +59,7 @@ export default function AppToastModal({ state, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-black/[0.03] text-gray-700 hover:bg-black/[0.06] dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
+              className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-black/3 text-gray-700 hover:bg-black/6 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
               aria-label="Close"
               title="Close"
             >
@@ -84,7 +83,7 @@ export default function AppToastModal({ state, onClose }: Props) {
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg px-3 py-1.5 text-xs font-medium border border-black/10 bg-black/[0.03] text-gray-700 hover:bg-black/[0.06] dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
+                className="rounded-lg px-3 py-1.5 text-xs font-medium border border-black/10 bg-black/3 text-gray-700 hover:bg-black/6 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
               >
                 OK
               </button>

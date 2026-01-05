@@ -5,17 +5,16 @@ import { initialPointPositions, initialLinks } from "./data-gen";
 import { AppContext } from "./context/AppContext";
 
 import { NodeInfoProps } from "./components/leftsidebar/NodeInfo";
-import AnalysisPanel from "./components/AnalysisPanel";
+import AnalysisPanel from "./components/analysispanel/AnalysisPanel";
 import LeftSidebar from "./components/leftsidebar/LeftSidebar";
 import ToolTip from "./components/ToolTip";
 import OntologyModal from "./components/modals/OntologyModal";
 import LoadingModal from "./components/modals/LoadingModal";
 import RightSidebar from "./components/rightsidebar/RightSidebar";
-import SaveGraphModal from "./components/modals/SaveGraphModal";
-import LoadGraphModal from "./components/modals/LoadGraphModal";
+import SaveGraphModal from "./components/modals/SaveGraphModal/SaveGraphModal";
 import GraphListModal from "./components/modals/GraphListModal";
-import LoadSourceModal from "./components/modals/LoadSourceModal";
-import SettingsModal from "./components/modals/SettingsModal";
+import LoadSourceModal from "./components/modals/LoadSourceModal/LoadSourceModal";
+import SettingsModal from "./components/modals/SettingsModal/SettingsModal";
 import LayoutModal from "./components/modals/LayoutModal";
 
 import { useFavorites } from "./hooks/useFavorites";
@@ -76,7 +75,6 @@ export default function MainApp() {
   const [loadSourceModalOpen, setLoadSourceModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
-  const [loadModalOpen, setLoadModalOpen] = useState(false);
 
   // Graph “hash”
   const [currentGraphHash, setCurrentGraphHash] = useState<string | null>(null);
@@ -145,6 +143,7 @@ export default function MainApp() {
   const handleLoadClick = () => {
     setLoadSourceModalOpen(true);
     loader.fetchGroups();
+    setAnalysisResult(null);
   };
 
   const handleLoadFromFile = () => {
@@ -158,6 +157,18 @@ export default function MainApp() {
     try {
       await loader.handleExport();
     } catch (e) {
+      // user cancelled save dialog -> ignore
+      if (
+        (e instanceof DOMException && e.name === "AbortError") ||
+        (e instanceof Error && e.name === "AbortError") ||
+        (typeof e === "object" &&
+          e !== null &&
+          "message" in e &&
+          String((e as any).message).includes("The user aborted a request"))
+      ) {
+        return;
+      }
+
       toast.showError(e instanceof Error ? e.message : "Export failed");
     }
   };
@@ -258,9 +269,9 @@ export default function MainApp() {
 
   return (
     <div id="layout" className="flex h-screen flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-200">
-      <div ref={canvasRef} className="flex-grow" />
+      <div ref={canvasRef} className="grow" />
 
-      <div ref={graphRef} id="graph" className="relative flex-grow">
+      <div ref={graphRef} id="graph" className="relative grow">
         {tooltips.map((t) => (
           <ToolTip key={t.index} visible={true} x={t.x} y={t.y} content={<strong>{t.content}</strong>} />
         ))}
@@ -276,7 +287,15 @@ export default function MainApp() {
         )}
       </div>
 
-      {analysisResult && <AnalysisPanel result={analysisResult} onClose={() => setAnalysisResult(null)} />}
+      {analysisResult && (
+        <AnalysisPanel
+          result={analysisResult}
+          onClose={() => setAnalysisResult(null)}
+          nodeNames={nodeNames}
+          onSelectNode={(node) => selectNodeByIndex(node.index)}
+          onHoverResultCard={(node) => highlightResultHover(node?.index)}
+        />
+      )}
 
       <LeftSidebar
         handleLoadClick={handleLoadClick}
@@ -287,9 +306,6 @@ export default function MainApp() {
         handleSaveLayoutClick={() => {
           setSaveModalOpen(true);
           loader.fetchGroups();
-        }}
-        handleLoadFromHashClick={() => {
-          setLoadModalOpen(true);
         }}
         handleOpenSettings={handleOpenSettings}
         selectedNode={selectedNode}
@@ -315,7 +331,11 @@ export default function MainApp() {
       />
 
       {showOntologyOptions && selectedFile && (
-        <OntologyModal fileName={selectedFile.name} onSelect={uploadFileWithNamespace} onCancel={() => setShowOntologyOptions(false)} />
+        <OntologyModal
+          fileName={selectedFile.name}
+          onSelect={uploadFileWithNamespace}
+          onCancel={() => setShowOntologyOptions(false)}
+        />
       )}
 
       {loader.loading && <LoadingModal />}
@@ -336,7 +356,6 @@ export default function MainApp() {
         nodeNames={nodeNames}
       />
 
-
       <SaveGraphModal
         open={saveModalOpen}
         onClose={() => setSaveModalOpen(false)}
@@ -349,30 +368,20 @@ export default function MainApp() {
         onRefreshGroups={loader.fetchGroups}
       />
 
-      <LoadGraphModal
-        open={loadModalOpen}
-        onClose={() => {
-          setLoadModalOpen(false);
-          loader.setLoadError(null);
-        }}
-        onSubmit={async (hash) => {
-          try {
-            await loader.handleLoadByHash(hash);
-            setLoadModalOpen(false);
-          } catch (e) {
-            toast.showError(e instanceof Error ? e.message : "Load failed");
-          }
-        }}
-        loading={loader.loadLoading}
-        error={loader.loadError}
-      />
-
       <LoadSourceModal
         open={loadSourceModalOpen}
         onClose={() => {
           setLoadSourceModalOpen(false);
         }}
         onSelectFile={handleLoadFromFile}
+        onSelectHash={async (hash) => {
+          try {
+            await loader.handleLoadByHash(hash);
+            setLoadSourceModalOpen(false);
+          } catch (e) {
+            toast.showError(e instanceof Error ? e.message : "Load from hash failed");
+          }
+        }}
         onSelectDb={async (groupName, password) => {
           try {
             await loader.handleLoadFromDbSubmit(groupName, password);

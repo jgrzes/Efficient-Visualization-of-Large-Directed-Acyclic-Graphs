@@ -37,7 +37,7 @@ export default function OntologyModal({
             p-6 w-96 rounded-2xl border shadow-2xl backdrop-blur-md
 
             bg-white/95 border-black/10 shadow-black/10
-            dark:bg-gradient-to-b dark:from-zinc-900/90 dark:to-zinc-950/90
+            dark:bg-linear-to-b dark:from-zinc-900/90 dark:to-zinc-950/90
             dark:border-white/10 dark:shadow-black/50
           "
         >
@@ -58,8 +58,8 @@ export default function OntologyModal({
                   font-medium text-sm transition
                   focus:outline-none focus:ring-2
 
-                  border-black/10 bg-black/[0.04] text-gray-800 hover:bg-black/[0.07] focus:ring-blue-300
-                  dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-200 dark:hover:bg-white/[0.12]
+                  border-black/10 bg-black/4 text-gray-800 hover:bg-black/[0.07] focus:ring-blue-300
+                  dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/12
                   dark:focus:ring-blue-400/40
                 "
               >

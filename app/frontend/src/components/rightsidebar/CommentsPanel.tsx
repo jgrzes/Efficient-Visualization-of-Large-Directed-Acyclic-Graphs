@@ -1,4 +1,3 @@
-// app/frontend/src/components/right/CommentsPanel.tsx
 import React, { useState } from "react";
 import { Trash2, Edit2, Save, X } from "lucide-react";
 import { useComments } from "../../hooks/useComments";
@@ -42,7 +41,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
   const saveEdit = async (id: string) => {
     if (!editedText.trim()) return;
-    await editComment(id, editedText);
+    editComment(id, editedText);
     cancelEditing();
   };
 
@@ -52,7 +51,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
         <p className="mb-2 text-gray-600 dark:text-gray-400 uppercase tracking-wide text-xs">
           Comments
         </p>
-        <div className="rounded-xl border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+        <div className="rounded-xl border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/3">
           <p className="text-gray-600 dark:text-gray-400">No comments.</p>
           <p className="text-gray-500 dark:text-gray-500 text-xs mt-1">
             Add the first comment from the search panel or the node info panel.
@@ -100,7 +99,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                 border-black/10 bg-white/70
                 hover:bg-white hover:border-black/20
 
-                dark:border-white/10 dark:bg-white/[0.03]
+                dark:border-white/10 dark:bg-white/3
                 dark:hover:bg-white/10 dark:hover:border-white/30
               "
               onClick={handleClickNode}
@@ -219,7 +218,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                   </div>
                 </div>
               ) : (
-                <p className="mt-2 text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
+                <p className="mt-2 text-gray-800 dark:text-gray-200 whitespace-pre-wrap wrap-break-word">
                   {c.text}
                 </p>
               )}

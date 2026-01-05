@@ -19,7 +19,7 @@ const ToolTip: React.FC<ToolTipProps> = ({ visible, x, y, content }) => {
         text-sm font-medium
         rounded-xl
         backdrop-blur-md
-        max-w-[280px] whitespace-normal
+        max-w-70 whitespace-normal
 
         shadow-[0_4px_20px_rgba(0,0,0,0.18)]
         dark:shadow-[0_4px_20px_rgba(0,0,0,0.45)]
@@ -30,7 +30,7 @@ const ToolTip: React.FC<ToolTipProps> = ({ visible, x, y, content }) => {
         text-gray-900
         dark:text-gray-100
 
-        bg-gradient-to-br
+        bg-linear-to-br
         from-white/90 to-slate-100/75
         dark:from-black/70 dark:to-black/40
       "

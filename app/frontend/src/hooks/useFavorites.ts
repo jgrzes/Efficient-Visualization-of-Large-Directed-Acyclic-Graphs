@@ -2,8 +2,8 @@ import { create } from "zustand";
 
 type FavoritesState = {
   favorites: number[];
-  isLoading: boolean; // kept for UI compatibility (sync store)
-  isSaving: boolean;  // kept for UI compatibility (sync store)
+  isLoading: boolean;
+  isSaving: boolean;
   error: string | null;
 
   setFavoritesFromGraph: (indices: number[]) => void;

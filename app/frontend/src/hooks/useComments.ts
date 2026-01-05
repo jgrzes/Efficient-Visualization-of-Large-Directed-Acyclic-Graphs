@@ -1,4 +1,3 @@
-// app/frontend/src/hooks/useComments.ts
 import { create } from "zustand";
 import { nanoid } from "nanoid";
 import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
@@ -23,12 +22,10 @@ export type NewCommentPayload = {
 type CommentsState = {
   // data
   comments: CommentItem[];
-  isLoading: boolean; // kept for UI compatibility, but sync now
-  isSaving: boolean;  // kept for UI compatibility, but sync now
+  isLoading: boolean;
+  isSaving: boolean;
   error: string | null;
 
-  // actions (sync now)
-  loadComments: () => void;
   addComment: (
     node: Pick<NodeInfoProps, "index" | "name">,
     comment: NewCommentPayload
@@ -48,11 +45,6 @@ export const useComments = create<CommentsState>((set, get) => ({
   isLoading: false,
   isSaving: false,
   error: null,
-
-  // If you don't load from API, this can just clear errors / no-op
-  loadComments: () => {
-    set({ isLoading: false, error: null });
-  },
 
   addComment: (node, comment) => {
     const trimmedText = comment.text.trim();

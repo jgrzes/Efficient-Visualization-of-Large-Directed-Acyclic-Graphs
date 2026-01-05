@@ -11,13 +11,9 @@ const Stats: React.FC<StatsProps> = ({ nodeCount, edgeCount }) => {
     <div
       id="stats-panel"
       className="
-        fixed bottom-4 left-4 w-[200px] p-4 rounded-lg shadow-lg border
-
-        bg-black text-gray-200 border-white/10
+        fixed bottom-4 left-4 w-50 p-4 rounded-lg shadow-lg border
         dark:bg-black dark:text-gray-200 dark:border-white/10
-
         bg-white/95 text-gray-900 border-black/10
-        dark:bg-black
       "
     >
       <h4 className="text-lg font-bold mb-2 text-center text-gray-900 dark:text-gray-100">

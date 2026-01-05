@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Save,
-  Link,
 } from "lucide-react";
 import NodeInfo, { NodeInfoProps } from "./NodeInfo";
 
@@ -20,7 +19,6 @@ interface LeftSidebarProps {
   handleExportClick: () => void;
   handleAnalyzeClick: () => void;
   handleSaveLayoutClick: () => void;
-  handleLoadFromHashClick: () => void;
   handleOpenSettings: () => void;
   selectedNode?: NodeInfoProps | null;
 }
@@ -38,7 +36,6 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   handleExportClick,
   handleAnalyzeClick,
   handleSaveLayoutClick,
-  handleLoadFromHashClick,
   handleOpenSettings,
   selectedNode,
 }) => {
@@ -51,7 +48,6 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
     { label: "Export", icon: <Download size={18} />, onClick: handleExportClick },
     { label: "Analyze", icon: <LineChart size={18} />, onClick: handleAnalyzeClick },
     { label: "Save layout", icon: <Save size={18} />, onClick: handleSaveLayoutClick },
-    { label: "Load from hash", icon: <Link size={18} />, onClick: handleLoadFromHashClick },
   ];
 
   const bottom: Item[] = [
@@ -76,7 +72,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
         "dark:shadow-black/50",
         "dark:text-gray-200",
         "transition-[width] duration-200 ease-in-out",
-        expanded ? "w-[420px]" : "w-16",
+        expanded ? "w-105" : "w-16",
         "overflow-hidden",
       ].join(" ")}
       aria-expanded={expanded}
@@ -178,7 +174,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   <NodeInfo {...selectedNode} />
                 </div>
               ) : (
-                <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-xs text-gray-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-500">
+                <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-xs text-gray-600 dark:border-white/10 dark:bg-white/3 dark:text-gray-500">
                   Select a node in the graph to see its details here.
                 </div>
               )}

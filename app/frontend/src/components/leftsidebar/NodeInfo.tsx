@@ -99,8 +99,8 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
             className="
               text-sm whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto pr-1
               rounded-md p-1 cursor-copy transition
-              hover:bg-black/[0.04]
-              dark:hover:bg-white/[0.02]
+              hover:bg-black/4
+              dark:hover:bg-white/2
             "
             title="Click to copy"
           >
@@ -154,7 +154,7 @@ const NodeInfo: React.FC<NodeInfoProps> = (props) => {
       id="info-panel"
       aria-labelledby="info-title"
       className="
-        relative inline-block w-[400px] max-w-[92vw]
+        relative inline-block w-100 max-w-[92vw]
         rounded-xl shadow-lg backdrop-blur-md
 
         bg-white/80 border border-black/10 text-gray-900

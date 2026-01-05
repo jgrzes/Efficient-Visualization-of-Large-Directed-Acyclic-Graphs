@@ -25,7 +25,7 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
     <AnimatePresence>
       <motion.div
         className="
-          fixed inset-0 z-[1000] flex items-center justify-center backdrop-blur-sm
+          fixed inset-0 z-1000 flex items-center justify-center backdrop-blur-sm
           bg-black/30 dark:bg-black/70
         "
         initial={{ opacity: 0 }}
@@ -51,7 +51,7 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
             shadow-black/10
 
             dark:border-white/10
-            dark:bg-gradient-to-b dark:from-zinc-900/95 dark:to-zinc-950/95
+            dark:bg-linear-to-b dark:from-zinc-900/95 dark:to-zinc-950/95
             dark:text-gray-100
             dark:shadow-black/80
           "
@@ -83,7 +83,7 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
               Choose layout type
             </h2>
             <p className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1.5">
-              <Info size={12} className="mt-[1px] text-gray-500 dark:text-gray-500" />
+              <Info size={12} className="mt-px text-gray-500 dark:text-gray-500" />
               Select how the graph should be arranged on the canvas. You can re-load the same
               file with a different layout later.
             </p>
@@ -107,7 +107,7 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
                       dark:border-blue-500/70 dark:bg-blue-600/15 dark:shadow-[0_0_0_1px_rgba(59,130,246,0.4)]
                     `
                     : `
-                      border-black/10 bg-black/[0.02] hover:border-blue-600/30 hover:bg-blue-600/5
+                      border-black/10 bg-black/2 hover:border-blue-600/30 hover:bg-blue-600/5
                       dark:border-white/10 dark:bg-black/20 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/5
                     `
                 }
@@ -144,7 +144,7 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
                           dark:border-blue-400/80 dark:bg-blue-500/20 dark:text-blue-100
                         `
                         : `
-                          border-black/10 text-gray-700 bg-black/[0.02]
+                          border-black/10 text-gray-700 bg-black/2
                           dark:border-white/15 dark:text-gray-300 dark:bg-white/5
                         `
                     }
@@ -177,7 +177,7 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
                       dark:border-purple-500/70 dark:bg-purple-600/15 dark:shadow-[0_0_0_1px_rgba(168,85,247,0.4)]
                     `
                     : `
-                      border-black/10 bg-black/[0.02] hover:border-purple-600/30 hover:bg-purple-600/5
+                      border-black/10 bg-black/2 hover:border-purple-600/30 hover:bg-purple-600/5
                       dark:border-white/10 dark:bg-black/20 dark:hover:border-purple-500/50 dark:hover:bg-purple-500/5
                     `
                 }
@@ -222,7 +222,7 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
                 inline-flex items-center gap-1.5
                 rounded-lg px-3 py-1.5
                 text-xs font-medium transition
-                border border-black/10 bg-black/[0.04] text-gray-700 hover:bg-black/[0.08]
+                border border-black/10 bg-black/4 text-gray-700 hover:bg-black/8
 
                 dark:border-transparent dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10
               "
