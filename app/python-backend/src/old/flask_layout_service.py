@@ -210,16 +210,16 @@ def flask_make_graph_structure():
         x_positions = [p[0] * coeff_x for p in canvas_positions]
         y_positions = [p[1] * coeff_y for p in canvas_positions]
         canvas_positions = [(x*coeff_x, y*coeff_y) for x, y in canvas_positions] 
-        plt.scatter(x_positions, y_positions)
-        for u in range(G_gt.num_vertices()):
-            Nu = G_gt.get_out_neighbors(u)
-            for v in Nu:
-                plt.plot(
-                    [canvas_positions[u][0], canvas_positions[v][0]],
-                    [canvas_positions[u][1], canvas_positions[v][1]]
-                )
+        # plt.scatter(x_positions, y_positions)
+        # for u in range(G_gt.num_vertices()):
+        #     Nu = G_gt.get_out_neighbors(u)
+        #     for v in Nu:
+        #         plt.plot(
+        #             [canvas_positions[u][0], canvas_positions[v][0]],
+        #             [canvas_positions[u][1], canvas_positions[v][1]]
+        #         )
 
-        plt.show()       
+        # plt.show()       
 
         transformed_canvas_positions, links = build_reponse_json_string_for_make_graph_structure_req(
             G_gt=G_gt, canvas_positions=canvas_positions
