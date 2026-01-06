@@ -50,14 +50,17 @@ public:
 
         AlgorithmParams(
             StartingLevelFunctionT&& startingLevelFunction, 
-            ShouldMergeFunctionT&& shouldMergeFunction
+            ShouldMergeFunctionT&& shouldMergeFunction, 
+            uint32_t minNumberOfVerticesAtStartingLevel
         ) : startingLevelFunction{std::forward<StartingLevelFunctionT>(startingLevelFunction)}, 
-            shouldMergeFunction{std::forward<ShouldMergeFunctionT>(shouldMergeFunction)} {}
+            shouldMergeFunction{std::forward<ShouldMergeFunctionT>(shouldMergeFunction)}, 
+            minNumberOfVerticesAtStartingLevel{minNumberOfVerticesAtStartingLevel} {}
 
         // Level, cum. disputable edges, cum. vertices per level -> bool
         StartingLevelFunctionT startingLevelFunction;
         // level, common vertices count -> bool
         ShouldMergeFunctionT shouldMergeFunction;
+        uint32_t minNumberOfVerticesAtStartingLevel;
 
     };
 
@@ -100,7 +103,7 @@ public:
     void resetForNewRun(); 
     
     // Needed: `maxReucursion` >= 1.
-    std::pair<ColouredGraph, ColourHierarchyNode> assignColoursToGraph(
+    std::pair<ColouredGraph, std::unique_ptr<ColourHierarchyNode>> assignColoursToGraph(
         const GraphInterface& graph, 
         bool recursiveColouring = true, 
         uint32_t maxRecursion = 1,
@@ -153,12 +156,13 @@ private:
         // ArrayOfArraysInterface<Edge>& disputableEdgesPerLevel,
         uint32_t startingLevel, 
         std::vector<uint32_t>& vertexColours,
-        ColourAcquireFunctionT&& colourAcquirerFunction
+        ColourAcquireFunctionT&& colourAcquirerFunction, 
+        std::optional<int64_t> optNativeColour = std::nullopt
     );
 
     // This one calls applyInitialGreedyColouring so it cannot be static either. 
     void buildColourHierarchyRecursivelyRootedAtColour(
-        GraphInterface& graph,
+        ColouredGraph& graph,
         const AlgorithmParams& algorithmParams, 
         ArrayOfArraysInterface<uint32_t>& verticesPerLevel, 
         ArrayOfArraysInterface<Edge>& disputableEdgesPerLevel,

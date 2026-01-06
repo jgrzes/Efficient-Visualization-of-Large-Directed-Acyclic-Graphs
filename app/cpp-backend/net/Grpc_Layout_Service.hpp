@@ -42,17 +42,13 @@ private:
         uint32_t indent = 1
     ) const;
 
-    void callQAPCppScript(
-        const ColouredGraph& graph, 
-        GraphColourer::ColourHierarchyNode& colourHierarchyRoot
-    );
-
     void callQAPPythonScript(
-        const ColouredGraph& graph, 
+        ColouredGraph& graph, 
         GraphColourer::ColourHierarchyNode& colourHierarchyRoot
     ) const;
 
     void callQAPScriptAndModifyColourHierarchy(
+        ColouredGraph& graph, 
         GraphColourer::ColourHierarchyNode& colourHierarchyRoot, 
         const std::string& colourHierarchyAndFMatrixPathFile
     ) const;
@@ -73,6 +69,12 @@ private:
     void pushLayoutToFirstQuarterOfCartesianSpace(
         std::vector<std::pair<double, double>>& graphLayout, double xPadding = 0.25, double yPadding = 0.25
     );
+
+    void buildColourHierarchyString(
+        const GraphColourer::ColourHierarchyNode& colourHierarchyNode, 
+        std::string& colourHierarchyString, 
+        uint32_t indent = 1
+    ) const;
 
     GraphColourer::AlgorithmParams m_colouringAlgParams;
     LayoutDrawer::AlgorithmParams m_layoutAlgParams;

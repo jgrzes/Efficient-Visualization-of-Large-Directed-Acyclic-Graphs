@@ -193,7 +193,7 @@ void LayoutService::createClientHandlingThreads() {
                                             );
                                             graphColourer.setLogGraphId(logGraphId);
 
-                                            auto&& [colouredGraph, colourHierarchyRoot] = graphColourer.assignColoursToGraph(
+                                            auto&& [colouredGraph, colourHierarchyRootPtr] = graphColourer.assignColoursToGraph(
                                                 graphForClientFd, m_maxRecursionInGraphColouring
                                             );
                                             logging::log_info("Coloured graph with id = " + logGraphId + ".");
@@ -205,7 +205,7 @@ void LayoutService::createClientHandlingThreads() {
                                                 const_cast<const LayoutDrawer::AlgorithmParams&>(*m_layoutAlgParams)
                                             );
                                             auto graphLayout = layoutDrawer.findLayoutForGraph(
-                                                colouredGraph, colourHierarchyRoot, m_defaultEpsilonInLayoutDrawing
+                                                colouredGraph, *colourHierarchyRootPtr, m_defaultEpsilonInLayoutDrawing
                                             );
                                             logging::log_info("Created layout for graph with id = " + logGraphId + ".");
 

@@ -149,10 +149,10 @@ def fill_colour_remapping_by_performing_qap(
     matlab_src_code_suite_path = "/app/submodules/biq_bin_forked/matlab"
 
     while len(Q) > 0:
-        node: ColourHierarchyNode = Q.popleft()        
+        node: ColourHierarchyNode = Q.popleft()   
+        print(f"Took out: {node}")
+        # print(f"Node: {node}, children: {node.children_nodes}")     
         number_of_children = len(node.children_nodes)
-        if number_of_children <= 2:
-            continue 
 
         if node.parent is None:
             F_for_subquestion = np.zeros((number_of_children, number_of_children))
@@ -176,6 +176,7 @@ def fill_colour_remapping_by_performing_qap(
             #         child_i_colour = node.children_nodes[i].colour
             #         colour_remapping[child_i_colour] = counter
             #         counter += 1
+            successful = True
             if not successful:
                 write_biq_bin_source_path(
                     F_for_subquestion, D_for_subquestion,
@@ -298,56 +299,56 @@ def fill_colour_remapping_by_performing_qap(
 
         else: 
             F_for_subquestion = np.zeros((number_of_children+2, number_of_children+2))
+            D_for_subquestion = PretendMatrix(
+                mode=PretendMatrixMode.DYNAMIC_CALCULATION, 
+                size=(number_of_children+2, number_of_children+2),
+                dynamic_calculator=lambda i, j: abs(i-j)
+            ) 
+
             for i in range(number_of_children):
                 a = node.children_nodes[i].colour
                 for j in range(number_of_children):
                     b = node.children_nodes[j].colour
-                    F_for_subquestion[i, j] = F_matrix[a, b]
+                    F_for_subquestion[i, j] = F_matrix[a, b]  
 
-                D_for_subquestion = PretendMatrix(
-                    mode=PretendMatrixMode.DYNAMIC_CALCULATION, 
-                    size=(number_of_children+2, number_of_children+2),
-                    dynamic_calculator=lambda i, j: abs(i-j)
-                )    
+            g = node.parent 
+            p = node 
+            while g is not None:
+                left_of_p = []
+                right_of_p = []
 
-                g = node.parent 
-                p = node 
-                while g is not None:
-                    left_of_p = []
-                    right_of_p = []
+                current_side_array = left_of_p
+                for child in g.children_nodes:
+                    if child.colour == p.colour:
+                        current_side_array = right_of_p
+                    else:
+                        current_side_array.append(child.colour)
 
-                    current_side_array = left_of_p
-                    for child in g.children_nodes:
-                        if child.colour == p.colour:
-                            current_side_array = right_of_p
-                        else:
-                            current_side_array.append(child.colour)
+                for i in range(len(node.children_nodes)):
+                    a = node.children_nodes[i].colour
+                    for l in left_of_p:
+                        F_for_subquestion[i, number_of_children] += F_matrix[a, l]
+                        F_for_subquestion[number_of_children, i] += F_matrix[a, l]
 
-                    for i in range(len(node.children_nodes)):
-                        a = node.children_nodes[i].colour
-                        for l in left_of_p:
-                            F_for_subquestion[i, number_of_children] += F_matrix[a, l]
-                            F_for_subquestion[number_of_children, i] += F_matrix[a, l]
+                    for r in right_of_p:    
+                        F_for_subquestion[i, number_of_children-1] += F_matrix[a, r]
+                        F_for_subquestion[number_of_children-1, i] += F_matrix[a, r]
 
-                        for r in right_of_p:    
-                            F_for_subquestion[i, number_of_children-1] += F_matrix[a, r]
-                            F_for_subquestion[number_of_children-1, i] += F_matrix[a, r]
-
-                    p = g
-                    g = g.parent
+                p = g
+                g = g.parent
 
                 # For now was_successful is always true
-                R, unused_was_successful = primitve_try_qap_solve_with_borders_fixed(
-                    F_matrix=F_for_subquestion, D_matrix=D_for_subquestion
-                )  
+            R, unused_was_successful = primitve_try_qap_solve_with_borders_fixed(
+                F_matrix=F_for_subquestion, D_matrix=D_for_subquestion
+            )  
 
-                R_with_indices = [(i, R[i]) for i in range(len(R))]
-                R_with_indices.sort(key=lambda x: x[1])
+            R_with_indices = [(i, R[i]) for i in range(len(R))]
+            R_with_indices.sort(key=lambda x: x[1])
 
-                for i, unused_R_i in R_with_indices:
-                    child_i_colour = node.children_nodes[i].colour
-                    colour_remapping[child_i_colour] = counter
-                    counter += 1
+            for i, unused_R_i in R_with_indices:
+                child_i_colour = node.children_nodes[i].colour
+                colour_remapping[child_i_colour] = counter
+                counter += 1
 
 
         node.children_nodes.sort(
@@ -355,6 +356,7 @@ def fill_colour_remapping_by_performing_qap(
         )        
 
         for child in node.children_nodes:
+            print(f"Appending: {child}, {colour_remapping[child.colour]}")
             Q.append(child)
 
 

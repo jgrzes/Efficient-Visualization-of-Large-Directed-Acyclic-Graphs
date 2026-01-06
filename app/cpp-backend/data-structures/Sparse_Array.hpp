@@ -294,7 +294,7 @@ private:
     }
 
     void transformFromMapToVector() {
-        logging::log_debug("Transforming map to vector in sparse array object...");
+        // logging::log_debug("Transforming map to vector in sparse array object...");
         std::vector<std::optional<T>> rowDataAsVector(m_logicalN, std::nullopt);
         auto& castedToMap = std::get<MemCountingMap<T>>(
             static_cast<VariantT&>(m_variantDataStorage)
@@ -305,10 +305,10 @@ private:
         // BaseClass::operator=(std::move(rowDataAsVector));
         m_variantDataStorage.template emplace<std::vector<std::optional<T>>>(std::move(rowDataAsVector));
         auto castedToVectorPtr = std::get_if<std::vector<std::optional<T>>>(&m_variantDataStorage);
-        logging::log_debug(
-            std::string("Transforming map to vector in sparse array object ")
-            + (castedToVectorPtr != nullptr ? "succeeded." : "failed.")
-        );
+        // logging::log_debug(
+        //     std::string("Transforming map to vector in sparse array object ")
+        //     + (castedToVectorPtr != nullptr ? "succeeded." : "failed.")
+        // );
     }
 
     VariantT m_variantDataStorage;

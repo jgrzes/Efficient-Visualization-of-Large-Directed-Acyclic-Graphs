@@ -28,11 +28,43 @@ public:
     }
 
     SparseMatrix(size_t n, size_t m) : m_rowCount{n}, m_columnCount{m} {
-        // std::cout << "[Sparse Matrix] Row and column count: " << m_rowCount << ", " << m_columnCount << "\n";
         m_sparseMatrixData.reserve(m_columnCount);
         for (size_t i=0; i<m_rowCount; ++i) {
             m_sparseMatrixData.emplace_back(m_columnCount);
         }
+    }
+
+    template <bool OtherAutoOptimizing>
+    SparseMatrix(const SparseMatrix<T, Symmetric, OtherAutoOptimizing>& otherSparseMatrix) :
+        m_rowCount{otherSparseMatrix.m_rowCount}, m_columnCount{otherSparseMatrix.m_columnCount}, 
+        m_sparseMatrixData{otherSparseMatrix.m_sparseMatrixData} {} 
+
+    template <bool OtherAutoOptimizing>
+    SparseMatrix(SparseMatrix<T, Symmetric, OtherAutoOptimizing>&& otherSparseMatrix) :
+        m_rowCount{otherSparseMatrix.m_rowCount}, m_columnCount(otherSparseMatrix.m_columnCount), 
+        m_sparseMatrixData{std::move(otherSparseMatrix.m_sparseMatrixData)} {
+     
+        otherSparseMatrix.m_rowCount = 0;
+        otherSparseMatrix.m_columnCount = 0;
+    }
+
+    template <bool OtherAutoOptimizing>
+    SparseMatrix<T, Symmetric, AutoOptimizing>& operator=(const SparseMatrix<T, Symmetric, OtherAutoOptimizing>& otherSparseArray) {
+        m_rowCount = otherSparseArray.m_rowCount;
+        m_columnCount = otherSparseArray.m_columnCount;
+        m_sparseMatrixData = otherSparseArray.m_sparseMatrixData;
+        return *this;
+    }
+
+    template <bool OtherAutoOptimizing>
+    SparseMatrix<T, Symmetric, AutoOptimizing>& operator=(SparseMatrix<T, Symmetric, OtherAutoOptimizing>&& otherSparseArray) {
+        if (this == &otherSparseArray) return *this;
+        m_rowCount = otherSparseArray.m_rowCount;
+        m_columnCount = otherSparseArray.m_columnCount;
+        m_sparseMatrixData = std::move(otherSparseArray.m_sparseMatrixData);
+        otherSparseArray.m_rowCount = 0;
+        otherSparseArray.m_columnCount = 0;
+        return *this;
     }
 
     // TODO: Rename to getRowCount as soon as VSC starts cooperating.
@@ -66,9 +98,6 @@ public:
                 "Sparse Symmetric Matrix error: attempting to breach bounds of the matrix"
             };
         }
-        // size_t a, b;
-        // a = std::min(i, j);
-        // b = std::max(i, j);
         return m_sparseMatrixData[i][j];
     }
 
@@ -110,8 +139,8 @@ public:
 private:
 
     // `n` = number of rows = number of cols
-    const size_t m_rowCount; 
-    const size_t m_columnCount;
+    size_t m_rowCount; 
+    size_t m_columnCount;
     std::vector<SparseArray<T, AutoOptimizing>> m_sparseMatrixData;
 
 };

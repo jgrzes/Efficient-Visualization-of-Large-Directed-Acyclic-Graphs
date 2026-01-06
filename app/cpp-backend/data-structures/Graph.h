@@ -59,6 +59,8 @@ public:
     void addNewEdge(const Vertex& u, const Vertex& v) override {addNewEdge(u.index, v.index);}
     void addNewVertex() override;
 
+    void removeLastNVertices(uint32_t n) override;
+
 protected:
 
     void createRootsList();

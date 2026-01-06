@@ -41,7 +41,7 @@ add_subdirectory(utils)
 add_subdirectory(data-structures)
 add_subdirectory(graph-preprocessing)
 add_subdirectory(concurrency)
-add_subdirectory(qap-solver)
+# add_subdirectory(qap-solver)
 add_subdirectory(net)
 add_subdirectory(algorithms)
 

@@ -6,7 +6,7 @@
 
 #include "Sparse_Matrix.h"
 #include "../utils/traits.h"
-#include "../utils/arithmetic_ops_for_pair_overloads.h"
+#include "../utils/arithmetic_ops_for_pair_overloads.hpp"
 
 namespace data_structures {
 
@@ -67,7 +67,7 @@ public:
     }
 
     void moveElementByVector(const T& t, const std::pair<double, double> mVec) {
-        moveElementToNewPosition(findCurrentPositionForElement(t) + mVec);
+        moveElementToNewPosition(t, findCurrentPositionForElement(t) + mVec);
     }
 
     void removeElement(const T& t) {

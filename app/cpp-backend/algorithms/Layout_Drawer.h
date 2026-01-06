@@ -10,10 +10,12 @@
 
 #include "../data-structures/Coloured_Graph.h"
 #include "Graph_Colourer.h"
-#include "../data-structures/Sparse_Array.hpp"
+#include "../data-structures/Sparse_Matrix.h"
+#include "../data-structures/Bucketified_Line_Segment.hpp"
+#include "../data-structures/One_Pair_Field_Array_Wrapper.hpp"
 #include "../graph-preprocessing/edge_and_vertex_processing_functions.h"
 #include "../data-structures/Cartesian_Surface_Grid.h"
-#include "../utils/arithmetic_ops_for_pair_overloads.h"
+#include "../utils/arithmetic_ops_for_pair_overloads.hpp"
 #include "../logging/boost_logging.hpp"
 
 namespace algorithms {
@@ -21,6 +23,8 @@ namespace algorithms {
 using CartesianCoords = std::pair<double, double>;
 using ColouredGraph = data_structures::ColouredGraph;
 using ColourHierarchyNode = GraphColourer::ColourHierarchyNode;
+template <typename T, bool Symmetrical>
+using SparseMatrix = data_structures::SparseMatrix<T, Symmetrical, true>;
 template <typename T>
 using SparseArray = data_structures::SparseArray<T, true>;
 template <typename T>
@@ -28,6 +32,10 @@ using ArrayOfArraysInterface = data_structures::ArrayOfArraysInterface<T>;
 using Vertex = data_structures::GraphInterface::Vertex;
 template <typename T, typename LC, typename I>
 using CartesianSurfaceGrid = data_structures::CartesianSurfaceGrid<T, LC, I>;
+template <typename T, typename LC, typename I>
+using BucketifiedLineSegment = data_structures::BucketifiedLineSegment<T, LC, I>;
+template <typename T, typename R, typename S, size_t PairIndex>
+using OnePairFieldArrayWrapper = data_structures::OnePairFieldArrayWrapper<T, R, S, PairIndex>; 
 
 // TODO: Adapt the class to work with recursive colours
 class LayoutDrawer {
@@ -44,18 +52,29 @@ public:
         using EpsilonForColourRootCalculatorT = std::function<double(uint32_t)>;
         // epsilon -> max_vertex_count_on_a_single_level
         using MaxVertexCountFromEpsilonCalculatorT = std::function<uint32_t(double)>;
+        // number_of_vertices_in_F_collection, interval_width -> max noise epsilon 
+        using MaxNoiseEpsilonCalculatorT = std::function<double(uint32_t, double)>;
 
         FInterspringCalculatorT FInterspringCalculator;
         FInterspringPushUpwardsValueCalculatorT FInterspringPushUpwardsValueCalculator;
         EpsilonForColourRootCalculatorT epsilonForColourRootCalculator;
         MaxVertexCountFromEpsilonCalculatorT maxVertexCountFromEpsilonCalculator;
+        MaxNoiseEpsilonCalculatorT maxNoiseEpsilonCalculator;
+        std::function<double()> randomDeltaNoiseCoeffCalculator;
+        std::function<uint32_t(uint32_t)> numberOfBucketsCalculator;
 
         double firstLevelChildPadding;
+        double nestedColourChildPadding;
         double gAcceleration;
         double baseVerexWeight;
         double addWeightFromChildrenCoeff;
         double kInitialLayoutCoeff;
-        double nextLevelDownCoeff;
+        double nextLevelDownCoeffForPredicted;
+        double minDistanceBetweenLevelsCoeff;
+
+        // Expressed in degrees (0, 2PI)
+        float minRequiredEdgeAngleRequriedRad;
+        double minRequiredDistanceBetweenAdjacentLevels;
         
         double sCoeff;
         double defaultAlphaP;
@@ -78,12 +97,14 @@ public:
         m_algorithmParams{algorithmParams},
         m_graph{nullptr}, m_rootColourNode{nullptr}, 
         m_cumFInterspring{1}, m_epsilonsForVertices{0},
+        m_layoutXPositionsWrapperPtr{nullptr},
         m_optLogGraphId{std::nullopt} {}
 
     LayoutDrawer(AlgorithmParams&& algorithmParams) : 
         m_algorithmParams{std::move(algorithmParams)},
         m_graph{nullptr}, m_rootColourNode{nullptr}, 
         m_cumFInterspring{1}, m_epsilonsForVertices{0},
+        m_layoutXPositionsWrapperPtr{nullptr},
         m_optLogGraphId{std::nullopt} {}
 
     std::vector<CartesianCoords> findLayoutForGraph(
@@ -163,26 +184,47 @@ private:
 
     };
 
-    void findVerticesWithCustomEpsilonsAndFixColourRoots(
-        std::vector<uint32_t>& verticesWithCustomEpsilons,
-        std::optional<std::reference_wrapper<ColourHierarchyNode>> optColourNode = std::nullopt
-    );
+    struct FCollection : public std::vector<std::unique_ptr<F>> {
 
-    std::vector<uint32_t> getColourRoots(ColourHierarchyNode& colourNode, bool pushRootsToTheFront = true);
+        using BaseClass = std::vector<std::unique_ptr<F>>;
+
+        // Note: Does not check if the real underlying value is of type Fp
+        void emplace_back_fp(std::unique_ptr<F>&& uniqueFPtrRValue, uint32_t vIndex) {
+            BaseClass::emplace_back(std::move(uniqueFPtrRValue));
+            ++FpCount;    
+            FpVertexIndices.emplace_back(vIndex);
+        }
+
+        // Note: Does not check if the real underlying value is of type Fcs
+        void emplace_back_fcs(std::unique_ptr<F>&& uniqueFPtrRValue, uint32_t vIndex) {
+            BaseClass::emplace_back(std::move(uniqueFPtrRValue));
+            ++FcsCount;
+        }
+
+        std::vector<uint32_t> getFpVertexIndices() const {return FpVertexIndices;}
+        std::vector<uint32_t> extractFpVertexIndices() {return std::move(FpVertexIndices);}
+
+        uint32_t FpCount;
+        uint32_t FcsCount;
+        std::vector<uint32_t> FpVertexIndices;
+        std::vector<uint32_t> FcsVertexIndices;
+    };
 
     void performPinkIndicesConstruction(
-        // std::vector<uint32_t>& pinkIndices, 
-        uint32_t currentPink = 0,
+        uint32_t& currentPink, 
+        std::optional<std::reference_wrapper<std::string>> optPinkIndicesStrRef = std::nullopt, 
         std::optional<std::reference_wrapper<ColourHierarchyNode>> optColourNode = std::nullopt
     );
 
     void performBlueIndicesConstruction(
-        // std::vector<uint32_t>& blueIndices, 
-        uint32_t currentBlue = 0,
+        uint32_t& currentBlue,
+        std::optional<std::reference_wrapper<std::string>> optBlueIndicesStrRef = std::nullopt, 
         std::optional<std::reference_wrapper<ColourHierarchyNode>> optColopurNode = std::nullopt
     );
 
     void emplaceColourNodesInArray();
+
+    void buildfirstVertexOfColourForLevelMarkers();
 
     void performEmplacingColourNodesInArrayForColourSubtree(
         std::optional<std::reference_wrapper<ColourHierarchyNode>> optColourNode = std::nullopt
@@ -200,23 +242,48 @@ private:
         std::optional<std::reference_wrapper<ColourHierarchyNode>> optColourNode = std::nullopt
     );
 
-    void findLayoutForColouredSubgraph(
+    // Returns fixed right box bound, which may become larger than `boxBounds.second`
+    // because of nested level padding between child colour boxes, 
+    // see (`m_algorithmParams.nestedColourChildPadding`).
+    double findLayoutForColouredSubgraph(
         const ArrayOfArraysInterface<uint32_t>& verticesPerLevelForColour, 
         const std::pair<double, double>& startingPositionForColourRoot, 
         const std::pair<double, double>& boxBounds
     );
 
-    // TODO: Find better implementation for terminating fine tuning stage
-    bool checkIfFineTuningStageEndConditionMet(uint32_t iter) {return iter >= 20;}
+    void drawNestedColourSubgraphs(
+        const std::vector<uint32_t>& colourOrder
+    );
+
+    void fixUpwardPointingEdgesInColourNodeChildren(const ColourHierarchyNode& colourNode);
+
+    void adjustAllYCoordinatesToSatisifyDownwardFlow();
 
     // Returns higehst y coord assigned to any vertice during the execution of the method
     double findInitialLayoutForColouredSubgraph(
         ArrayOfArraysInterface<uint32_t>& verticesPerLevelForColour, 
-        const std::pair<double, double>& startingPositionForColourRoot, 
+        std::pair<double, double> startingPositionForColourRoot, 
         const std::pair<double, double>& boxBounds
     );
 
-    std::vector<std::unique_ptr<F>> buildFCollectionForVertex(
+    void moveVerticeFromXOptBasedOnNoise(
+        double xOpt, double noise, 
+        BucketifiedLineSegment<
+            uint32_t, OnePairFieldArrayWrapper<double, double, double, 1>&, size_t
+        >& xPositionsBucketified
+    );
+
+    // `otherBorderInfSign` can be either 1 (for +inf) or -1 (for -inf)
+    void moveAllVerticesInXRangeToNewXRange(
+        const std::pair<double, double>& baseXRange, double newXRangeBorder, 
+        int8_t otherBorderInfSign, double moveDistanceFunctionSubtrahend, double moveDistanceFunctionCoeff, 
+        BucketifiedLineSegment<
+            uint32_t, OnePairFieldArrayWrapper<double, double, double, 1>&, size_t
+        >& xPositionsBucketified, 
+        std::optional<std::reference_wrapper<std::vector<uint32_t>>> precomputedVerticesInXRangeIndices = std::nullopt
+    );
+
+    FCollection buildFCollectionForVertex(
         uint32_t vIndex, const std::unordered_set<uint32_t>& alreadyDrawnVerticesSet, double wPrim
     );
 
@@ -227,6 +294,11 @@ private:
 
     double findPositionXThatMinimizesFCollection(
         const std::vector<std::unique_ptr<F>>& FCollection, uint32_t k
+    ) const;
+
+    void moveElementsToTheInterval(
+        const std::pair<double, double>& intervalBounds, 
+        std::vector<std::pair<uint32_t, double>>& VkVerticesXPositions 
     ) const;
 
     void createGapsAlongXAxisBetweenVertices(
@@ -252,7 +324,16 @@ private:
     ColouredGraph* m_graph;
     ColourHierarchyNode* m_rootColourNode;
     std::vector<ColourHierarchyNode*> m_colourNodesPtrs;
+    std::vector<bool> m_colourSubgraphAlreadyDrawn;
+    std::vector<std::pair<double, double>> m_colourSubgraphsXBoxBounds;
+    std::vector<double> m_colourSubgraphsLargestYCoords;
     uint32_t m_maxColour;
+
+    // rows - colours, columns - levels
+    SparseMatrix<uint32_t, false> m_firstVertexOfColourForLevelMarkers;
+    std::vector<double> m_maxYCoordForALevel;
+    std::vector<long double> m_cumYCoordDiffForLevels;
+    std::vector<uint32_t> m_termCountForLevels;
 
     std::vector<uint32_t> m_pinkIndices;
     std::vector<uint32_t> m_blueIndices;
@@ -260,6 +341,8 @@ private:
     SparseArray<double> m_epsilonsForVertices;
 
     std::vector<std::pair<double, double>> m_layoutPositions;
+    std::unique_ptr<OnePairFieldArrayWrapper<double, double, double, static_cast<uint8_t>(1)>> m_layoutXPositionsWrapperPtr;
+    std::vector<std::pair<int64_t, std::vector<uint32_t>>> m_lastFpIndices;
 
     std::optional<std::string> m_optLogGraphId;
 

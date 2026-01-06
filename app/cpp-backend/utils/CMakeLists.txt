@@ -7,7 +7,7 @@ target_sources(
     traits.cpp traits.h
     Counting_Allocator.cpp Counting_Allocator.h
     input_generation_for_qap.cpp input_generation_for_qap.h
-    arithmetic_ops_for_pair_overloads.cpp arithmetic_ops_for_pair_overloads.h
+    arithmetic_ops_for_pair_overloads.cpp arithmetic_ops_for_pair_overloads.hpp
 )
 
 # Exposing this directory to the include collection
