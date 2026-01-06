@@ -5,10 +5,8 @@ import { useFavorites } from "../../hooks/useFavorites";
 import { SearchPanel } from "./SearchPanel";
 import { FavoritesPanel } from "./FavoritesPanel";
 import CommentsPanel from "./CommentsPanel";
-import { GraphInfoPanel, GraphInfo } from "./GraphInfoPanel";
 
-type TabKey = "search" | "favorites" | "comments" | "graph";
-
+type TabKey = "search" | "favorites" | "comments";
 interface RightSidebarProps {
   results: NodeInfoProps[];
   onSearch: (field: string, query: string) => void;
@@ -18,7 +16,6 @@ interface RightSidebarProps {
   activeTab: TabKey;
   onTabChange: (tab: TabKey) => void;
   error?: string | null;
-  graphInfo?: GraphInfo | null;
   onOptionsChange?: (opts: { matchCase: boolean; matchWords: boolean }) => void;
   filters?: { id: string; field: string; query: string }[];
   onRemoveFilter?: (id: string) => void;
@@ -35,12 +32,11 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   activeTab,
   onTabChange,
   error,
-  graphInfo,
   onOptionsChange,
   filters,
   onRemoveFilter,
   onHoverResultCard,
-  nodeNames
+  nodeNames,
 }) => {
   const { favorites: favoriteIndices = [] } = useFavorites();
 
@@ -50,7 +46,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
     search: 0,
     favorites: 0,
     comments: 0,
-    graph: 0,
   });
 
   React.useEffect(() => {
@@ -80,7 +75,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   const isSearch = activeTab === "search";
   const isFavorites = activeTab === "favorites";
   const isComments = activeTab === "comments";
-  const isGraph = activeTab === "graph";
 
   const tabPanelId = `right-panel-${activeTab}`;
   const labelledBy =
@@ -94,12 +88,21 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
   return (
     <div
-      className={`fixed top-0 z-40 right-0 h-screen text-gray-200 flex transition-[width] duration-200 ${
+      className={`fixed top-0 z-40 right-0 h-screen flex transition-[width] duration-200 ${
         expanded ? "w-96" : "w-16"
-      } bg-black/90 shadow-2xl shadow-black/40 overflow-visible py-4 bg-black/90 backdrop-blur-xl`}
+      }
+      overflow-visible py-4 backdrop-blur-xl shadow-2xl
+
+      bg-white/85 text-gray-900 shadow-black/10
+      dark:bg-black/90 dark:text-gray-200 dark:shadow-black/40
+      `}
       aria-expanded={expanded}
     >
-      <TabNavigation activeTab={activeTab} expanded={expanded} onTabClick={handleTabClick} />
+      <TabNavigation
+        activeTab={activeTab}
+        expanded={expanded}
+        onTabClick={handleTabClick}
+      />
 
       <div
         id={tabPanelId}
@@ -137,7 +140,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
         {isComments && (
           <div className="px-4 py-3">
-            <CommentsPanel 
+            <CommentsPanel
               onSelectNode={onSelectNode}
               onHoverResultCard={onHoverResultCard}
               nodeNames={nodeNames}
@@ -145,11 +148,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
           </div>
         )}
 
-        {isGraph && (
-          <div className="px-4 py-3">
-            <GraphInfoPanel info={graphInfo} />
-          </div>
-        )}
       </div>
     </div>
   );

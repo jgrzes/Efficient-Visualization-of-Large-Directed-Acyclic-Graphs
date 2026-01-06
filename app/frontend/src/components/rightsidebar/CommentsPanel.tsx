@@ -1,4 +1,3 @@
-// app/frontend/src/components/right/CommentsPanel.tsx
 import React, { useState } from "react";
 import { Trash2, Edit2, Save, X } from "lucide-react";
 import { useComments } from "../../hooks/useComments";
@@ -42,19 +41,19 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
   const saveEdit = async (id: string) => {
     if (!editedText.trim()) return;
-    await editComment(id, editedText);
+    editComment(id, editedText);
     cancelEditing();
   };
 
   if (!comments.length) {
     return (
-      <div className="text-sm text-gray-300">
-        <p className="mb-2 text-gray-400 uppercase tracking-wide text-xs">
+      <div className="text-sm text-gray-700 dark:text-gray-300">
+        <p className="mb-2 text-gray-600 dark:text-gray-400 uppercase tracking-wide text-xs">
           Comments
         </p>
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-          <p className="text-gray-400">No comments.</p>
-          <p className="text-gray-500 text-xs mt-1">
+        <div className="rounded-xl border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/3">
+          <p className="text-gray-600 dark:text-gray-400">No comments.</p>
+          <p className="text-gray-500 dark:text-gray-500 text-xs mt-1">
             Add the first comment from the search panel or the node info panel.
           </p>
         </div>
@@ -63,8 +62,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
   }
 
   return (
-    <div className="text-sm text-gray-300">
-      <p className="mb-2 text-gray-400 uppercase tracking-wide text-xs">
+    <div className="text-sm text-gray-700 dark:text-gray-300">
+      <p className="mb-2 text-gray-600 dark:text-gray-400 uppercase tracking-wide text-xs">
         Comments
       </p>
 
@@ -94,9 +93,14 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
             <li
               key={c.id}
               className="
-                rounded-xl border border-white/10 bg-white/[0.03] p-3
+                rounded-xl border p-3
                 transition-colors duration-150
-                hover:bg-white/10 hover:border-white/30
+
+                border-black/10 bg-white/70
+                hover:bg-white hover:border-black/20
+
+                dark:border-white/10 dark:bg-white/3
+                dark:hover:bg-white/10 dark:hover:border-white/30
               "
               onClick={handleClickNode}
               onMouseEnter={handleMouseEnter}
@@ -104,18 +108,16 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  {/* Tytuł komentarza + węzeł */}
-                  <div className="text-xs text-gray-400">
-                    <span className="font-medium text-gray-300">
+                  {/* Title + node */}
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    <span className="font-medium text-gray-900 dark:text-gray-300">
                       {c.title}
                     </span>
-                    <span className="mx-1 text-gray-600">·</span>
-                    <span className="text-gray-500">
-                      {node.name}
-                    </span>
+                    <span className="mx-1 text-gray-400 dark:text-gray-600">·</span>
+                    <span className="text-gray-500 dark:text-gray-500">{node.name}</span>
                   </div>
 
-                  {/* Czas */}
+                  {/* Time */}
                   <div className="text-[11px] text-gray-500 mt-0.5">
                     {formatTime(c.createdAt)}
                     {c.updatedAt && (
@@ -126,55 +128,89 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
                 <div
                   className="flex items-center gap-1"
-                  onClick={(e) => e.stopPropagation()} // żeby klik w ikonki nie wybierał node
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {/* edycja */}
+                  {/* edit */}
                   {editingId !== c.id && (
                     <button
-                      className="p-1.5 rounded-md text-gray-400 hover:text-blue-400 hover:bg-blue-400/10
-                               focus:outline-none focus:ring-2 focus:ring-blue-700"
+                      className="
+                        p-1.5 rounded-md transition
+                        text-gray-500 hover:text-blue-700 hover:bg-blue-600/10
+                        focus:outline-none focus:ring-2 focus:ring-blue-300
+
+                        dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-400/10
+                        dark:focus:ring-blue-700
+                      "
                       onClick={() => startEditing(c.id, c.text)}
+                      aria-label="Edit comment"
+                      title="Edit"
                     >
                       <Edit2 size={16} />
                     </button>
                   )}
 
-                  {/* usuwanie */}
+                  {/* delete */}
                   <button
-                    className="p-1.5 rounded-md text-gray-400 hover:text-red-400 hover:bg-red-400/10
-                             focus:outline-none focus:ring-2 focus:ring-red-700"
+                    className="
+                      p-1.5 rounded-md transition
+                      text-gray-500 hover:text-red-700 hover:bg-red-600/10
+                      focus:outline-none focus:ring-2 focus:ring-red-300
+
+                      dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-400/10
+                      dark:focus:ring-red-700
+                    "
                     onClick={() => {
                       removeComment(c.id);
                       onHoverResultCard?.(undefined);
                     }}
+                    aria-label="Delete comment"
+                    title="Delete"
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
               </div>
 
-              {/* treść lub edycja */}
+              {/* content or edit */}
               {editingId === c.id ? (
-                <div
-                  className="mt-2"
-                  onClick={(e) => e.stopPropagation()} // żeby klik w textarea nie wybierał node
-                >
+                <div className="mt-2" onClick={(e) => e.stopPropagation()}>
                   <textarea
-                    className="w-full rounded-md bg-gray-800/40 text-gray-100 text-sm p-2 border border-white/10 focus:ring-2 focus:ring-blue-600"
+                    className="
+                      w-full rounded-md text-sm p-2 border
+                      focus:outline-none focus:ring-2
+
+                      bg-white text-gray-900 border-black/10
+                      focus:ring-blue-300
+
+                      dark:bg-gray-800/40 dark:text-gray-100 dark:border-white/10
+                      dark:focus:ring-blue-600
+                    "
                     value={editedText}
                     onChange={(e) => setEditedText(e.target.value)}
                     rows={3}
                     autoFocus
                   />
+
                   <div className="mt-2 flex gap-2 justify-end">
                     <button
-                      className="flex items-center gap-1 px-3 py-1 rounded-md bg-blue-500/20 text-blue-300 hover:bg-blue-500/30"
+                      className="
+                        flex items-center gap-1 px-3 py-1 rounded-md transition
+
+                        bg-blue-600/10 text-blue-800 hover:bg-blue-600/15
+                        dark:bg-blue-500/20 dark:text-blue-300 dark:hover:bg-blue-500/30
+                      "
                       onClick={() => saveEdit(c.id)}
                     >
                       <Save size={14} /> Save
                     </button>
+
                     <button
-                      className="flex items-center gap-1 px-3 py-1 rounded-md bg-gray-500/20 text-gray-300 hover:bg-gray-500/30"
+                      className="
+                        flex items-center gap-1 px-3 py-1 rounded-md transition
+
+                        bg-black/5 text-gray-700 hover:bg-black/10
+                        dark:bg-gray-500/20 dark:text-gray-300 dark:hover:bg-gray-500/30
+                      "
                       onClick={cancelEditing}
                     >
                       <X size={14} /> Cancel
@@ -182,7 +218,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                   </div>
                 </div>
               ) : (
-                <p className="mt-2 text-gray-200 whitespace-pre-wrap break-words">
+                <p className="mt-2 text-gray-800 dark:text-gray-200 whitespace-pre-wrap wrap-break-word">
                   {c.text}
                 </p>
               )}

@@ -2,7 +2,6 @@ const NODE_COUNT = 100;
 const EDGE_COUNT = 200;
 const RADIUS = 50;
 
-// X, Y dla każdego punktu
 const initialPointPositions = new Float32Array(NODE_COUNT * 2);
 
 for (let i = 0; i < NODE_COUNT; i++) {
@@ -13,7 +12,6 @@ for (let i = 0; i < NODE_COUNT; i++) {
   initialPointPositions[i * 2 + 1] = y;
 }
 
-// Losowe krawędzie
 const initialLinks: number[] = [];
 for (let i = 0; i < EDGE_COUNT; i++) {
   const source = Math.floor(Math.random() * NODE_COUNT);

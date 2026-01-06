@@ -1,109 +1,77 @@
-import { useRef, useContext, useEffect } from "react";
-import { AppContext } from "../App";
+import { useCallback, useContext, useEffect, useRef } from "react";
+import { AppContext } from "../context/AppContext";
 
-// export function usePageVisibility(onChange: (visible: boolean) => void) {
-//     useEffect(() => {
-//         const handleVisibility = () => onChange(!document.hidden);
-//         document.addEventListener("visibilitychange", handleVisibility);
-//         return () => document.removeEventListener("visibilitychange", handleVisibility);
-//     }, [onChange]);
-// }
+type KeepAliveType = "interval" | "visible" | "hidden" | "closed";
 
-export function useStartKeepAlive(endpoint: string, intervalMs = 10000) {
-    const appContext = useContext(AppContext);
-    const uuid = appContext?.currentGraphUUID ?? null;
+function useLatestRef<T>(value: T) {
+  const ref = useRef(value);
+  ref.current = value;
+  return ref;
+}
 
-    const uuidRef = useRef(uuid);
-    uuidRef.current = uuid;        // always keep it updated
+export function useStartKeepAlive(endpoint: string, intervalMs = 10_000) {
+  const appContext = useContext(AppContext);
+  const uuidRef = useLatestRef(appContext?.currentGraphUUID ?? null);
+  const endpointRef = useLatestRef(endpoint);
 
-    const sendKeepAlive = (type = "interval") => {
-        fetch(endpoint, {
-            method: "POST", 
-            keepalive: true, 
-            headers: { "Content-Type": "application/json" }, 
-            body: JSON.stringify({
-                date: Date.now(), 
-                type, 
-                uuid: uuidRef.current
-            }), 
-        }).catch((err) => {
-            console.error("Keepalive failed: ", err);
-        })
+  const sendKeepAlive = useCallback((type: KeepAliveType = "interval") => {
+    const uuid = uuidRef.current;
+
+    return fetch(endpointRef.current, {
+      method: "POST",
+      keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: Date.now(),
+        type,
+        uuid,
+      }),
+    }).catch((err) => {
+      console.error("Keepalive failed:", err);
+    });
+  }, [endpointRef, uuidRef]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      void sendKeepAlive(document.hidden ? "hidden" : "visible");
     };
 
-    useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.hidden) {
-                sendKeepAlive("hidden");
-            } else {
-                sendKeepAlive("visible");
-            }
-        };
+    const onBeforeUnload = () => {
+      void sendKeepAlive("closed");
+    };
 
-        const handleUnload = () => {
-            // if (event?.persisted) return;
-            // console.log("Page is unloading - likely tab close or refresh");
-            sendKeepAlive("closed");
-        };
+    const onPageHide = () => {
+      try {
+        const payload = JSON.stringify({
+          date: Date.now(),
+          type: "closed",
+          uuid: uuidRef.current,
+        });
+        const blob = new Blob([payload], { type: "application/json" });
+        navigator.sendBeacon(endpointRef.current, blob);
+      } catch {
+        void sendKeepAlive("closed");
+      }
+    };
 
-        document.addEventListener("visibilitychange", handleVisibilityChange);
-        window.addEventListener("beforeunload", handleUnload);
-        window.addEventListener("pagehide", handleUnload);
-        
-        handleVisibilityChange();
-        return () => {
-            document.removeEventListener("visibilitychange", handleVisibilityChange);
-            window.removeEventListener("beforeunload", handleUnload);
-            window.removeEventListener("pagehide", handleUnload);
-        };
-    }, [endpoint]);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("pagehide", onPageHide);
 
-    useEffect(() => {
-        console.log("Keepalive sees UUID:", uuidRef.current);
-    }, [uuid]);
+    onVisibilityChange();
 
-    useEffect(() => {
-        const id = window.setInterval(() => {
-            // fetch(endpoint, {
-            //     method: "POST",
-            //     keepalive: true,
-            //     headers: { "Content-Type": "application/json" },
-            //     body: JSON.stringify({
-            //         date: Date.now(),
-            //         uuid: uuidRef.current,
-            //     }),
-            // });
-            if (!document.hidden) {
-                sendKeepAlive();
-            }
-        }, intervalMs);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, [sendKeepAlive, endpointRef, uuidRef]);
 
-        console.log("Keepalive interval started");
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (!document.hidden) void sendKeepAlive("interval");
+    }, intervalMs);
 
-        return () => {
-            clearInterval(id);
-            console.log("Keepalive interval stopped");
-        };
-    }, [endpoint, intervalMs]);
-
-    // useEffect(() => {
-    //     const handleUnload = () => {
-    //         const payload = JSON.stringify({
-    //             date: Date.now(), 
-    //             type: "closed", 
-    //             uuid: uuidRef.current, 
-    //         });
-
-    //         const blob = new Blob([payload], {type: "application/json"});
-    //         navigator.sendBeacon(endpoint, blob);
-    //     };
-
-    //     window.addEventListener("beforeunload", handleUnload);
-    //     window.addEventListener("pagehide", handleUnload);
-
-    //     return () => {
-    //         window.removeEventListener("beforeunload", handleUnload);
-    //         window.removeEventListener("pagehide", handleUnload);
-    //     };
-    // }, [endpoint]);
+    return () => window.clearInterval(id);
+  }, [sendKeepAlive, intervalMs]);
 }

@@ -14,7 +14,7 @@ const ResultsList: React.FC<ResultsListProps> = ({
   type,
   items,
   onSelectNode,
-  onHoverResultCard
+  onHoverResultCard,
 }) => {
   if (items.length === 0) {
     return <EmptyState type={type} />;
@@ -24,9 +24,10 @@ const ResultsList: React.FC<ResultsListProps> = ({
 
   return (
     <div className="space-y-2">
-      <p className="text-gray-400 text-xs uppercase tracking-wide mb-1">
+      <p className="text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wide mb-1">
         {label}: {items.length}
       </p>
+
       <ul className="space-y-2">
         {items.map((node) => (
           <ResultCard

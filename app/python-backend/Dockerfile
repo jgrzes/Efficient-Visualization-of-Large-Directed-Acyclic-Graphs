@@ -1,21 +1,17 @@
-# create the image from inside backend directory
-
 FROM tiagopeixoto/graph-tool:latest
 
-WORKDIR /app 
+WORKDIR /app
+COPY . .
 
-COPY . . 
-
-RUN python3 -m venv /opt/.venv --system-site-packages && \ 
+RUN python3 -m venv /opt/.venv --system-site-packages && \
     /opt/.venv/bin/pip install --upgrade pip && \
-    /opt/.venv/bin/pip install -r requirements.txt 
+    /opt/.venv/bin/pip install -r requirements.txt
 
 ENV PATH="/opt/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
 
-EXPOSE 30301
-EXPOSE 30302
-EXPOSE 30303
-EXPOSE 30304
-EXPOSE 30305
+WORKDIR /app/src/old
 
-CMD ["bash", "-it"]
+EXPOSE 30301 30302 30303 30304 30305
+
+CMD ["python", "flask_layout_service.py"]

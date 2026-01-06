@@ -29,15 +29,17 @@ const CopyChip: React.FC<CopyChipProps> = ({
       type="button"
       onClick={handleCopy}
       className={`inline-flex items-center max-w-full px-2 py-0.5 rounded-md
-                  border border-gray-800 bg-white/[0.04] text-gray-300
-                  hover:bg-white/[0.08] hover:text-gray-100
-                  cursor-copy transition focus:outline-none focus:ring-2 focus:ring-gray-700 ${className}`}
+                  border border-black/10 bg-black/3-gray-700
+                  hover:bg-black/6 hover:text-gray-900
+                  focus:ring-black/20
+                  dark:border-gray-800 dark:bg-white/4 dark:text-gray-300
+                  dark:hover:bg-white/8 dark:hover:text-gray-100
+                  dark:focus:ring-gray-700
+                  cursor-copy transition focus:outline-none focus:ring-2 ${className}`}
       title={(title ?? text) + "  •  Click to copy"}
       aria-label={`Chip: ${text}`}
     >
-      <span
-        className={`${mono ? "font-mono" : ""} text-xs break-all`}
-      >
+      <span className={`${mono ? "font-mono" : ""} text-xs break-all`}>
         {text}
       </span>
     </button>

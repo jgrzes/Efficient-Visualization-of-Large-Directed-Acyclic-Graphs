@@ -20,17 +20,13 @@ export const useFavorites = create<FavoritesState>((set, get) => ({
 
   setFavoritesFromGraph: (indices) => {
     const unique = Array.from(
-      new Set(
-        (indices ?? []).filter(
-          (i) => Number.isInteger(i) && i >= 0
-        )
-      )
+      new Set((indices ?? []).filter((i) => Number.isInteger(i) && i >= 0))
     );
-    set({ favorites: unique });
+    set({ favorites: unique, error: null });
   },
 
   clearFavorites: () => {
-    set({ favorites: [] });
+    set({ favorites: [], error: null });
   },
 
   toggleFavorite: (index) => {
@@ -38,12 +34,10 @@ export const useFavorites = create<FavoritesState>((set, get) => ({
 
     set((state) => {
       const s = new Set(state.favorites);
-      if (s.has(index)) {
-        s.delete(index);
-      } else {
-        s.add(index);
-      }
-      return { favorites: Array.from(s) };
+      if (s.has(index)) s.delete(index);
+      else s.add(index);
+
+      return { favorites: Array.from(s), error: null };
     });
   },
 

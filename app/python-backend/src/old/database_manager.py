@@ -123,28 +123,29 @@ class MongoDatabaseManager:
         }
 
         set_part = ops["$set"]
-        add_to_set = ops["$addToSet"] # for adding to arrays without duplicates
-        pull = ops["$pull"] # for removing from arrays
-        push = ops["$push"] # for adding to arrays (with duplicates)
+        add_to_set = ops["$addToSet"]
+        pull = ops["$pull"]
+        push = ops["$push"]
 
-        # Simple $set fields (full replacement)
-        simple_set_fields = {"name"}  # you can add others if you want
-
-        for field in simple_set_fields:
+        # full overwrite fields
+        # simple fields
+        for field in ("name",):
             if field in new_vals:
                 set_part[field] = new_vals[field]
 
-        # Delta: favorites
+        # full arrays (full sync)
+        for field in ("favorites", "comments"):
+            if field in new_vals:
+                set_part[field] = new_vals[field]
+
+        # deltas
         if "favorite_add" in new_vals:
             add_to_set["favorites"] = new_vals["favorite_add"]
-
         if "favorite_remove" in new_vals:
             pull["favorites"] = new_vals["favorite_remove"]
 
-        # Delta: comments
         if "comment_add" in new_vals:
             push["comments"] = new_vals["comment_add"]
-
         if "comment_remove" in new_vals:
             pull["comments"] = {"id": new_vals["comment_remove"]}
 
