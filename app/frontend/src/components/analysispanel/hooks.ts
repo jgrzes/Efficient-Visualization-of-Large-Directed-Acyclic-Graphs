@@ -87,8 +87,6 @@ export function useDockedPanelPosition(opts: {
   // re-clamp on resize
   React.useEffect(() => {
     const onResize = () => {
-      // caller ma state, ale tu nie chcemy go trzymać – tylko sygnał.
-      // więc oddajemy funkcje, a w AnalysisPanel zrobisz setPos(p => clampNow(p))
     };
     void onResize;
   }, []);

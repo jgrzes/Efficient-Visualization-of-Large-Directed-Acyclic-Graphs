@@ -1,4 +1,4 @@
-export const API_BASE = "http://localhost:30301";
+export const API_BASE = "/api";
 
 export type ApiError = {
   message: string;
