@@ -1,6 +1,3 @@
-# This module is unused in v0.1. It is kept for potential future use.
-# It provides functionality for clustering graphs based on semantic similarity using GO terms.
-
 import graph_tool.all as gt
 import numpy as np
 from goatools.obo_parser import GODag

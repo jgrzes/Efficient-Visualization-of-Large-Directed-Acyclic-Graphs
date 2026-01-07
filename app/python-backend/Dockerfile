@@ -10,7 +10,7 @@ RUN python3 -m venv /opt/.venv --system-site-packages && \
 ENV PATH="/opt/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 
-WORKDIR /app/src
+WORKDIR /app/src/old
 
 EXPOSE 30301 30302 30303 30304 30305
 
