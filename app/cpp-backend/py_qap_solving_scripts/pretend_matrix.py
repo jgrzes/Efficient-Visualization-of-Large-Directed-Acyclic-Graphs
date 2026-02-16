@@ -1,19 +1,20 @@
-from typing import Callable, Optional, Any, Dict, Tuple
 from enum import Enum
+from typing import Any, Callable, Dict, Optional, Tuple
+
 
 class PretendMatrixMode(Enum):
-    DYNAMIC_CALCULATION = 1, 
+    DYNAMIC_CALCULATION = (1,)
     UNIFORM = 2
 
 
 class PretendMatrix:
     def __init__(self, mode: PretendMatrixMode, **kwargs):
-        self.mode = mode 
+        self.mode = mode
         self.dynamic_calculator: Optional[Callable[[int, int], Any]] = None
         self.default_value: Optional[Any] = None
         self.except_fields: Dict[Tuple[int, int], Any] = {}
 
-        self.size = (float("inf"), float("inf")) # Infinite in size by default
+        self.size = (float("inf"), float("inf"))  # Infinite in size by default
         if "size" in kwargs:
             self.size = kwargs["size"]
 
@@ -27,11 +28,10 @@ class PretendMatrix:
             if "default_value" not in kwargs:
                 raise RuntimeError(
                     f"Pretend matrx in uniform mode needs a default value"
-                )    
+                )
             self.default_value = kwargs["default_value"]
             if "except_cells_dict" in kwargs:
                 self.except_fields = kwargs["except_cells_dict"]
-
 
     def __getitem__(self, index_tuple: Tuple[int, int]) -> Any:
         i, j = index_tuple
@@ -43,10 +43,9 @@ class PretendMatrix:
 
             return self.default_value
 
-
     def __setitem__(self, index_tuple: Tuple[int, int], val: Any) -> None:
         i, j = index_tuple
-        if self.mode == PretendMatrixMode.DYNAMIC_CALCULATION: return 
+        if self.mode == PretendMatrixMode.DYNAMIC_CALCULATION:
+            return
         else:
-            self.except_fields[(i, j)] = val                  
-
+            self.except_fields[(i, j)] = val
