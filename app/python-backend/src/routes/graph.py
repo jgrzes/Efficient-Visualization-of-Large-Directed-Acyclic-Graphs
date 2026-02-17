@@ -24,6 +24,96 @@ from routes.helpers import (
 
 graph_bp = Blueprint("graph", __name__)
 
+GRAPH_CONFIG_EXCLUDE_KEYS = {
+    "name",
+    "num_of_vertices",
+    "last_entry_update",
+    "vertices",
+    "_id",
+}
+
+
+def _extract_graph_config(graph_data: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        key: value
+        for key, value in graph_data.items()
+        if key not in GRAPH_CONFIG_EXCLUDE_KEYS
+    }
+
+
+def _normalize_canvas_positions(canvas_positions: List[tuple]) -> tuple[List[tuple], float]:
+    space_size = 0.0
+    coeff_x_denominator = float("-inf")
+    coeff_y_denominator = float("-inf")
+
+    for x, y in canvas_positions:
+        space_size = max(space_size, abs(x), abs(y))
+        coeff_y_denominator = max(coeff_y_denominator, abs(y))
+        coeff_x_denominator = max(coeff_x_denominator, abs(x))
+
+    coeff_x = 8192 / coeff_x_denominator if coeff_x_denominator > 8192 else 1
+    coeff_y = 8192 / coeff_y_denominator if coeff_y_denominator > 8192 else 1
+    scaled_canvas_positions = [(x * coeff_x, y * coeff_y) for x, y in canvas_positions]
+
+    return scaled_canvas_positions, space_size
+
+
+def _linearized_layout_to_pairs(linearized_layout: List[float]) -> List[tuple]:
+    return [
+        (linearized_layout[2 * i], linearized_layout[2 * i + 1])
+        for i in range(len(linearized_layout) // 2)
+    ]
+
+
+def _build_vertex_metadata_for_graph(G_gt: gt.Graph) -> List[Dict[str, Any]]:
+    all_vertex_properties = list(G_gt.vertex_properties.keys())
+    n = G_gt.num_vertices()
+    vertices_metadata: List[Dict[str, Any]] = [None for _ in range(n)]
+
+    for i, v in enumerate(G_gt.vertices()):
+        vertices_metadata[i] = {}
+        for p in all_vertex_properties:
+            val = G_gt.vertex_properties[p][v]
+            if val == EMPTY_PROPERTY_FIELD:
+                continue
+            vertices_metadata[i][p] = convert_to_json_parsable_representation(val)
+
+    return vertices_metadata
+
+
+def _build_linearized_links_and_positions(graph_data: Dict[str, Any]) -> tuple[List[int], List[float]]:
+    n = graph_data["num_of_vertices"]
+    vertices_data = graph_data["vertices"]
+
+    linearized_links: List[int] = []
+    for v in range(n):
+        Nv = vertices_data[v]["N"]
+        for w in Nv:
+            linearized_links.extend((v, w))
+
+    linearized_canvas_positions: List[float] = [0.0 for _ in range(2 * n)]
+    for i in range(n):
+        x, y = vertices_data[i]["pos"]
+        linearized_canvas_positions[2 * i] = x
+        linearized_canvas_positions[2 * i + 1] = y
+
+    return linearized_links, linearized_canvas_positions
+
+def _compute_layout(G_gt: gt.Graph, layout_type: str, layout_host: str, layout_port: int, logger) -> List[tuple]:
+    if layout_type == "radial":
+        logger.debug("Using radial layout computation")
+        return make_graph_structure(G_gt)
+    else:
+        logger.debug("Using GRPC layout computation")
+        try:
+            return send_layout_computation_request_to_grpc_server(
+                G_gt, layout_host, layout_port, logger=logger
+            )
+        except Exception as e:
+            logger.warning(
+                f"GRPC server failed to conclude layout computation: {e}. Falling back to radial layout."
+            )
+            return make_graph_structure(G_gt)
 
 @graph_bp.route("/session_keepalive", methods=["POST"])
 def session_keepalive():
@@ -33,9 +123,9 @@ def session_keepalive():
     logger.debug(request)
     data = request.get_json() or {}
     timestamp = data.get("date", "")
-    graph_uuid = data.get("uuid", "nothing")
+    graph_uuid = data.get("uuid")
     event_type = data.get("type", "nothing")
-    if graph_uuid != "nothing":
+    if graph_uuid is not None:
         logger.info(f"Keepalive received for {graph_uuid}")
     storage.keepalive_message_queue.put((graph_uuid, timestamp, event_type))
     return jsonify({"status": "ok"}), 200
@@ -129,7 +219,6 @@ def flask_make_graph_structure():
 
     root_id, godag = None, None
     G_gt: Optional[gt.Graph] = None
-    graph_uuid: str = None
 
     try:
         G_gt, root_id, godag = load_graph_from_uploaded_file(file)
@@ -144,32 +233,8 @@ def flask_make_graph_structure():
     )
 
     if G_gt is not None:
-        if layout_type == "radial":
-            canvas_positions = make_graph_structure(G_gt)
-            logger.debug("Using radial layout computation")
-        else:
-            logger.debug("Using GRPC layout computation")
-            try:
-                canvas_positions = send_layout_computation_request_to_grpc_server(
-                    G_gt, layout_host, layout_port, logger=logger
-                )
-            except Exception as e:
-                logger.warning(
-                    f"GRPC server failed to conclude layout computation: {e}"
-                )
-                canvas_positions = make_graph_structure(G_gt)
-
-        space_size = 0
-        ceoff_x_denominator = float("-inf")
-        coeff_y_denominator = float("-inf")
-        for x, y in canvas_positions:
-            space_size = max(abs(x), abs(y))
-            coeff_y_denominator = max(coeff_y_denominator, abs(y))
-            ceoff_x_denominator = max(ceoff_x_denominator, abs(x))
-
-        coeff_x = 8192 / ceoff_x_denominator if ceoff_x_denominator > 8192 else 1
-        coeff_y = 8192 / coeff_y_denominator if coeff_y_denominator > 8192 else 1
-        canvas_positions = [(x * coeff_x, y * coeff_y) for x, y in canvas_positions]
+        canvas_positions = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
+        canvas_positions, space_size = _normalize_canvas_positions(canvas_positions)
 
         (
             transformed_canvas_positions,
@@ -246,23 +311,8 @@ def save_graph_to_db(graph_uuid: str):
                 return jsonify({"error": "Invalid group password"}), 403
 
     linearized_layout = data["canvas_positions"]
-
-    layout = [None for _ in range(int(len(linearized_layout) // 2))]
-    for i in range(int(len(linearized_layout) // 2)):
-        layout[i] = (linearized_layout[2 * i], linearized_layout[2 * i + 1])
-
-    all_vertex_properties = [key for key in G_gt.vertex_properties.keys()]
-
-    n = G_gt.num_vertices()
-    vertices_metadata: List[Dict[str, Any]] = [None for _ in range(n)]
-    for i, v in enumerate(G_gt.vertices()):
-        vertices_metadata[i] = {}
-        for p in all_vertex_properties:
-            if G_gt.vertex_properties[p][v] == EMPTY_PROPERTY_FIELD:
-                continue
-            vertices_metadata[i][p] = convert_to_json_parsable_representation(
-                G_gt.vertex_properties[p][v]
-            )
+    layout = _linearized_layout_to_pairs(linearized_layout)
+    vertices_metadata = _build_vertex_metadata_for_graph(G_gt)
 
     additional_config_keys = ["point_size", "space_size", "group_name"]
     additional_config = {
@@ -303,21 +353,9 @@ def _build_graph_from_graph_data(graph_data: Dict[str, Any]) -> Dict[str, Any]:
     as stored in the database.
     """
     G_gt = build_gt_graph_from_graph_dict(graph_data)
-    n = graph_data["num_of_vertices"]
-    vertices_data = graph_data["vertices"]
-
-    linearized_links: List[int] = []
-    for v in range(n):
-        Nv = vertices_data[v]["N"]
-        for w in Nv:
-            linearized_links.append(v)
-            linearized_links.append(w)
-
-    linearized_canvas_positions: List[float] = [0.0 for _ in range(2 * n)]
-    for i in range(n):
-        x, y = vertices_data[i]["pos"]
-        linearized_canvas_positions[2 * i] = x
-        linearized_canvas_positions[2 * i + 1] = y
+    linearized_links, linearized_canvas_positions = _build_linearized_links_and_positions(
+        graph_data
+    )
 
     payload = {
         "name": graph_data["name"],
@@ -330,13 +368,7 @@ def _build_graph_from_graph_data(graph_data: Dict[str, Any]) -> Dict[str, Any]:
     payload["point_size"] = graph_data.get("point_size", 1)
     payload["space_size"] = graph_data.get("space_size", 256)
 
-    config_keys = [
-        key
-        for key in graph_data.keys()
-        if key
-        not in ["name", "num_of_vertices", "last_entry_update", "vertices", "_id"]
-    ]
-    config = {key: graph_data[key] for key in config_keys}
+    config = _extract_graph_config(graph_data)
 
     storage = get_graph_storage()
     graph_uuid = storage.register_new_graph_data(payload)
@@ -408,18 +440,7 @@ def load_graph_from_json():
 
     G_gt = build_gt_graph_from_graph_dict(graph_data)
 
-    if layout_type == "radial":
-        canvas_positions = make_graph_structure(G_gt)
-    else:
-        try:
-            canvas_positions = send_layout_computation_request_to_grpc_server(
-                G_gt, layout_host, layout_port, logger=logger
-            )
-        except Exception as e:
-            logger.error(
-                f"GRPC layout computation failed: {e}. Falling back to radial layout."
-            )
-            canvas_positions = make_graph_structure(G_gt)
+    canvas_positions = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
 
     (
         linearized_canvas_positions,
@@ -439,13 +460,7 @@ def load_graph_from_json():
         }
     )
 
-    config_keys = [
-        key
-        for key in graph_data.keys()
-        if key
-        not in ["name", "num_of_vertices", "last_entry_update", "vertices", "_id"]
-    ]
-    config = {key: graph_data[key] for key in config_keys}
+    config = _extract_graph_config(graph_data)
 
     names = extract_vertex_names(G_gt)
 
