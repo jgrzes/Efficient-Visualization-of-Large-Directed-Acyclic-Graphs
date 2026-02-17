@@ -14,7 +14,6 @@ RADIUS = 10
 
 
 def find_roots(G: gt.Graph) -> list[gt.Vertex]:
-    # print([v for v in G.vertices() if v.in_degree() == 0])
     return [v for v in G.vertices() if v.in_degree() == 0]
 
 
@@ -48,11 +47,9 @@ def compute_min_distances_after_finding_roots(
     )
     for i in range(0, len(roots)):
         root = roots[i]
-        # print(f"For root: {root}")
         min_dists_for_root, pred_map = gt_top.shortest_distance(
             G, source=root, directed=True, pred_map=pred_map
         )
-        # print("Finding distances concluded")
         min_dists = update_min_dists(
             current=min_dists,
             newly_found=build_newly_found(min_dists_for_root, pred_map),
@@ -150,8 +147,6 @@ def make_graph_structure(G: gt.Graph) -> list[tuple[Number, Number]]:
                     aux_eroding_number_of_children[pred],
                     number_of_children[pred],
                 )
-                # if valid_degree_ranges[pred] is None:
-                #     print(pred, valid_degree_ranges[pred])
                 low, high = valid_degree_ranges[pred]
                 degree = low + order * (high - low) / (size + 1)
                 x, y = r * np.cos(degree), r * np.sin(degree)

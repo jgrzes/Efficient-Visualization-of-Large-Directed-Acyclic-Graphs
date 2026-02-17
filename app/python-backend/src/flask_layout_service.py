@@ -8,13 +8,14 @@ from flask_cors import CORS
 from graph_data_storage import GraphDataStorage
 from routes import analysis_bp, export_bp, graph_bp, groups_bp, search_bp
 
+load_dotenv()
+
 SERVICE_IP_ADDRESS = os.getenv("SERVICE_IP_ADDRESS", "0.0.0.0")
 SERVICE_PORT = int(os.getenv("SERVICE_PORT", "30301"))
 MONGODB_URI = os.getenv("MONGODB_URI", "")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "inz")
 LAYOUT_SERVICE_IP_ADDRESS = os.getenv("LAYOUT_SERVICE_IP_ADDRESS", "cpp-backend")
 LAYOUT_SERVICE_PORT = int(os.getenv("LAYOUT_SERVICE_PORT", "30311"))
-load_dotenv()
 
 
 def create_app() -> Flask:
