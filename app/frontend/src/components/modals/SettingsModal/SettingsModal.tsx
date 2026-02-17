@@ -283,7 +283,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <input
                       type="number"
                       min={0.4}
-                      max={4}
+                      max={7}
                       step={0.2}
                       value={pointSizeInput}
                       onChange={(e) => setPointSizeInput(e.target.value)}
@@ -295,7 +295,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 <input
                   type="range"
                   min={0.4}
-                  max={4}
+                  max={7}
                   step={0.2}
                   value={pointSizeInput}
                   onChange={(e) => setPointSizeInput(e.target.value)}
@@ -304,7 +304,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <div className={cx("flex justify-between text-[10px]", "text-gray-500")}>
                   <span>0.4</span>
-                  <span>4</span>
+                  <span>7</span>
                 </div>
               </div>
 

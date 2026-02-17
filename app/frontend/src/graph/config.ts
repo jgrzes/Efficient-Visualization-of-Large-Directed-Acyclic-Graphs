@@ -6,12 +6,12 @@ export const DEFAULT_BACKGROUND_BY_THEME = {
 } as const;
 
 export const DEFAULT_GRAPH_COLORS: GraphColors = {
-  default: "#6B7280",
-  parent: "#EF4444",
-  child: "#22C55E",
-  selected: "#3B82F6",
-  hover: "#A855F7",
-  search: "#06B6D4",
+  default: "#6B7280",   // gray-500
+  parent: "#EF4444",    // red-500
+  child: "#22C55E",     // green-500
+  selected: "#3B82F6",  // blue-500
+  hover: "#F97316",   // orange-500
+  search: "#FACC15",        // yellow-400
   background: typeof document !== "undefined" &&
   document.documentElement.classList.contains("dark")
   ? DEFAULT_BACKGROUND_BY_THEME.dark

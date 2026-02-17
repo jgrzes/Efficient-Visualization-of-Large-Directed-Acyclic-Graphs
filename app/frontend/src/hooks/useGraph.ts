@@ -77,6 +77,8 @@ export function useGraph(
     initialConfig?.colors ?? DEFAULT_GRAPH_COLORS
   );
 
+  const sizeRef = useRef<number>(initialConfig?.pointSize ?? 1);
+
   const getName = useCallback(
     (idx: number) => namesCacheRef.current.get(idx) ?? `Node ${idx}`,
     []
@@ -93,6 +95,10 @@ export function useGraph(
   useEffect(() => {
     colorsRef.current = initialConfig?.colors ?? DEFAULT_GRAPH_COLORS;
   }, [initialConfig?.colors]);
+
+  useEffect(() => {
+    sizeRef.current = initialConfig?.pointSize ?? 1;
+  }, [initialConfig?.pointSize]);
 
   useEffect(() => {
     currentGraphUUIDRef.current = currentGraphUUID ?? null;
@@ -177,6 +183,7 @@ export function useGraph(
         g,
         links: linksRef.current,
         colors: colorsRef.current,
+        size: sizeRef.current,
         selectedIndices,
         parents,
         children,
@@ -237,6 +244,7 @@ export function useGraph(
     initialConfig?.colors?.hover,
     initialConfig?.colors?.search,
     initialConfig?.colors?.background,
+    initialConfig?.pointSize,
     applyColors,
   ]);
 
@@ -304,7 +312,6 @@ export function useGraph(
 
       const selectedIndex = selectedIndexRef.current;
       const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
-
       const { parents, children } = computeParentsChildren(
         selectedIndices,
         linksRef.current

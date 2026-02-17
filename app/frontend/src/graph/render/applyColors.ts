@@ -6,6 +6,7 @@ export const applyGraphColors = (args: {
   g: Graph;
   links: Float32Array;
   colors: GraphColors;
+  size: number;
 
   selectedIndices: number[];
   parents: number[];
@@ -18,6 +19,7 @@ export const applyGraphColors = (args: {
     g,
     links,
     colors,
+    size,
     selectedIndices,
     parents,
     children,
@@ -41,6 +43,8 @@ export const applyGraphColors = (args: {
   const pointColors = new Float32Array(pointCount * 4);
   const linkColors = new Float32Array(linkCount * 4);
   const linkWidths = new Float32Array(linkCount);
+
+  const pointSizes = new Float32Array(pointCount);
 
   const selectedSet = new Set<number>(selectedIndices);
   const parentsSet = new Set<number>(parents);
@@ -72,17 +76,32 @@ export const applyGraphColors = (args: {
   // Points priority: hoveredCard > selected > parent > child > searched > default
   for (let i = 0; i < pointCount; i++) {
     let color = DEFAULT_POINT;
+    let pointSize = size;
 
-    if (hoveredCardIndex != null && hoveredCardIndex === i) color = HOVER_POINT;
-    else if (selectedSet.has(i)) color = SELECTED_POINT;
-    else if (parentsSet.has(i)) color = PARENT_POINT;
-    else if (childrenSet.has(i)) color = CHILD_POINT;
-    else if (searchSet.has(i)) color = SEARCH_POINT;
+    if (hoveredCardIndex != null && hoveredCardIndex === i) {
+        color = HOVER_POINT;
+        pointSize = size * 1.75;
+      }
+    else if (selectedSet.has(i)) {
+      color = SELECTED_POINT;
+    }
+    else if (parentsSet.has(i)) {
+      color = PARENT_POINT;
+    }
+    else if (childrenSet.has(i)) {
+      color = CHILD_POINT;
+    }
+    else if (searchSet.has(i)) {
+      color = SEARCH_POINT;
+      pointSize = size * 1.5;
+    }
 
     pointColors.set(color, i * 4);
+    pointSizes[i] = pointSize;
   }
 
   g.setPointColors(pointColors);
+  g.setPointSizes(pointSizes);
   g.setLinkColors(linkColors);
   g.setLinkWidths(linkWidths);
 
