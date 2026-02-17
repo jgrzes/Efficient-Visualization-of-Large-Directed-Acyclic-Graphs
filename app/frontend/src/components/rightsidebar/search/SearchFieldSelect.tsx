@@ -25,7 +25,7 @@ export function SearchFieldSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder="Field (e.g., id, name, def...)"
+        placeholder="Field (e.g., id, name...)"
         className="
           w-full rounded-md px-3 py-2 pr-8 text-sm transition-all duration-200
           focus:outline-none focus:ring-2
