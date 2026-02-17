@@ -22,6 +22,7 @@ def compute_hierarchy_levels(G: gt.Graph) -> dict[int, int]:
 
     return dict(levels)
 
+
 def _pct(x: int, n: int) -> float:
     """Return percentage of x relative to n (safe for n=0)."""
     return (100.0 * x / n) if n > 0 else 0.0
@@ -91,7 +92,6 @@ def analyze_dag_basic(G: gt.Graph, top_k: int = 5) -> dict[str, Any]:
     return {
         "n_vertices": n_v,
         "n_edges": n_e,
-
         "roots": {
             "count": n_roots,
             "pct": _pct(n_roots, n_v),
@@ -100,9 +100,7 @@ def analyze_dag_basic(G: gt.Graph, top_k: int = 5) -> dict[str, Any]:
             "count": n_sinks,
             "pct": _pct(n_sinks, n_v),
         },
-
         "isolated_vertices": n_isolated,
-
         "multi_parent": {
             "count": n_multi_parent,
             "pct": _pct(n_multi_parent, n_v),
@@ -111,21 +109,16 @@ def analyze_dag_basic(G: gt.Graph, top_k: int = 5) -> dict[str, Any]:
             "count": n_multi_child,
             "pct": _pct(n_multi_child, n_v),
         },
-
         "chain_vertices": {
             "count": n_chain_nodes,
             "pct": _pct(n_chain_nodes, n_v),
         },
-
         "in_degree": _stats(in_degs),
         "out_degree": _stats(out_degs),
-
         "avg_nonzero_in_degree": avg_nonzero_in,
         "avg_nonzero_out_degree": avg_nonzero_out,
-
         "top_in_degree_vertices": [{"vertex": v, "in_degree": d} for v, d in top_in],
         "top_out_degree_vertices": [{"vertex": v, "out_degree": d} for v, d in top_out],
-
         "max_possible_edges": max_possible_edges,
         "density": density,
     }

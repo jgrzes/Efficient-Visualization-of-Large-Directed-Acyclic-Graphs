@@ -1,6 +1,5 @@
 import graph_tool as gt
 from flask import Blueprint, jsonify
-
 from graph_analysis import analyze_dag_basic, compute_hierarchy_levels
 from routes.helpers import get_graph_storage, get_logger
 
@@ -12,7 +11,9 @@ def analyze_graph(graph_uuid: str):
     logger = get_logger()
     storage = get_graph_storage()
 
-    logger.info(f"Received request on endpoint /analyze_graph/<graph_uuid={graph_uuid}>")
+    logger.info(
+        f"Received request on endpoint /analyze_graph/<graph_uuid={graph_uuid}>"
+    )
     try:
         graph_data = storage.get_graph_data_for_id(graph_uuid)
         G_gt: gt.Graph = graph_data["graph"]

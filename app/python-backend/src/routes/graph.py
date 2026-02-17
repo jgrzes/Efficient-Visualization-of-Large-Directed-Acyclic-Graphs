@@ -1,9 +1,8 @@
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import graph_tool as gt
 from flask import Blueprint, jsonify, redirect, request
-
 from generate_graph_structure import make_graph_structure
 from graph_utils import (
     build_gt_graph_from_graph_dict,
@@ -47,7 +46,9 @@ def get_node_information(graph_uuid: str, node_id: int):
     logger = get_logger()
     storage = get_graph_storage()
 
-    logger.info(f"Received call on endpoint /node/<graph_uuid={graph_uuid}>/<node_id={node_id}>.")
+    logger.info(
+        f"Received call on endpoint /node/<graph_uuid={graph_uuid}>/<node_id={node_id}>."
+    )
     try:
         graph_info = storage.get_graph_data_for_id(graph_uuid)
     except RuntimeError as e:
@@ -153,7 +154,9 @@ def flask_make_graph_structure():
                     G_gt, layout_host, layout_port, logger=logger
                 )
             except Exception as e:
-                logger.warning(f"GRPC server failed to conclude layout computation: {e}")
+                logger.warning(
+                    f"GRPC server failed to conclude layout computation: {e}"
+                )
                 canvas_positions = make_graph_structure(G_gt)
 
         space_size = 0
@@ -168,10 +171,11 @@ def flask_make_graph_structure():
         coeff_y = 8192 / coeff_y_denominator if coeff_y_denominator > 8192 else 1
         canvas_positions = [(x * coeff_x, y * coeff_y) for x, y in canvas_positions]
 
-        transformed_canvas_positions, links = (
-            build_response_json_string_for_make_graph_structure_req(
-                G_gt=G_gt, canvas_positions=canvas_positions
-            )
+        (
+            transformed_canvas_positions,
+            links,
+        ) = build_response_json_string_for_make_graph_structure_req(
+            G_gt=G_gt, canvas_positions=canvas_positions
         )
 
         logger.debug(
@@ -261,7 +265,9 @@ def save_graph_to_db(graph_uuid: str):
             )
 
     additional_config_keys = ["point_size", "space_size", "group_name"]
-    additional_config = {key: data.get(key) for key in additional_config_keys if key in data}
+    additional_config = {
+        key: data.get(key) for key in additional_config_keys if key in data
+    }
 
     if not db_manager.check_if_contains_graph_with_hash(graph_hash):
         graph_hash = db_manager.push_new_entry(
@@ -327,7 +333,8 @@ def _build_graph_from_graph_data(graph_data: Dict[str, Any]) -> Dict[str, Any]:
     config_keys = [
         key
         for key in graph_data.keys()
-        if key not in ["name", "num_of_vertices", "last_entry_update", "vertices", "_id"]
+        if key
+        not in ["name", "num_of_vertices", "last_entry_update", "vertices", "_id"]
     ]
     config = {key: graph_data[key] for key in config_keys}
 
@@ -384,7 +391,9 @@ def load_graph_from_json():
 
     if not isinstance(vertices, list) or not isinstance(num_vertices, int):
         return (
-            jsonify({"error": "Invalid graph JSON: missing 'vertices' or 'num_of_vertices'"}),
+            jsonify(
+                {"error": "Invalid graph JSON: missing 'vertices' or 'num_of_vertices'"}
+            ),
             400,
         )
 
@@ -412,10 +421,11 @@ def load_graph_from_json():
             )
             canvas_positions = make_graph_structure(G_gt)
 
-    linearized_canvas_positions, linearized_links = (
-        build_response_json_string_for_make_graph_structure_req(
-            G_gt=G_gt, canvas_positions=canvas_positions
-        )
+    (
+        linearized_canvas_positions,
+        linearized_links,
+    ) = build_response_json_string_for_make_graph_structure_req(
+        G_gt=G_gt, canvas_positions=canvas_positions
     )
 
     storage = get_graph_storage()
@@ -432,7 +442,8 @@ def load_graph_from_json():
     config_keys = [
         key
         for key in graph_data.keys()
-        if key not in ["name", "num_of_vertices", "last_entry_update", "vertices", "_id"]
+        if key
+        not in ["name", "num_of_vertices", "last_entry_update", "vertices", "_id"]
     ]
     config = {key: graph_data[key] for key in config_keys}
 
@@ -458,7 +469,9 @@ def update_graph_config(graph_hash: str):
     logger = get_logger()
     db_manager = get_db_manager()
 
-    logger.info(f"Received call on endpoint /update_graph_config/<graph_hash={graph_hash}>")
+    logger.info(
+        f"Received call on endpoint /update_graph_config/<graph_hash={graph_hash}>"
+    )
 
     try:
         data = request.get_json(force=True) or {}

@@ -1,5 +1,4 @@
 from flask import Blueprint, jsonify, request
-
 from routes.helpers import get_db_manager
 
 groups_bp = Blueprint("groups", __name__)

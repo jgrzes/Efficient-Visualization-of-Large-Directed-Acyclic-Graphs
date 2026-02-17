@@ -3,7 +3,6 @@ from typing import Any
 
 import graph_tool as gt
 from flask import Blueprint, jsonify, request
-
 from graph_utils import convert_to_json_parsable_representation
 from routes.helpers import EMPTY_PROPERTY_FIELD, get_graph_storage, get_logger
 

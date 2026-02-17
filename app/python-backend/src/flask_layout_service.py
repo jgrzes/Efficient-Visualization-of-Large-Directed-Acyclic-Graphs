@@ -1,11 +1,10 @@
 import logging
 import os
 
+from database_manager import MongoDatabaseManager
 from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
-
-from database_manager import MongoDatabaseManager
 from graph_data_storage import GraphDataStorage
 from routes import analysis_bp, export_bp, graph_bp, groups_bp, search_bp
 
@@ -27,7 +26,9 @@ def create_app() -> Flask:
 
     app.config["LOGGER"] = logger
     app.config["GRAPH_STORAGE"] = GraphDataStorage(logger=logger)
-    app.config["DB_MANAGER"] = MongoDatabaseManager(MONGODB_URI, MONGO_DB_NAME, logger=logger)
+    app.config["DB_MANAGER"] = MongoDatabaseManager(
+        MONGODB_URI, MONGO_DB_NAME, logger=logger
+    )
     app.config["LAYOUT_SERVICE_IP_ADDRESS"] = LAYOUT_SERVICE_IP_ADDRESS
     app.config["LAYOUT_SERVICE_PORT"] = LAYOUT_SERVICE_PORT
 

@@ -1,19 +1,16 @@
 import io
-import tempfile
-from typing import Dict, Tuple, Any, Optional, List
+import json
 import re
-import numpy as np
+import tempfile
+from typing import Any, Dict, List, Optional, Tuple
 
 import graph_tool as gt
 import networkx as nx
+import numpy as np
 import obonet
-from goatools.obo_parser import GODag
-import json
 from flask import request
+from goatools.obo_parser import GODag
 
-
-# TODO: Add json as an allowed extension
-ALLOWED_FILE_FORMATS = ["obo", "txt"]
 EMPTY_PROPERTY_FIELD = "$N/A$"
 
 
@@ -35,26 +32,17 @@ def read_type_in_gt_compatible_way(value: Any) -> Any:
 
 def convert_to_json_parsable_representation(gt_value: Any) -> Any:
     gt_value_type_hint = str(type(gt_value))
-    # gt_value_type_hint = gt_value_type_hint.rstrip()
-    # gt_value_type_hint = gt_value_type_hint.lstrip()
 
-    # gt_value_type_hint = gt_value_type_hint.rstrip("'>")
-    # gt_value_type_hint = gt_value_type_hint.lstrip("<class '")
     if len(re.findall(r".+Vector.*", gt_value_type_hint)) != 0:
         return list(gt_value)
-    # elif len(re.findall(r"(np|numpy)\.int.*", gt_value_type_hint)) != 0:
-    #     return int(gt_value)
-    # elif len(re.findall(r"(np|numpy)\.float.*", gt_value_type_hint)) != 0:
-    #     return float(gt_value)
     elif isinstance(gt_value, (np.integer,)):
         return int(gt_value)
     elif isinstance(gt_value, (np.floating,)):
         return float(gt_value)
     elif isinstance(gt_value, str):
-        return gt_value.replace("'", "").replace('"', '')
+        return gt_value.replace("'", "").replace('"', "")
     else:
         return gt_value
-
 
 
 def convert_to_graph_tool_graph(
@@ -126,10 +114,11 @@ def build_graph_from_txt(txt_file_contents: str) -> gt.Graph:
     G_gt = gt.Graph(directed=True)
     V = [G_gt.add_vertex() for _ in range(0, n)]
 
-    if len(elems) == 1: return 
-    if elems[1][0] == '{' and elems[1][-1] == "}": # Adj list form
+    if len(elems) == 1:
+        return
+    if elems[1][0] == "{" and elems[1][-1] == "}":  # Adj list form
         for i in range(1, len(elems)):
-            u = V[i-1]
+            u = V[i - 1]
             adj_list_for_u_str = elems[i].lstrip("{").rstrip("}")
             if len(adj_list_for_u_str.strip()) == 0:
                 continue
@@ -139,10 +128,10 @@ def build_graph_from_txt(txt_file_contents: str) -> gt.Graph:
             for v in Nu:
                 G_gt.add_edge(u, v)
 
-    else: # Edge list form
+    else:  # Edge list form
         elems = [int(elem) for elem in elems]
         for i in range(1, len(elems), 2):
-            u, v = elems[i], elems[i+1]
+            u, v = elems[i], elems[i + 1]
             G_gt.add_edge(V[u], V[v])
 
     return G_gt

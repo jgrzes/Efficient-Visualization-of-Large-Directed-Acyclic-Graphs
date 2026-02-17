@@ -8,13 +8,13 @@ import CommentModal from "../modals/CommentModal";
 export interface ResultCardProps {
   node: NodeInfoProps;
   onSelect: (n: NodeInfoProps) => void;
-  onHoverResultcard?: (node?: NodeInfoProps) => void;
+  onHoverResultCard?: (node?: NodeInfoProps) => void;
 }
 
 const ResultCard: React.FC<ResultCardProps> = ({
   node,
   onSelect,
-  onHoverResultcard,
+  onHoverResultCard,
 }) => {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addComment } = useComments();
@@ -44,8 +44,8 @@ const ResultCard: React.FC<ResultCardProps> = ({
     <>
       <li
         onClick={() => onSelect(node)}
-        onMouseEnter={() => onHoverResultcard?.(node)}
-        onMouseLeave={() => onHoverResultcard?.()}
+        onMouseEnter={() => onHoverResultCard?.(node)}
+        onMouseLeave={() => onHoverResultCard?.()}
         className="
           group rounded-xl p-3 border transition cursor-pointer
           shadow-sm hover:shadow-md w-[17em] max-w-full
