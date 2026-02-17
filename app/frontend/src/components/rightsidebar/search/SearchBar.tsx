@@ -49,26 +49,7 @@ export default function SearchBar({
         handleSearch();
       }}
     >
-      <div className="flex w-full items-center gap-2">
-        <SearchFieldSelect
-          value={field}
-          onChange={setField}
-          onClear={() => setField("")}
-          onKeyDown={(e: React.KeyboardEvent) => {
-            if (e.key === "Enter") {
-              e.stopPropagation();
-              handleSearch();
-            }
-          }}
-        />
-        <SearchOptions
-          matchCase={matchCase}
-          matchWords={matchWords}
-          onMatchCaseChange={setMatchCase}
-          onMatchWordsChange={setMatchWords}
-        />
-      </div>
-
+      {/* INPUT NA GÓRZE */}
       <div className="flex items-center gap-2">
         <SearchInput
           value={query}
@@ -108,6 +89,27 @@ export default function SearchBar({
             <span className="hidden sm:inline">Search</span>
           </button>
         )}
+      </div>
+
+      {/* OPCJE POD INPUTEM */}
+      <div className="flex w-full items-center gap-2">
+        <SearchFieldSelect
+          value={field}
+          onChange={setField}
+          onClear={() => setField("")}
+          onKeyDown={(e: React.KeyboardEvent) => {
+            if (e.key === "Enter") {
+              e.stopPropagation();
+              handleSearch();
+            }
+          }}
+        />
+        <SearchOptions
+          matchCase={matchCase}
+          matchWords={matchWords}
+          onMatchCaseChange={setMatchCase}
+          onMatchWordsChange={setMatchWords}
+        />
       </div>
     </form>
   );

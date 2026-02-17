@@ -20,25 +20,17 @@ const ResultsList: React.FC<ResultsListProps> = ({
     return <EmptyState type={type} />;
   }
 
-  const label = type === "search" ? "found" : "favorites";
-
   return (
-    <div className="space-y-2">
-      <p className="text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wide mb-1">
-        {label}: {items.length}
-      </p>
-
-      <ul className="space-y-2">
-        {items.map((node) => (
-          <ResultCard
-            key={`${type}-${node.id}-${node.index ?? 0}`}
-            node={node}
-            onSelect={onSelectNode}
-            onHoverResultcard={onHoverResultCard}
-          />
-        ))}
-      </ul>
-    </div>
+    <ul className="space-y-2">
+      {items.map((node) => (
+        <ResultCard
+          key={`${type}-${node.id}-${node.index ?? 0}`}
+          node={node}
+          onSelect={onSelectNode}
+          onHoverResultCard={onHoverResultCard}
+        />
+      ))}
+    </ul>
   );
 };
 

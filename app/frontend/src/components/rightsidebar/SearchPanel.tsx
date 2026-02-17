@@ -26,19 +26,19 @@ export const SearchPanel: React.FC<RightSearchPanelProps> = ({
   onHoverResultCard,
 }) => {
   const handleSearch = React.useCallback(
-    (field: string, query: string) => {
-      onSearch(field, query);
-    },
+    (field: string, query: string) => onSearch(field, query),
     [onSearch]
   );
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col">
-      {/* SEARCH HEADER — NO BACKGROUND, NO SHADOW */}
+    <div className="flex min-w-0 flex-1 flex-col h-full">
+      {/* HEADER */}
       <div
         className="
-          sticky top-0 z-10 px-4 pb-4
-          bg-transparent
+          px-4 pt-3 pb-3
+          bg-white/85 backdrop-blur-xl
+          dark:bg-black/80
+          border-b border-gray-200/60 dark:border-gray-800/60
         "
       >
         <SearchBar
@@ -64,10 +64,17 @@ export const SearchPanel: React.FC<RightSearchPanelProps> = ({
             ))}
           </div>
         )}
+
+        {/* FOUND */}
+        <div className="mt-3">
+          <p className="text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wide">
+            found: {results.length}
+          </p>
+        </div>
       </div>
 
       {/* RESULTS */}
-      <div className="px-4 py-4">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
         <ResultsList
           type="search"
           items={results}

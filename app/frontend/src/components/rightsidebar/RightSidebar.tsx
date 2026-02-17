@@ -40,26 +40,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 }) => {
   const { favorites: favoriteIndices = [] } = useFavorites();
 
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-  const prevTabRef = React.useRef<TabKey>(activeTab);
-  const scrollPositions = React.useRef<Record<TabKey, number>>({
-    search: 0,
-    favorites: 0,
-    comments: 0,
-  });
-
-  React.useEffect(() => {
-    const prev = prevTabRef.current;
-    const el = scrollRef.current;
-    if (el) {
-      scrollPositions.current[prev] = el.scrollTop;
-      requestAnimationFrame(() => {
-        el.scrollTop = scrollPositions.current[activeTab] ?? 0;
-      });
-    }
-    prevTabRef.current = activeTab;
-  }, [activeTab]);
-
   const handleTabClick = React.useCallback(
     (tab: TabKey) => {
       if (tab === activeTab) {
@@ -72,27 +52,20 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
     [activeTab, expanded, onExpandedChange, onTabChange]
   );
 
-  const isSearch = activeTab === "search";
-  const isFavorites = activeTab === "favorites";
-  const isComments = activeTab === "comments";
-
   const tabPanelId = `right-panel-${activeTab}`;
   const labelledBy =
     activeTab === "search"
       ? "tab-search"
       : activeTab === "favorites"
       ? "tab-favorites"
-      : activeTab === "comments"
-      ? "tab-comments"
-      : "tab-graph";
+      : "tab-comments";
 
   return (
     <div
       className={`fixed top-0 z-40 right-0 h-screen flex transition-[width] duration-200 ${
         expanded ? "w-96" : "w-16"
       }
-      overflow-visible py-4 backdrop-blur-xl shadow-2xl
-
+      overflow-visible backdrop-blur-xl shadow-2xl
       bg-white/85 text-gray-900 shadow-black/10
       dark:bg-black/90 dark:text-gray-200 dark:shadow-black/40
       `}
@@ -110,11 +83,10 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         aria-labelledby={labelledBy}
         className={`flex-1 h-full min-w-0 transition-opacity duration-150 ${
           expanded ? "opacity-100" : "opacity-0 pointer-events-none"
-        } overflow-y-auto overflow-x-visible [scrollbar-gutter:stable_both-edges]`}
+        } overflow-x-visible`}
         aria-hidden={!expanded}
-        ref={scrollRef}
       >
-        {isSearch && (
+        {activeTab === "search" && (
           <SearchPanel
             results={results}
             onSearch={onSearch}
@@ -127,27 +99,22 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
           />
         )}
 
-        {isFavorites && (
-          <div className="px-4 py-3">
-            <FavoritesPanel
-              favorites={favoriteIndices}
-              onSelectNode={onSelectNode}
-              onHoverResultCard={onHoverResultCard}
-              nodeNames={nodeNames}
-            />
-          </div>
+        {activeTab === "favorites" && (
+          <FavoritesPanel
+            favorites={favoriteIndices}
+            onSelectNode={onSelectNode}
+            onHoverResultCard={onHoverResultCard}
+            nodeNames={nodeNames}
+          />
         )}
 
-        {isComments && (
-          <div className="px-4 py-3">
-            <CommentsPanel
-              onSelectNode={onSelectNode}
-              onHoverResultCard={onHoverResultCard}
-              nodeNames={nodeNames}
-            />
-          </div>
+        {activeTab === "comments" && (
+          <CommentsPanel
+            onSelectNode={onSelectNode}
+            onHoverResultCard={onHoverResultCard}
+            nodeNames={nodeNames}
+          />
         )}
-
       </div>
     </div>
   );
