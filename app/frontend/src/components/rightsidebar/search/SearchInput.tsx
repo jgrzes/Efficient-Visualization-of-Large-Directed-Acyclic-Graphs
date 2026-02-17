@@ -30,15 +30,16 @@ export function SearchInput({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         className="
-          w-full rounded-md px-3 py-2 text-sm transition-all duration-200
-          focus:outline-none focus:ring-1
+          w-full rounded-md px-3 py-2 pr-8 text-sm transition-all duration-200
+          focus:outline-none focus:ring-2
 
-          bg-white text-gray-900 placeholder-gray-400
+          bg-white/80 text-gray-900 placeholder-gray-400
           border border-black/10
-          focus:ring-blue-500/40
+          focus:ring-blue-500/40 focus:border-blue-500/40
 
-          dark:bg-black dark:text-gray-200 dark:placeholder-gray-500
-          dark:border-gray-700 dark:focus:ring-gray-500
+          dark:bg-black/60 dark:text-gray-200 dark:placeholder-gray-500
+          dark:border-gray-700
+          dark:focus:ring-blue-400/40 dark:focus:border-blue-400/40
         "
       />
 
