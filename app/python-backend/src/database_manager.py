@@ -1,4 +1,6 @@
 from typing import List, Tuple, Dict, Any, Optional, Union
+
+import logging
 import pymongo
 from utils import VertexMetadataT
 import datetime
@@ -28,9 +30,10 @@ class MongoDatabaseManager:
     GRAPH_DATA_COLLECTION = "graph_data"
     GRAPH_GROUPS_COLLECTION = "graph_groups"
 
-    def __init__(self, db_uri: str, db_name: str):
+    def __init__(self, db_uri: str, db_name: str, logger: Optional[logging.Logger] = None):
         self.client_handle = pymongo.MongoClient(db_uri)
         self.db = self.client_handle[db_name]
+        self.logger = logger or logging.getLogger(__name__)
 
     def check_if_contains_graph_with_hash(self, graph_id: Union[ObjectId, str]) -> bool:
         return self.fetch_data(graph_id) is not None    
@@ -42,7 +45,6 @@ class MongoDatabaseManager:
         sought_graph_data = self.db[self.GRAPH_DATA_COLLECTION].find_one({
             "_id": graph_id
         })
-        # print(f"Sought graph data: {sought_graph_data}")
 
         return sought_graph_data
 
@@ -52,9 +54,7 @@ class MongoDatabaseManager:
         additional_config: Optional[Dict[str, Any]] = None
     ) -> str:
         n = len(E_adj_list)
-        print("Inserting new...")
-        # print(E_adj_list)
-        # print(vertices_metadata)
+        self.logger.info(f"Inserting new graph with name: {name}, num_of_vertices: {n}")
         result = self.db[self.GRAPH_DATA_COLLECTION].insert_one({
             "name": name, 
             "num_of_vertices": n, 
@@ -67,7 +67,8 @@ class MongoDatabaseManager:
             ]
         } | (additional_config if additional_config is not None else {}))
 
-        print(f"Database insertion resulted in {"success" if result.inserted_id else "failure"}")
+        status = "success" if result.inserted_id else "failure"
+        self.logger.info(f"Database insertion resulted in {status}")
         return str(result.inserted_id)
     
     def override_existing_entry(
@@ -79,7 +80,7 @@ class MongoDatabaseManager:
         if isinstance(graph_id, str):
             graph_id = self._convert_to_object_id(graph_id)
 
-        print("Overriding...")
+        self.logger.info(f"Overriding graph entry for graph_id={graph_id}")
         n = len(E_adj_list)
         self.db[self.GRAPH_DATA_COLLECTION].replace_one({"_id": graph_id} , {
             "name": name, 

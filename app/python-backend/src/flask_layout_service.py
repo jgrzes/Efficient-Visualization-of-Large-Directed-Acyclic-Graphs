@@ -27,7 +27,7 @@ def create_app() -> Flask:
 
     app.config["LOGGER"] = logger
     app.config["GRAPH_STORAGE"] = GraphDataStorage(logger=logger)
-    app.config["DB_MANAGER"] = MongoDatabaseManager(MONGODB_URI, MONGO_DB_NAME)
+    app.config["DB_MANAGER"] = MongoDatabaseManager(MONGODB_URI, MONGO_DB_NAME, logger=logger)
     app.config["LAYOUT_SERVICE_IP_ADDRESS"] = LAYOUT_SERVICE_IP_ADDRESS
     app.config["LAYOUT_SERVICE_PORT"] = LAYOUT_SERVICE_PORT
 

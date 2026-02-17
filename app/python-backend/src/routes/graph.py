@@ -164,7 +164,6 @@ def flask_make_graph_structure():
             coeff_y_denominator = max(coeff_y_denominator, abs(y))
             ceoff_x_denominator = max(ceoff_x_denominator, abs(x))
 
-        print("Space size: ", space_size)
         coeff_x = 8192 / ceoff_x_denominator if ceoff_x_denominator > 8192 else 1
         coeff_y = 8192 / coeff_y_denominator if coeff_y_denominator > 8192 else 1
         canvas_positions = [(x * coeff_x, y * coeff_y) for x, y in canvas_positions]
