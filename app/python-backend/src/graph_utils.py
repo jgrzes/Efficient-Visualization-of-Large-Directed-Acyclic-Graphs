@@ -48,11 +48,11 @@ def convert_to_json_parsable_representation(gt_value: Any) -> Any:
 def convert_obo_to_gt_grah(
     G_nx: nx.MultiDiGraph,
     allowed_relations: Optional[List[str]] = None,
-) -> Tuple[gt.Graph, Dict[str, list[tuple[str, gt.Vertex]]]]:
+) -> Tuple[gt.Graph, Dict[str, tuple[str, gt.Vertex]]]:
     """Convert a NetworkX MultiDiGraph (from obonet) into a graph-tool Graph."""
     G_gt = gt.Graph(directed=True)
     vertex_mapping: dict[str, gt.Vertex] = {}
-    roots: dict[str, list[tuple[str, gt.Vertex]]] = {}
+    roots: dict[str, tuple[str, gt.Vertex]] = {}
 
     id_prop = G_gt.new_vertex_property("string")
     name_prop = G_gt.new_vertex_property("string")
