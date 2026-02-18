@@ -45,8 +45,9 @@ def convert_to_json_parsable_representation(gt_value: Any) -> Any:
         return gt_value
 
 
-def convert_to_graph_tool_graph(
+def convert_obo_to_gt_grah(
     G_nx: nx.MultiDiGraph,
+    allowed_relations: Optional[List[str]] = None,
 ) -> Tuple[gt.Graph, Dict[str, list[tuple[str, gt.Vertex]]]]:
     """Convert a NetworkX MultiDiGraph (from obonet) into a graph-tool Graph."""
     G_gt = gt.Graph(directed=True)
@@ -71,7 +72,9 @@ def convert_to_graph_tool_graph(
         isa_prop[v] = data.get("is_a", [])
         vertex_mapping[node] = v
 
-    for source, dest in G_nx.edges():
+    for source, dest, key in G_nx.edges(keys=True):
+        if allowed_relations is not None and key not in allowed_relations:
+            continue
         # obonet edges are reversed
         G_gt.add_edge(vertex_mapping[dest], vertex_mapping[source])
 
@@ -82,7 +85,7 @@ def convert_to_graph_tool_graph(
     G_gt.vertex_properties["synonym"] = synonym_prop
     G_gt.vertex_properties["is_a"] = isa_prop
 
-    for _, v in vertex_mapping.items():
+    for v in G_gt.vertices():
         if v.in_degree() == 0:
             namespace = namespace_prop[v].lower()
             roots[namespace] = (id_prop[v], v)
@@ -100,7 +103,8 @@ def build_gt_graph_from_obo(
         tmp.flush()
         godag = GODag(tmp.name)  # useful for clustering and other analyses
 
-    G_gt, roots = convert_to_graph_tool_graph(obonet.read_obo(obo_file_wrapper))
+    G_gt, roots = convert_obo_to_gt_grah(obonet.read_obo(obo_file_wrapper), allowed_relations=["is_a"])  # we can consider other relations in the future if needed
+
     return G_gt, roots, godag
 
 
