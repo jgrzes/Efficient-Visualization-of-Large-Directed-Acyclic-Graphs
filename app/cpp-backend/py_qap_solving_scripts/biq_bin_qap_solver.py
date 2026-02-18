@@ -2,7 +2,6 @@ import os
 import subprocess
 import sys
 from collections import deque
-from contextlib import redirect_stdout
 from io import TextIOWrapper
 from typing import List, Tuple
 
@@ -25,7 +24,6 @@ except ImportError as e:
         primitve_try_qap_solve_with_borders_fixed,
     )
     from stack import Stack
-    print("Import error: ", e)
 
 
 def read_colour_hierarchy_from_file(
@@ -373,52 +371,50 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         raise Exception(f"No file with contents for qap specified")
 
+    console_stdout = sys.stdout
+
+    log_file_path = f"{os.path.dirname(os.path.abspath(__file__))}/python_logs/log_temp.txt"
+    if not os.path.exists(os.path.dirname(log_file_path)):
+        os.makedirs(os.path.dirname(log_file_path))
+
+    log_file = open(log_file_path, "w")
+    sys.stdout = log_file
+
     input_problem_file_path = sys.argv[1]
 
-    log_dir = f"{os.path.dirname(os.path.abspath(__file__))}/python_logs"
-    os.makedirs(log_dir, exist_ok=True)
-    log_path = f"{os.path.dirname(os.path.abspath(__file__))}/python_logs/log_temp.txt"
-
-    try:
-        with open(log_path, "w") as log_file:
-            redirect_stdout(log_file)
-
-        with open(input_problem_file_path, "r") as input_problem_file:
-            print(input_problem_file.read())
-
-            colour_hierarchy_root, max_colour_index = read_colour_hierarchy_from_file(
-                input_problem_file
-            )
-            F_matrix, row_count, col_count = build_F_matrix(input_problem_file)
-            if row_count != col_count:
-                raise RuntimeError(
-                    f"Matrix must be sqaure not of shape ({row_count}, {col_count})"
-                )
-
-            colour_remapping = [i for i in range(max_colour_index + 1)]
-
-            biq_bin_source_filepath = (
-                f"{input_problem_file_path.split('.')[0]}_biq_bin_input.txt"
-            )
-            max_cut_transformation_filepath = (
-                f"{input_problem_file_path.split('.')[0]}_max_cut_transformation.txt"
+    with open(input_problem_file_path, "r") as input_problem_file:
+        colour_hierarchy_root, max_colour_index = read_colour_hierarchy_from_file(
+            input_problem_file
+        )
+        F_matrix, row_count, col_count = build_F_matrix(input_problem_file)
+        if row_count != col_count:
+            raise RuntimeError(
+                f"Matrix must be sqaure not of shape ({row_count}, {col_count})"
             )
 
-            fill_colour_remapping_by_performing_qap(
-                colour_remapping,
-                colour_hierarchy_root,
-                F_matrix,
-                biq_bin_source_filepath,
-                max_cut_transformation_filepath,
-            )
+    colour_remapping = [i for i in range(max_colour_index + 1)]
 
-            for p in (biq_bin_source_filepath, max_cut_transformation_filepath):
-                try:
-                    os.remove(p)
-                except FileNotFoundError:
-                    pass
-    except Exception as e:
-        print("Exception occured: ", e)
+    biq_bin_source_filepath = (
+        f"{input_problem_file_path.split('.')[0]}_biq_bin_input.txt"
+    )
+    max_cut_transformation_filepath = (
+        f"{input_problem_file_path.split('.')[0]}_max_cut_transformation.txt"
+    )
+
+    fill_colour_remapping_by_performing_qap(
+        colour_remapping,
+        colour_hierarchy_root,
+        F_matrix,
+        biq_bin_source_filepath,
+        max_cut_transformation_filepath,
+    )
+
+    for file_path in [biq_bin_source_filepath, max_cut_transformation_filepath]:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    log_file.close()
+    sys.stdout = console_stdout
 
     for i, v in enumerate(colour_remapping):
         print(f"{i}>{v}")
