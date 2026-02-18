@@ -224,3 +224,8 @@ data/
 *.bak
 *.swp
 Thumbs.db
+
+# ==================
+# LOGS
+# ==================
+app/cpp-backend/py_qap_solving_scripts/python_logs/

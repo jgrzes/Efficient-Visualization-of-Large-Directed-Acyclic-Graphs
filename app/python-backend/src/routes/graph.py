@@ -479,6 +479,59 @@ def load_graph_from_json():
     )
 
 
+@graph_bp.route("/recompute_layout/<string:graph_uuid>", methods=["POST"])
+def recompute_layout(graph_uuid: str):
+    logger = get_logger()
+    storage = get_graph_storage()
+    layout_host, layout_port = get_layout_service_config()
+
+    try:
+        graph_data = storage.get_graph_data_for_id(graph_uuid)
+    except RuntimeError:
+        return jsonify({"error": "Graph not found"}), 404
+
+    try:
+        data = request.get_json(force=True) or {}
+    except Exception:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    layout_type = data.get("layout_type", "cpp")
+    if layout_type not in {"cpp", "radial"}:
+        return jsonify({"error": "Unsupported layout_type"}), 400
+
+    G_gt = graph_data.get("graph")
+    if G_gt is None:
+        return jsonify({"error": "Graph not available in session"}), 500
+
+    canvas_positions = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
+    canvas_positions, space_size = _normalize_canvas_positions(canvas_positions)
+
+    (
+        transformed_canvas_positions,
+        links,
+    ) = build_response_json_string_for_make_graph_structure_req(
+        G_gt=G_gt, canvas_positions=canvas_positions
+    )
+
+    graph_data["layout"] = transformed_canvas_positions
+    graph_data["space_size"] = int(space_size * 1.2)
+
+    names = extract_vertex_names(G_gt)
+
+    return (
+        jsonify(
+            {
+                "uuid": graph_uuid,
+                "canvas_positions": transformed_canvas_positions,
+                "links": links,
+                "names": names,
+                "space_size": space_size,
+            }
+        ),
+        200,
+    )
+
+
 @graph_bp.route("/update_graph_config/<string:graph_hash>", methods=["POST"])
 def update_graph_config(graph_hash: str):
     logger = get_logger()
