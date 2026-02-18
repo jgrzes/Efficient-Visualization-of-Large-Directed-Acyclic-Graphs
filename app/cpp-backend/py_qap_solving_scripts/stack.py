@@ -1,5 +1,6 @@
 from typing import Any, List, TypeVar
 
+
 class Stack:
     def __init__(self):
         self.stack: List[Any] = []
@@ -17,4 +18,4 @@ class Stack:
         self.stack = []
 
     def is_empty(self) -> bool:
-        return len(self.stack) > 0          
+        return len(self.stack) > 0
