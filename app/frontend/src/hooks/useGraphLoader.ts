@@ -12,9 +12,11 @@ import {
   loadGraphByHash,
   loadGraphFromJson,
   makeGraphStructure,
+  recomputeLayout as recomputeLayoutApi,
   saveGraphToDb,
   exportGraph,
   analyzeGraph,
+  type LayoutType,
   type LoadedGraph,
   type SaveGraphBody,
 } from "../graph/api/graphs";
@@ -341,7 +343,7 @@ export function useGraphLoader(params: {
     });
   }, []);
 
-  const loadJsonGraph = React.useCallback(async (file: File, layoutType: "cpp" | "radial") => {
+  const loadJsonGraph = React.useCallback(async (file: File, layoutType: LayoutType) => {
     setLoading(true);
     try {
       const data = await loadGraphFromJson(file, layoutType);
@@ -354,7 +356,7 @@ export function useGraphLoader(params: {
   }, []);
 
   const uploadFileWithNamespace = React.useCallback(
-    async (file: File, namespace: string, layoutType: "cpp" | "radial") => {
+    async (file: File, namespace: string, layoutType: LayoutType) => {
       setLoading(true);
       try {
         const data = await makeGraphStructure(file, namespace, layoutType);
@@ -366,6 +368,30 @@ export function useGraphLoader(params: {
       }
     },
     []
+  );
+
+  const recomputeCurrentLayout = React.useCallback(
+    async (layoutType: LayoutType) => {
+      if (!currentGraphUUID) {
+        throw new Error("No graph loaded, cannot change layout.");
+      }
+
+      setLoading(true);
+      try {
+        const data = await recomputeLayoutApi(currentGraphUUID, layoutType);
+        setPointPositions(new Float32Array(data.canvas_positions));
+        setInitialLayout(new Float32Array(data.canvas_positions));
+        setLinks(new Float32Array(data.links));
+        setSelectedNode(null);
+        if (Array.isArray(data.names)) setNodeNames(data.names);
+        setTimeout(() => fitView(), 100);
+      } catch (e) {
+        throw new Error(errMessage(e, "Failed to recompute layout."));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentGraphUUID, fitView, setInitialLayout, setLinks, setNodeNames, setPointPositions, setSelectedNode]
   );
 
   // export / analyze
@@ -445,6 +471,7 @@ export function useGraphLoader(params: {
     jsonHasLayout,
     loadJsonGraph,
     uploadFileWithNamespace,
+    recomputeCurrentLayout,
 
     // export/analyze
     handleExport,

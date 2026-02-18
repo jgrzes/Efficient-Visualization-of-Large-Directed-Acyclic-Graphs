@@ -27,6 +27,7 @@ import { useGraph } from "./hooks/useGraph";
 import { useSearch } from "./hooks/useSearch";
 import { useGraphSync } from "./hooks/useGraphSync";
 import { useGraphLoader } from "./hooks/useGraphLoader";
+import type { LayoutType } from "./graph/api/graphs";
 
 import AppToastModal from "./components/modals/AppToastModal";
 import { useAppToast } from "./hooks/useAppToast";
@@ -69,7 +70,8 @@ export default function MainApp() {
   const [showLayoutModal, setShowLayoutModal] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingExt, setPendingExt] = useState<"obo" | "txt" | "json" | null>(null);
-  const [selectedLayoutType, setSelectedLayoutType] = useState<"cpp" | "radial">("cpp");
+  const [selectedLayoutType, setSelectedLayoutType] = useState<LayoutType>("cpp");
+  const [layoutModalMode, setLayoutModalMode] = useState<"upload" | "recompute" | null>(null);
 
   // modals
   const [loadSourceModalOpen, setLoadSourceModalOpen] = useState(false);
@@ -192,6 +194,7 @@ export default function MainApp() {
     if (ext === "obo" || ext === "txt") {
       setPendingFile(file);
       setPendingExt(ext as "obo" | "txt");
+      setLayoutModalMode("upload");
       setShowLayoutModal(true);
       return;
     }
@@ -207,6 +210,7 @@ export default function MainApp() {
       } else {
         setPendingFile(file);
         setPendingExt("json");
+        setLayoutModalMode("upload");
         setShowLayoutModal(true);
       }
       return;
@@ -215,14 +219,25 @@ export default function MainApp() {
     toast.showError(`Unhandled file format: .${ext ?? "unknown"}`, "Unsupported file");
   };
 
-  const handleLayoutConfirm = (layoutType: "cpp" | "radial") => {
+  const handleLayoutConfirm = (layoutType: LayoutType) => {
+    if (layoutModalMode === "recompute") {
+      setShowLayoutModal(false);
+      setLayoutModalMode(null);
+      void loader.recomputeCurrentLayout(layoutType).catch((e) => {
+        toast.showError(e instanceof Error ? e.message : "Layout recompute failed");
+      });
+      return;
+    }
+
     if (!pendingFile || !pendingExt) {
       setShowLayoutModal(false);
+      setLayoutModalMode(null);
       return;
     }
 
     setSelectedLayoutType(layoutType);
     setShowLayoutModal(false);
+    setLayoutModalMode(null);
 
     if (pendingExt === "json") {
       void loader.loadJsonGraph(pendingFile, layoutType);
@@ -233,6 +248,16 @@ export default function MainApp() {
 
     setSelectedFile(pendingFile);
     setShowOntologyOptions(true);
+  };
+
+  const handleChangeLayoutClick = () => {
+    if (!currentGraphUUID) {
+      toast.showError("Load a graph first to change its layout.", "No graph loaded");
+      return;
+    }
+
+    setLayoutModalMode("recompute");
+    setShowLayoutModal(true);
   };
 
   const uploadFileWithNamespace = async (namespace: string) => {
@@ -307,6 +332,7 @@ export default function MainApp() {
           setSaveModalOpen(true);
           loader.fetchGroups();
         }}
+        handleChangeLayoutClick={handleChangeLayoutClick}
         handleOpenSettings={handleOpenSettings}
         selectedNode={selectedNode}
       />
@@ -323,6 +349,7 @@ export default function MainApp() {
         open={showLayoutModal}
         onCancel={() => {
           setShowLayoutModal(false);
+          setLayoutModalMode(null);
           setPendingFile(null);
           setPendingExt(null);
           if (fileInputRef.current) fileInputRef.current.value = "";

@@ -1,6 +1,8 @@
 import { API_BASE, fetchJson } from "./base";
 import type { CommentItem } from "../../hooks/useComments";
 
+export type LayoutType = "cpp" | "radial";
+
 export type LoadedGraph = {
   graph_hash?: string;
   uuid: string;
@@ -28,7 +30,7 @@ export async function analyzeGraph(uuid: string | null) {
   return fetchJson<any>(`${API_BASE}/analyze_graph/${uuid}`, { method: "POST" });
 }
 
-export async function loadGraphFromJson(file: File, layoutType: "cpp" | "radial") {
+export async function loadGraphFromJson(file: File, layoutType: LayoutType) {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("layout_type", layoutType);
@@ -42,7 +44,7 @@ export async function loadGraphFromJson(file: File, layoutType: "cpp" | "radial"
 export async function makeGraphStructure(
   file: File,
   rootNamespace: string,
-  layoutType: "cpp" | "radial"
+  layoutType: LayoutType
 ) {
   const formData = new FormData();
   formData.append("file", file);
@@ -52,6 +54,14 @@ export async function makeGraphStructure(
   return fetchJson<LoadedGraph>(`${API_BASE}/flask_make_graph_structure`, {
     method: "POST",
     body: formData,
+  });
+}
+
+export async function recomputeLayout(graphUuid: string, layoutType: LayoutType) {
+  return fetchJson<LoadedGraph>(`${API_BASE}/recompute_layout/${graphUuid}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ layout_type: layoutType }),
   });
 }
 
