@@ -86,7 +86,7 @@ export default function MainApp() {
   const comments = useComments();
 
   // Graph engine
-  const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover } =
+  const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover, startDragFromTooltip } =
     useGraph(graphRef, pointPositions, links, setSelectedNode, graphConfig, nodeNames || undefined);
 
   // Right sidebar state
@@ -297,8 +297,16 @@ export default function MainApp() {
       <div ref={canvasRef} className="grow" />
 
       <div ref={graphRef} id="graph" className="relative grow">
-        {tooltips.map((t) => (
-          <ToolTip key={t.index} visible={true} x={t.x} y={t.y} content={<strong>{t.content}</strong>} />
+        {tooltips.map((tt) => (
+          <ToolTip
+            key={tt.index}
+            visible
+            x={tt.x}
+            y={tt.y}
+            content={tt.content}
+            onPointerDown={(e) => startDragFromTooltip(tt.index, e)}
+            onClick={() => selectNodeByIndex(tt.index, {zoom: false})}
+          />
         ))}
 
         {hoverTooltip && (
