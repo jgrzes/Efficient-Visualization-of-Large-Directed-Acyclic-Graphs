@@ -5,15 +5,17 @@ interface ToolTipProps {
   x: number;
   y: number;
   content?: React.ReactNode;
+  onPointerDown?: React.PointerEventHandler<HTMLDivElement>;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
 }
 
-const ToolTip: React.FC<ToolTipProps> = ({ visible, x, y, content }) => {
+const ToolTip: React.FC<ToolTipProps> = ({ visible, x, y, content, onPointerDown, onClick }) => {
   if (!visible || !content) return null;
 
   return (
     <div
       className="
-        absolute pointer-events-none
+        absolute
         z-10
         px-3 py-2
         text-sm font-medium
@@ -33,12 +35,48 @@ const ToolTip: React.FC<ToolTipProps> = ({ visible, x, y, content }) => {
         bg-linear-to-br
         from-white/90 to-slate-100/75
         dark:from-black/70 dark:to-black/40
+        cursor-pointer active:cursor-grabbing
       "
       style={{
         left: x,
         top: y,
       }}
       role="tooltip"
+
+      // Pointer events: 
+      // we want to allow interaction with the tooltip (e.g. dragging), 
+      // but also allow wheel events to pass through for zooming. 
+      // We use pointer events for dragging, and stop propagation of wheel events while allowing them to pass through.
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        (e.currentTarget as HTMLDivElement).setPointerCapture?.(e.pointerId);
+        onPointerDown?.(e);
+      }}
+
+      // Forward wheel events to canvas for zooming while tooltip is open
+      onWheel={(e) => {
+        e.stopPropagation();
+        const canvas = document.querySelector("canvas");
+        if (!canvas) return;
+
+        const ev = new WheelEvent("wheel", {
+          bubbles: true,
+          cancelable: true,
+          deltaX: e.deltaX,
+          deltaY: e.deltaY,
+          deltaMode: e.deltaMode,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        });
+
+        canvas.dispatchEvent(ev);
+      }}
+
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.(e);
+      }}
     >
       {content}
     </div>

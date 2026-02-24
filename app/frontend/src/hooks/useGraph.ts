@@ -1,11 +1,11 @@
 import {
   Dispatch,
   SetStateAction,
+  useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
-  useContext,
-  useCallback,
 } from "react";
 import { Graph, GraphConfigInterface } from "@cosmograph/cosmos";
 import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
@@ -36,47 +36,33 @@ export function useGraph(
   initialConfig?: UseGraphInitialConfig,
   names?: string[]
 ) {
+  /* -------------------------------------------------------------------------- */
+  /* Core refs and state                                                        */
+  /* -------------------------------------------------------------------------- */
+
   const graphInstance = useRef<Graph | null>(null);
   const linksRef = useRef<Float32Array>(links);
 
-  // Currently selected index
   const selectedIndexRef = useRef<number | null>(null);
-
-  // Currently highlighted indices (for selection tooltips)
-  // (selected + parents + children)
   const highlightedIndicesRef = useRef<number[]>([]);
-
-  // Cache index -> name
-  const namesCacheRef = useRef<Map<number, string>>(new Map());
-
-  // Tooltips state (selection + relationships)
-  const [tooltips, setTooltips] = useState<NodeTooltip[]>([]);
-
-  // Hover tooltip for point under mouse
-  const [hoverTooltip, setHoverTooltip] = useState<NodeTooltip | null>(null);
   const hoverIndexRef = useRef<number | null>(null);
 
-  // Highlight token cancellation
+  const namesCacheRef = useRef<Map<number, string>>(new Map());
+
+  const [tooltips, setTooltips] = useState<NodeTooltip[]>([]);
+  const [hoverTooltip, setHoverTooltip] = useState<NodeTooltip | null>(null);
+
   const highlightTokenRef = useRef(0);
-
-  // Searched vertices
   const searchIndicesRef = useRef<Set<number>>(new Set());
-
-  // Are we currently dragging a vertex
-  const isDraggingRef = useRef(false);
-
-  // Node hoverowany z result card
   const hoveredCardIndexRef = useRef<number | null>(null);
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext?.currentGraphUUID;
   const currentGraphUUIDRef = useRef<string | null>(currentGraphUUID ?? null);
 
-  // IMPORTANT: colorsRef MUST always be defined → no fallbacks later
   const colorsRef = useRef<GraphColors>(
     initialConfig?.colors ?? DEFAULT_GRAPH_COLORS
   );
-
   const sizeRef = useRef<number>(initialConfig?.pointSize ?? 1);
 
   const getName = useCallback(
@@ -84,14 +70,29 @@ export function useGraph(
     []
   );
 
-  // Helper: does this node already have a pinned tooltip?
   const hasPinnedTooltip = useCallback((index: number) => {
     return highlightedIndicesRef.current.includes(index);
   }, []);
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Effects: sync refs
-  // ───────────────────────────────────────────────────────────────────────────
+  /* -------------------------------------------------------------------------- */
+  /* Tooltip -> Cosmos native drag bridge state                                 */
+  /* -------------------------------------------------------------------------- */
+
+  const tooltipDragActiveRef = useRef(false);
+  const tooltipDragCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Handshake: wait until Cosmos confirms hover over the target point
+  const bridgeTargetIndexRef = useRef<number | null>(null);
+  const bridgeHoverOkRef = useRef(false);
+  const bridgeDragStartedRef = useRef(false);
+
+  // Throttle tooltip DOM updates during native drag
+  const dragTooltipRafRef = useRef<number | null>(null);
+
+  /* -------------------------------------------------------------------------- */
+  /* Ref synchronization                                                        */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     colorsRef.current = initialConfig?.colors ?? DEFAULT_GRAPH_COLORS;
   }, [initialConfig?.colors]);
@@ -102,16 +103,59 @@ export function useGraph(
 
   useEffect(() => {
     currentGraphUUIDRef.current = currentGraphUUID ?? null;
-    console.log("useGraph sees new graph uuid:", currentGraphUUIDRef.current);
   }, [currentGraphUUID]);
 
   useEffect(() => {
     linksRef.current = links;
   }, [links]);
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Tooltip recomputation for selection tooltips
-  // ───────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const cache = namesCacheRef.current;
+    cache.clear();
+    if (names?.length) names.forEach((name, idx) => cache.set(idx, name));
+  }, [names]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Helpers                                                                    */
+  /* -------------------------------------------------------------------------- */
+
+  const findCanvasEl = useCallback((): HTMLCanvasElement | null => {
+    const a = graphRef.current?.querySelector("canvas") as HTMLCanvasElement | null;
+    if (a) return a;
+
+    const parent = graphRef.current?.parentElement;
+    const b = parent?.querySelector("canvas") as HTMLCanvasElement | null;
+    if (b) return b;
+
+    return document.querySelector("canvas");
+  }, [graphRef]);
+
+  const dispatchCanvasMouseEvent = useCallback(
+    (
+      canvas: HTMLCanvasElement,
+      type: "mousemove" | "mousedown" | "mouseup",
+      args: {
+        clientX: number;
+        clientY: number;
+        button?: number;
+        buttons?: number;
+      }
+    ) => {
+      const ev = new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: args.clientX,
+        clientY: args.clientY,
+        button: args.button ?? 0,
+        buttons: args.buttons ?? 0,
+      });
+
+      canvas.dispatchEvent(ev);
+    },
+    []
+  );
+
   const recomputeTooltipsPositions = useCallback(() => {
     const g = graphInstance.current;
     const el = graphRef.current;
@@ -126,31 +170,14 @@ export function useGraph(
     );
   }, [graphRef, getName]);
 
-  useEffect(() => {
-    const cache = namesCacheRef.current;
-    cache.clear();
+  const requestTooltipsRecompute = useCallback(() => {
+    if (dragTooltipRafRef.current != null) return;
+    dragTooltipRafRef.current = window.requestAnimationFrame(() => {
+      dragTooltipRafRef.current = null;
+      recomputeTooltipsPositions();
+    });
+  }, [recomputeTooltipsPositions]);
 
-    if (names?.length) {
-      names.forEach((name, idx) => {
-        cache.set(idx, name);
-      });
-    }
-
-    recomputeTooltipsPositions();
-  }, [names, recomputeTooltipsPositions]);
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // Graph view controls
-  // ───────────────────────────────────────────────────────────────────────────
-  const fitView = useCallback(() => {
-    const g = graphInstance.current;
-    g?.fitView();
-    g?.render();
-  }, []);
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // Hover tooltip position
-  // ───────────────────────────────────────────────────────────────────────────
   const updateHoverTooltipPosition = useCallback(
     (index: number, pointPos?: [number, number]) => {
       const g = graphInstance.current;
@@ -165,9 +192,21 @@ export function useGraph(
     [graphRef, getName]
   );
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Coloring logic
-  // ───────────────────────────────────────────────────────────────────────────
+  /* -------------------------------------------------------------------------- */
+  /* Graph view controls                                                        */
+  /* -------------------------------------------------------------------------- */
+
+  const fitView = useCallback(() => {
+    const g = graphInstance.current;
+    g?.fitView();
+    g?.render();
+    recomputeTooltipsPositions();
+  }, [recomputeTooltipsPositions]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Coloring logic                                                             */
+  /* -------------------------------------------------------------------------- */
+
   const applyColors = useCallback(
     async (
       selectedIndices: number[],
@@ -178,7 +217,6 @@ export function useGraph(
       const g = graphInstance.current;
       if (!g) return;
 
-      // apply colors & compute pinned/highlighted indices
       highlightedIndicesRef.current = applyGraphColors({
         g,
         links: linksRef.current,
@@ -191,7 +229,6 @@ export function useGraph(
         hoveredCardIndex: hoveredCardIndexRef.current,
       });
 
-      // If hoverTooltip is currently on a node that became pinned, hide it
       const hoverIdx = hoverIndexRef.current;
       if (hoverIdx != null && highlightedIndicesRef.current.includes(hoverIdx)) {
         hoverIndexRef.current = null;
@@ -248,9 +285,10 @@ export function useGraph(
     applyColors,
   ]);
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Node selection
-  // ───────────────────────────────────────────────────────────────────────────
+  /* -------------------------------------------------------------------------- */
+  /* Node selection                                                             */
+  /* -------------------------------------------------------------------------- */
+
   const clearSelection = useCallback(() => {
     setSelectedNode(null);
     selectedIndexRef.current = null;
@@ -295,6 +333,7 @@ export function useGraph(
           [index],
           linksRef.current
         );
+
         await applyColors([index], parents, children, { zoomToSelected: zoom });
       } catch (err) {
         console.error("Node fetch error:", err);
@@ -303,15 +342,13 @@ export function useGraph(
     [applyColors, clearSelection, setSelectedNode]
   );
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Hover highlight from result card
-  // ───────────────────────────────────────────────────────────────────────────
   const highlightResultHover = useCallback(
     async (index?: number) => {
       hoveredCardIndexRef.current = index ?? null;
 
       const selectedIndex = selectedIndexRef.current;
       const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
+
       const { parents, children } = computeParentsChildren(
         selectedIndices,
         linksRef.current
@@ -324,9 +361,206 @@ export function useGraph(
     [applyColors]
   );
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Graph init & cleanup (ONCE)
-  // ───────────────────────────────────────────────────────────────────────────
+  const highlightSearchResults = useCallback(
+    async (indices: number[]) => {
+      searchIndicesRef.current = new Set(indices);
+
+      const selectedIndex = selectedIndexRef.current;
+      const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
+
+      const { parents, children } = computeParentsChildren(
+        selectedIndices,
+        linksRef.current
+      );
+
+      await applyColors(selectedIndices, parents, children, {
+        zoomToSelected: false,
+      });
+    },
+    [applyColors]
+  );
+
+ /* -------------------------------------------------------------------------- */
+/* Tooltip -> Cosmos native drag bridge (start on 2-3px move)                  */
+/* -------------------------------------------------------------------------- */
+
+  // How far the pointer must move before we start the drag (px)
+  const DRAG_START_THRESHOLD_PX = 3;
+  const DRAG_START_THRESHOLD_PX2 = DRAG_START_THRESHOLD_PX * DRAG_START_THRESHOLD_PX;
+
+  // For threshold and stable mouseup
+  const bridgeStartClientRef = useRef<[number, number] | null>(null);
+  const bridgeLastClientRef = useRef<[number, number] | null>(null);
+  const bridgeMovedRef = useRef(false);
+
+
+  // Node screen position at start (client coords)
+  const bridgeNodeClientRef = useRef<[number, number] | null>(null);
+
+  const clearBridgeState = useCallback(() => {
+    tooltipDragActiveRef.current = false;
+    tooltipDragCanvasRef.current = null;
+
+    bridgeTargetIndexRef.current = null;
+
+    bridgeStartClientRef.current = null;
+    bridgeLastClientRef.current = null;
+    bridgeMovedRef.current = false;
+
+    bridgeDragStartedRef.current = false;
+    bridgeNodeClientRef.current = null;
+  }, []);
+
+  const startDragFromTooltip = useCallback(
+    (index: number, e: React.PointerEvent) => {
+      const g = graphInstance.current;
+      const canvas = findCanvasEl();
+      if (!g || !canvas) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Ensure we keep receiving pointer events even if cursor leaves tooltip
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+
+      tooltipDragActiveRef.current = true;
+      tooltipDragCanvasRef.current = canvas;
+
+      bridgeTargetIndexRef.current = index;
+      bridgeDragStartedRef.current = false;
+      bridgeMovedRef.current = false;
+
+      bridgeStartClientRef.current = [e.clientX, e.clientY];
+      bridgeLastClientRef.current = [e.clientX, e.clientY];
+
+      // Precompute node client coords (where we will "press" to start native drag)
+      const positions = g.getPointPositions();
+      const i = index * 2;
+      if (i + 1 >= positions.length) {
+        clearBridgeState();
+        return;
+      }
+
+      const [nodeLocalX, nodeLocalY] = g.spaceToScreenPosition([
+        positions[i],
+        positions[i + 1],
+      ]);
+
+      const rect = canvas.getBoundingClientRect();
+      bridgeNodeClientRef.current = [rect.left + nodeLocalX, rect.top + nodeLocalY];
+
+      // Prime hover detection a bit (no waiting). This increases odds that the first
+      // "real" drag start will attach to the node instead of panning background.
+      const [nx, ny] = bridgeNodeClientRef.current;
+      dispatchCanvasMouseEvent(canvas, "mousemove", { clientX: nx, clientY: ny, buttons: 0 });
+      dispatchCanvasMouseEvent(canvas, "mousemove", { clientX: nx, clientY: ny, buttons: 0 });
+    },
+    [clearBridgeState, dispatchCanvasMouseEvent, findCanvasEl]
+  );
+
+  useEffect(() => {
+    const startNativeDragIfNeeded = (canvas: HTMLCanvasElement) => {
+      if (bridgeDragStartedRef.current) return;
+
+      const nodeClient = bridgeNodeClientRef.current;
+      if (!nodeClient) return;
+
+      const [nx, ny] = nodeClient;
+
+      // Stronger hover priming right before mousedown
+      // (Cosmos hover detection may run only every few frames)
+      for (let k = 0; k < 3; k++) {
+        dispatchCanvasMouseEvent(canvas, "mousemove", { clientX: nx, clientY: ny, buttons: 0 });
+      }
+
+      // Start native drag on the node position
+      dispatchCanvasMouseEvent(canvas, "mousedown", {
+        clientX: nx,
+        clientY: ny,
+        button: 0,
+        buttons: 1,
+      });
+
+      bridgeDragStartedRef.current = true;
+    };
+
+    const onMove = (ev: PointerEvent) => {
+      if (!tooltipDragActiveRef.current) return;
+      const canvas = tooltipDragCanvasRef.current;
+      if (!canvas) return;
+
+      bridgeLastClientRef.current = [ev.clientX, ev.clientY];
+
+      // If we have not started native drag yet, wait until user moves enough
+      if (!bridgeDragStartedRef.current) {
+        const start = bridgeStartClientRef.current;
+        if (!start) return;
+
+        const dx = ev.clientX - start[0];
+        const dy = ev.clientY - start[1];
+        if (dx * dx + dy * dy < DRAG_START_THRESHOLD_PX2) {
+          return; // still a click, not a drag
+        }
+
+        bridgeMovedRef.current = true;
+        startNativeDragIfNeeded(canvas);
+      }
+
+      // Forward move as "drag move" (buttons: 1)
+      dispatchCanvasMouseEvent(canvas, "mousemove", {
+        clientX: ev.clientX,
+        clientY: ev.clientY,
+        buttons: 1,
+      });
+
+      requestTooltipsRecompute();
+    };
+
+    const onUp = (ev: PointerEvent) => {
+      if (!tooltipDragActiveRef.current) return;
+      const canvas = tooltipDragCanvasRef.current;
+
+      // If drag never started (user just clicked), do not send mouseup.
+      // This avoids accidental pan / snap behaviors.
+      if (canvas && bridgeDragStartedRef.current) {
+        const release = bridgeLastClientRef.current ?? [ev.clientX, ev.clientY];
+        const [x, y] = release;
+
+        // Reset internal state first
+        dispatchCanvasMouseEvent(canvas, "mousemove", { clientX: x, clientY: y, buttons: 0 });
+
+        // End native drag
+        dispatchCanvasMouseEvent(canvas, "mouseup", {
+          clientX: x,
+          clientY: y,
+          button: 0,
+          buttons: 0,
+        });
+      }
+
+      clearBridgeState();
+      recomputeTooltipsPositions();
+    };
+
+    window.addEventListener("pointermove", onMove, { passive: true, capture: true });
+    window.addEventListener("pointerup", onUp, { passive: true, capture: true });
+    window.addEventListener("pointercancel", onUp, { passive: true, capture: true });
+
+    return () => {
+      window.removeEventListener("pointermove", onMove, { capture: true } as any);
+      window.removeEventListener("pointerup", onUp, { capture: true } as any);
+      window.removeEventListener("pointercancel", onUp, { capture: true } as any);
+
+      if (dragTooltipRafRef.current != null) {
+        cancelAnimationFrame(dragTooltipRafRef.current);
+        dragTooltipRafRef.current = null;
+      }
+    };
+  }, [clearBridgeState, dispatchCanvasMouseEvent, recomputeTooltipsPositions, requestTooltipsRecompute]);
+  /* -------------------------------------------------------------------------- */
+  /* Graph initialization                                                       */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     if (!graphRef.current) return;
 
@@ -341,22 +575,29 @@ export function useGraph(
       curvedLinks: false,
       renderHoveredPointRing: false,
       enableDrag: true,
+      enableZoom: true,
       simulationLinkSpring: 0,
       simulationRepulsion: 0,
       simulationGravity: 0,
       simulationDecay: 0,
 
-      // CLICK ON NODE: select but DO NOT zoom
       onClick: (index) => {
         if (index === null || index === undefined) selectNodeByIndex(undefined);
         else selectNodeByIndex(index, { zoom: false });
       },
 
-      // Hover tooltip – allowed during drag
       onPointMouseOver: (index, pointPos) => {
+        // Hover confirmation for tooltip-drag handshake
+        if (bridgeTargetIndexRef.current != null && index === bridgeTargetIndexRef.current) {
+          bridgeHoverOkRef.current = true;
+        }
+
         const g = graphInstance.current;
         const el = graphRef.current;
         if (!g || !el) return;
+
+        // Ignore hover UI updates while tooltip drag is active
+        if (tooltipDragActiveRef.current) return;
 
         if (index == null || !pointPos) {
           hoverIndexRef.current = null;
@@ -364,7 +605,6 @@ export function useGraph(
           return;
         }
 
-        // If this node already has a pinned tooltip, don't show hover tooltip
         if (hasPinnedTooltip(index)) {
           hoverIndexRef.current = null;
           setHoverTooltip(null);
@@ -382,15 +622,15 @@ export function useGraph(
         setHoverTooltip(null);
       },
 
-      // Tooltips recompute on zoom
       onZoom: () => recomputeTooltipsPositions(),
       onZoomEnd: () => recomputeTooltipsPositions(),
 
-      // Drag: keep ALL tooltips attached to their nodes
-      onDrag: () => {
-        isDraggingRef.current = true;
+      onDragStart: () => {
+        bridgeDragStartedRef.current = true;
+      },
 
-        recomputeTooltipsPositions();
+      onDrag: () => {
+        requestTooltipsRecompute();
 
         const hoverIdx = hoverIndexRef.current;
         if (hoverIdx == null) return;
@@ -405,7 +645,6 @@ export function useGraph(
       },
 
       onDragEnd: () => {
-        isDraggingRef.current = false;
         recomputeTooltipsPositions();
       },
     };
@@ -418,11 +657,13 @@ export function useGraph(
       graphInstance.current?.destroy?.();
       graphInstance.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // init only once
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Live config updates: pointSize + backgroundColor
-  // ───────────────────────────────────────────────────────────────────────────
+  /* -------------------------------------------------------------------------- */
+  /* Live config updates                                                        */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     const g = graphInstance.current;
     if (!g) return;
@@ -430,14 +671,16 @@ export function useGraph(
     g.setConfig({
       pointSize: initialConfig?.pointSize ?? 1,
       backgroundColor: colorsRef.current.background,
+      enableZoom: true,
     });
 
     g.render();
   }, [initialConfig?.pointSize, initialConfig?.colors?.background]);
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Update graph data when positions / links change
-  // ───────────────────────────────────────────────────────────────────────────
+  /* -------------------------------------------------------------------------- */
+  /* Data updates                                                               */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     const g = graphInstance.current;
     if (!g || !pointPositions || !links) return;
@@ -457,26 +700,6 @@ export function useGraph(
     void applyColors(selectedIndices, parents, children, { zoomToSelected: false });
   }, [pointPositions, links, applyColors]);
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Highlight search results
-  // ───────────────────────────────────────────────────────────────────────────
-  const highlightSearchResults = useCallback(
-    async (indices: number[]) => {
-      searchIndicesRef.current = new Set(indices);
-
-      const selectedIndex = selectedIndexRef.current;
-      const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
-
-      const { parents, children } = computeParentsChildren(
-        selectedIndices,
-        linksRef.current
-      );
-
-      await applyColors(selectedIndices, parents, children, { zoomToSelected: false });
-    },
-    [applyColors]
-  );
-
   return {
     fitView,
     selectNodeByIndex,
@@ -484,5 +707,6 @@ export function useGraph(
     hoverTooltip,
     highlightSearchResults,
     highlightResultHover,
+    startDragFromTooltip,
   };
 }
