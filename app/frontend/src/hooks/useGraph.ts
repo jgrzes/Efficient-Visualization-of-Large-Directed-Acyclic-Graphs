@@ -34,7 +34,8 @@ export function useGraph(
   links: Float32Array,
   setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>,
   initialConfig?: UseGraphInitialConfig,
-  names?: string[]
+  names?: string[],
+  focusMode?: "off" | "on"
 ) {
   /* -------------------------------------------------------------------------- */
   /* Core refs and state                                                        */
@@ -55,6 +56,7 @@ export function useGraph(
   const highlightTokenRef = useRef(0);
   const searchIndicesRef = useRef<Set<number>>(new Set());
   const hoveredCardIndexRef = useRef<number | null>(null);
+  const focusModeRef = useRef<"off" | "on">(focusMode ?? "off");
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext?.currentGraphUUID;
@@ -100,6 +102,10 @@ export function useGraph(
   useEffect(() => {
     sizeRef.current = initialConfig?.pointSize ?? 1;
   }, [initialConfig?.pointSize]);
+
+  useEffect(() => {
+    focusModeRef.current = focusMode ?? "off";
+  }, [focusMode]);
 
   useEffect(() => {
     currentGraphUUIDRef.current = currentGraphUUID ?? null;
@@ -227,6 +233,7 @@ export function useGraph(
         children,
         searchSet: searchIndicesRef.current,
         hoveredCardIndex: hoveredCardIndexRef.current,
+        focusMode: focusModeRef.current,
       });
 
       const hoverIdx = hoverIndexRef.current;

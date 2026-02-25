@@ -14,6 +14,7 @@ export const applyGraphColors = (args: {
 
   searchSet: Set<number>;
   hoveredCardIndex: number | null;
+  focusMode?: "off" | "on";
 }): number[] => {
   const {
     g,
@@ -25,7 +26,10 @@ export const applyGraphColors = (args: {
     children,
     searchSet,
     hoveredCardIndex,
+    focusMode = "off",
   } = args;
+
+  const alphaMultiplier = focusMode === "on" ? 0.2 : 1.0;
 
   const positions = g.getPointPositions();
   if (!positions || positions.length === 0) return [];
@@ -33,12 +37,12 @@ export const applyGraphColors = (args: {
   const pointCount = positions.length / 2;
   const linkCount = links.length / 2;
 
-  const DEFAULT_POINT = hexToRgba01(colors.default, 0.9);
+  const DEFAULT_POINT = hexToRgba01(colors.default, 0.9 * alphaMultiplier);
   const SELECTED_POINT = hexToRgba01(colors.selected, 0.9);
   const PARENT_POINT = hexToRgba01(colors.parent, 0.9);
   const CHILD_POINT = hexToRgba01(colors.child, 0.9);
   const HOVER_POINT = hexToRgba01(colors.hover, 0.95);
-  const SEARCH_POINT = hexToRgba01(colors.search, 0.9);
+  const SEARCH_POINT = hexToRgba01(colors.search, 0.9 * alphaMultiplier);
 
   const pointColors = new Float32Array(pointCount * 4);
   const linkColors = new Float32Array(linkCount * 4);
@@ -56,7 +60,7 @@ export const applyGraphColors = (args: {
     const source = links[i];
     const target = links[i + 1];
 
-    let color = COLOR_DEFAULT_LINK;
+    let color = hexToRgba01(colors.default, 0.3 * alphaMultiplier);
     let width = 2;
 
     if (selectedSet.size > 0) {

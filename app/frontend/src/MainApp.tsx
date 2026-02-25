@@ -42,6 +42,8 @@ export default function MainApp() {
   const currentGraphUUID = appContext!.currentGraphUUID;
   const setCurrentGraphUUID = appContext!.setCurrentGraphUUID;
 
+  const [focusMode, setFocusMode] = useState<"off" | "on">("off");
+
   // Refs
   const graphRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -87,7 +89,7 @@ export default function MainApp() {
 
   // Graph engine
   const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover, startDragFromTooltip } =
-    useGraph(graphRef, pointPositions, links, setSelectedNode, graphConfig, nodeNames || undefined);
+    useGraph(graphRef, pointPositions, links, setSelectedNode, graphConfig, nodeNames || undefined, focusMode);
 
   // Right sidebar state
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
@@ -292,6 +294,10 @@ export default function MainApp() {
     }
   };
 
+  const handleFocusModeToggle = () => {
+    setFocusMode((prev) => (prev === "off" ? "on" : "off"));
+  }
+
   return (
     <div id="layout" className="flex h-screen flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-200">
       <div ref={canvasRef} className="grow" />
@@ -342,6 +348,7 @@ export default function MainApp() {
         }}
         handleChangeLayoutClick={handleChangeLayoutClick}
         handleOpenSettings={handleOpenSettings}
+        handleFocusModeToggle={handleFocusModeToggle}
         selectedNode={selectedNode}
       />
 
