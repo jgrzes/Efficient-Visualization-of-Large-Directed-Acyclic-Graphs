@@ -35,7 +35,10 @@ export function useGraph(
   setSelectedNode: Dispatch<SetStateAction<NodeInfoProps | null>>,
   initialConfig?: UseGraphInitialConfig,
   names?: string[],
-  focusMode?: "off" | "on"
+  focusMode?: "off" | "on",
+  focusedNodeIndices?: Set<number>,
+  setFocusedNodeIndices?: Dispatch<SetStateAction<Set<number>>>,
+  parentChildrenCacheRef?: React.MutableRefObject<Map<number, { parents: number[]; children: number[] }>>
 ) {
   /* -------------------------------------------------------------------------- */
   /* Core refs and state                                                        */
@@ -57,6 +60,7 @@ export function useGraph(
   const searchIndicesRef = useRef<Set<number>>(new Set());
   const hoveredCardIndexRef = useRef<number | null>(null);
   const focusModeRef = useRef<"off" | "on">(focusMode ?? "off");
+  const focusedNodeIndicesRef = useRef<Set<number>>(focusedNodeIndices ?? new Set());
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext?.currentGraphUUID;
@@ -106,6 +110,10 @@ export function useGraph(
   useEffect(() => {
     focusModeRef.current = focusMode ?? "off";
   }, [focusMode]);
+
+  useEffect(() => {
+    focusedNodeIndicesRef.current = focusedNodeIndices ?? new Set();
+  }, [focusedNodeIndices]);
 
   useEffect(() => {
     currentGraphUUIDRef.current = currentGraphUUID ?? null;
@@ -234,6 +242,7 @@ export function useGraph(
         searchSet: searchIndicesRef.current,
         hoveredCardIndex: hoveredCardIndexRef.current,
         focusMode: focusModeRef.current,
+        focusedNodeIndices: focusedNodeIndicesRef.current,
       });
 
       const hoverIdx = hoverIndexRef.current;
@@ -707,6 +716,63 @@ export function useGraph(
     void applyColors(selectedIndices, parents, children, { zoomToSelected: false });
   }, [pointPositions, links, applyColors]);
 
+  const addToFocusedNodes = useCallback(
+    async (index: number) => {
+      if (!setFocusedNodeIndices || !parentChildrenCacheRef) return;
+
+      const uuid = currentGraphUUIDRef.current;
+      if (!uuid) return;
+
+      try {
+        // Get parents and children
+        const { parents, children } = computeParentsChildren([index], linksRef.current);
+
+        // Cache the results
+        if (parentChildrenCacheRef && !parentChildrenCacheRef.current.has(index)) {
+          parentChildrenCacheRef.current.set(index, { parents, children });
+        }
+
+        // Add node and its parents/children to focused set
+        setFocusedNodeIndices((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(index);
+          parents.forEach((p) => newSet.add(p));
+          children.forEach((c) => newSet.add(c));
+          return newSet;
+        });
+      } catch (err) {
+        console.error("Error adding to focused nodes:", err);
+      }
+    },
+    [setFocusedNodeIndices, parentChildrenCacheRef]
+  );
+
+  const removeFromFocusedNodes = useCallback(
+    (index: number) => {
+      if (!setFocusedNodeIndices) return;
+
+      setFocusedNodeIndices((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(index);
+        return newSet;
+      });
+
+      // Also remove from cache
+      if (parentChildrenCacheRef) {
+        parentChildrenCacheRef.current.delete(index);
+      }
+    },
+    [setFocusedNodeIndices, parentChildrenCacheRef]
+  );
+
+  const clearFocusedNodes = useCallback(() => {
+    if (!setFocusedNodeIndices) return;
+    setFocusedNodeIndices(new Set());
+    if (parentChildrenCacheRef) {
+      parentChildrenCacheRef.current.clear();
+    }
+  }, [setFocusedNodeIndices, parentChildrenCacheRef]);
+
   return {
     fitView,
     selectNodeByIndex,
@@ -715,5 +781,8 @@ export function useGraph(
     highlightSearchResults,
     highlightResultHover,
     startDragFromTooltip,
+    addToFocusedNodes,
+    removeFromFocusedNodes,
+    clearFocusedNodes,
   };
 }

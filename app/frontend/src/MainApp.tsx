@@ -8,6 +8,7 @@ import { NodeInfoProps } from "./components/leftsidebar/NodeInfo";
 import AnalysisPanel from "./components/analysispanel/AnalysisPanel";
 import LeftSidebar from "./components/leftsidebar/LeftSidebar";
 import ToolTip from "./components/ToolTip";
+import FocusedNodesList from "./components/FocusedNodesList";
 import OntologyModal from "./components/modals/OntologyModal";
 import LoadingModal from "./components/modals/LoadingModal";
 import RightSidebar from "./components/rightsidebar/RightSidebar";
@@ -43,6 +44,8 @@ export default function MainApp() {
   const setCurrentGraphUUID = appContext!.setCurrentGraphUUID;
 
   const [focusMode, setFocusMode] = useState<"off" | "on">("off");
+  const [focusedNodeIndices, setFocusedNodeIndices] = useState<Set<number>>(new Set());
+  const parentChildrenCacheRef = useRef<Map<number, { parents: number[]; children: number[] }>>(new Map());
 
   // Refs
   const graphRef = useRef<HTMLDivElement>(null);
@@ -88,8 +91,8 @@ export default function MainApp() {
   const comments = useComments();
 
   // Graph engine
-  const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover, startDragFromTooltip } =
-    useGraph(graphRef, pointPositions, links, setSelectedNode, graphConfig, nodeNames || undefined, focusMode);
+  const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover, startDragFromTooltip, addToFocusedNodes, removeFromFocusedNodes, clearFocusedNodes } =
+    useGraph(graphRef, pointPositions, links, setSelectedNode, graphConfig, nodeNames || undefined, focusMode, focusedNodeIndices, setFocusedNodeIndices, parentChildrenCacheRef);
 
   // Right sidebar state
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
@@ -295,7 +298,14 @@ export default function MainApp() {
   };
 
   const handleFocusModeToggle = () => {
-    setFocusMode((prev) => (prev === "off" ? "on" : "off"));
+    const newMode = focusMode === "off" ? "on" : "off";
+    setFocusMode(newMode);
+    if (newMode === "on") {
+      toast.showInfo("Focus mode on - double click nodes to add them and their connections");
+    } else {
+      toast.showInfo("Focus mode off");
+      clearFocusedNodes();
+    }
   }
 
   return (
@@ -311,7 +321,7 @@ export default function MainApp() {
             y={tt.y}
             content={tt.content}
             onPointerDown={(e) => startDragFromTooltip(tt.index, e)}
-            onClick={() => selectNodeByIndex(tt.index, {zoom: false})}
+            onClick={() => focusMode === "on" ? addToFocusedNodes(tt.index) : selectNodeByIndex(tt.index, {zoom: false})}
           />
         ))}
 
@@ -333,6 +343,16 @@ export default function MainApp() {
           nodeNames={nodeNames}
           onSelectNode={(node) => selectNodeByIndex(node.index)}
           onHoverResultCard={(node) => highlightResultHover(node?.index)}
+        />
+      )}
+
+      {focusMode === "on" && focusedNodeIndices.size > 0 && (
+        <FocusedNodesList
+          nodeIndices={Array.from(focusedNodeIndices)}
+          nodeNames={nodeNames}
+          onRemoveNode={removeFromFocusedNodes}
+          onClear={clearFocusedNodes}
+          onSelectNode={(index) => selectNodeByIndex(index, { zoom: true })}
         />
       )}
 

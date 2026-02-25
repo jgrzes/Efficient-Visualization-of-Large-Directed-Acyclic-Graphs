@@ -15,6 +15,7 @@ export const applyGraphColors = (args: {
   searchSet: Set<number>;
   hoveredCardIndex: number | null;
   focusMode?: "off" | "on";
+  focusedNodeIndices?: Set<number>;
 }): number[] => {
   const {
     g,
@@ -27,6 +28,7 @@ export const applyGraphColors = (args: {
     searchSet,
     hoveredCardIndex,
     focusMode = "off",
+    focusedNodeIndices = new Set(),
   } = args;
 
   const alphaMultiplier = focusMode === "on" ? 0.2 : 1.0;
@@ -43,6 +45,7 @@ export const applyGraphColors = (args: {
   const CHILD_POINT = hexToRgba01(colors.child, 0.9);
   const HOVER_POINT = hexToRgba01(colors.hover, 0.95);
   const SEARCH_POINT = hexToRgba01(colors.search, 0.9 * alphaMultiplier);
+  const FOCUSED_POINT = hexToRgba01("#8B5CF6", 0.95); // Purple for focused nodes
 
   const pointColors = new Float32Array(pointCount * 4);
   const linkColors = new Float32Array(linkCount * 4);
@@ -77,7 +80,7 @@ export const applyGraphColors = (args: {
     linkWidths[edgeIndex] = width;
   }
 
-  // Points priority: hoveredCard > selected > parent > child > searched > default
+  // Points priority: hoveredCard > focused > selected > parent > child > searched > default
   for (let i = 0; i < pointCount; i++) {
     let color = DEFAULT_POINT;
     let pointSize = size;
@@ -86,6 +89,10 @@ export const applyGraphColors = (args: {
         color = HOVER_POINT;
         pointSize = size * 1.75;
       }
+    else if (focusedNodeIndices.has(i)) {
+      color = FOCUSED_POINT;
+      pointSize = size * 1.5;
+    }
     else if (selectedSet.has(i)) {
       color = SELECTED_POINT;
     }
