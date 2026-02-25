@@ -57,6 +57,8 @@ export const applyGraphColors = (args: {
   const parentsSet = new Set<number>(parents);
   const childrenSet = new Set<number>(children);
 
+  const FOCUSED_LINK = hexToRgba01("#8B5CF6", 0.8); // Purple for focused edges
+
   // Links
   for (let i = 0; i < links.length; i += 2) {
     const edgeIndex = i / 2;
@@ -66,7 +68,11 @@ export const applyGraphColors = (args: {
     let color = hexToRgba01(colors.default, 0.3 * alphaMultiplier);
     let width = 2;
 
-    if (selectedSet.size > 0) {
+    // Check if edge connects to a focused node
+    if (focusedNodeIndices.has(source) || focusedNodeIndices.has(target)) {
+      color = FOCUSED_LINK;
+      width = 3;
+    } else if (selectedSet.size > 0) {
       if (selectedSet.has(target)) {
         color = PARENT_POINT;
         width = 3;

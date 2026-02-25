@@ -276,6 +276,22 @@ export function useGraph(
     [recomputeTooltipsPositions]
   );
 
+  // Trigger color re-application when focused nodes change
+  useEffect(() => {
+    const g = graphInstance.current;
+    if (!g) return;
+
+    const selectedIndex = selectedIndexRef.current;
+    const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
+
+    const { parents, children } = computeParentsChildren(
+      selectedIndices,
+      linksRef.current
+    );
+
+    void applyColors(selectedIndices, parents, children, { zoomToSelected: false });
+  }, [focusedNodeIndices, applyColors]);
+
   useEffect(() => {
     const g = graphInstance.current;
     if (!g) return;
@@ -724,20 +740,10 @@ export function useGraph(
       if (!uuid) return;
 
       try {
-        // Get parents and children
-        const { parents, children } = computeParentsChildren([index], linksRef.current);
-
-        // Cache the results
-        if (parentChildrenCacheRef && !parentChildrenCacheRef.current.has(index)) {
-          parentChildrenCacheRef.current.set(index, { parents, children });
-        }
-
-        // Add node and its parents/children to focused set
+        // Add only the node itself to the focused set
         setFocusedNodeIndices((prev) => {
           const newSet = new Set(prev);
           newSet.add(index);
-          parents.forEach((p) => newSet.add(p));
-          children.forEach((c) => newSet.add(c));
           return newSet;
         });
       } catch (err) {
