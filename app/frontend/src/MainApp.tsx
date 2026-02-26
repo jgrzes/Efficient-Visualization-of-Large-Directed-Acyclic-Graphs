@@ -353,6 +353,7 @@ export default function MainApp() {
           onRemoveNode={removeFromFocusedNodes}
           onClear={clearFocusedNodes}
           onSelectNode={(index) => selectNodeByIndex(index, { zoom: true })}
+          onHoverNode={highlightResultHover}
         />
       )}
 

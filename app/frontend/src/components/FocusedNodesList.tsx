@@ -11,6 +11,7 @@ interface FocusedNodesListProps {
   onRemoveNode: (index: number) => void;
   onClear: () => void;
   onSelectNode: (index: number) => void;
+  onHoverNode?: (index?: number) => void;
 }
 
 const FocusedNodesList: React.FC<FocusedNodesListProps> = ({
@@ -19,6 +20,7 @@ const FocusedNodesList: React.FC<FocusedNodesListProps> = ({
   onRemoveNode,
   onClear,
   onSelectNode,
+  onHoverNode,
 }) => {
   const [collapsed, setCollapsed] = React.useState(false);
 
@@ -171,6 +173,8 @@ const FocusedNodesList: React.FC<FocusedNodesListProps> = ({
               <div
                 key={index}
                 className="px-4 py-2.5 border-b border-black/5 dark:border-white/5 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition group"
+                onMouseEnter={() => onHoverNode?.(index)}
+                onMouseLeave={() => onHoverNode?.()}
               >
                 <button
                   onClick={() => onSelectNode(index)}
