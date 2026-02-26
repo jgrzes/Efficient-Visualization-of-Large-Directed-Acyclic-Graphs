@@ -179,8 +179,16 @@ export function useGraph(
       return;
     }
 
+    // In focused mode, only show tooltips for focused nodes
+    let indicesToShow = highlightedIndicesRef.current;
+    if (focusModeRef.current === "on") {
+      indicesToShow = highlightedIndicesRef.current.filter((idx) =>
+        focusedNodeIndicesRef.current.has(idx)
+      );
+    }
+
     setTooltips(
-      computePinnedTooltips(g, el, highlightedIndicesRef.current, getName)
+      computePinnedTooltips(g, el, indicesToShow, getName)
     );
   }, [graphRef, getName]);
 
@@ -614,8 +622,17 @@ export function useGraph(
       simulationDecay: 0,
 
       onClick: (index) => {
-        if (index === null || index === undefined) selectNodeByIndex(undefined);
-        else selectNodeByIndex(index, { zoom: false });
+        if (index === null || index === undefined) {
+          selectNodeByIndex(undefined);
+          return;
+        }
+
+        if (focusModeRef.current === "on") {
+          void addToFocusedNodes(index);
+          return;
+        }
+
+        selectNodeByIndex(index, { zoom: false });
       },
 
       onPointMouseOver: (index, pointPos) => {
@@ -632,6 +649,15 @@ export function useGraph(
         if (tooltipDragActiveRef.current) return;
 
         if (index == null || !pointPos) {
+          hoverIndexRef.current = null;
+          setHoverTooltip(null);
+          return;
+        }
+
+        if (
+          focusModeRef.current === "on" &&
+          !focusedNodeIndicesRef.current.has(index)
+        ) {
           hoverIndexRef.current = null;
           setHoverTooltip(null);
           return;
