@@ -140,6 +140,7 @@ export default function MainApp() {
 
     currentGraphUUID,
     currentGraphHash,
+    onGraphLoaded: () => setFocusMode("off"),
   });
 
   const toast = useAppToast();
@@ -301,7 +302,8 @@ export default function MainApp() {
     const newMode = focusMode === "off" ? "on" : "off";
     setFocusMode(newMode);
     if (newMode === "on") {
-      toast.showInfo("Focus mode on - double click nodes to add them and their connections");
+      focusedNodeIndices.clear();
+      toast.showInfo("Focus mode on - click nodes to add them and their connections");
     } else {
       toast.showInfo("Focus mode off");
       clearFocusedNodes();
@@ -333,6 +335,23 @@ export default function MainApp() {
             y={hoverTooltip.y}
             content={<strong>{hoverTooltip.content}</strong>}
           />
+        )}
+
+        {focusMode === "on" && (
+          <div className="absolute left-1/2 top-4 z-50 -translate-x-1/2">
+            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full shadow-lg bg-yellow-300 text-black dark:bg-yellow-600 dark:text-black">
+              <span className="font-medium">Focus mode on</span>
+              <button
+                className="underline text-sm"
+                onClick={() => {
+                  setFocusMode("off");
+                  clearFocusedNodes();
+                }}
+              >
+                Turn off
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
