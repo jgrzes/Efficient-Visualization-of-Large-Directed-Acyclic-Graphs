@@ -628,7 +628,12 @@ export function useGraph(
         }
 
         if (focusModeRef.current === "on") {
-          void addToFocusedNodes(index);
+          if (focusedNodeIndicesRef.current.has(index)) {
+            selectNodeByIndex(index, { zoom: false });
+          } else {
+            void addToFocusedNodes(index);
+          }
+
           return;
         }
 
