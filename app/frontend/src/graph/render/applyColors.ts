@@ -63,7 +63,7 @@ export const applyGraphColors = (args: {
   const parentsSet = new Set<number>(parents);
   const childrenSet = new Set<number>(children);
 
-  const FOCUSED_LINK = hexToRgba01(colors.default, 1.0);
+  const FOCUSED_LINK = COLOR_DEFAULT_LINK;
   const PARENT_LINK_SOLID = hexToRgba01(colors.parent, 1.0);
   const CHILD_LINK_SOLID = hexToRgba01(colors.child, 1.0);
 
@@ -73,7 +73,7 @@ export const applyGraphColors = (args: {
     const source = links[i];
     const target = links[i + 1];
 
-    let color = hexToRgba01(colors.default, 0.3 * alphaMultiplier);
+    let color = [...COLOR_DEFAULT_LINK.slice(0, 3), 0.6 * alphaMultiplier] as [number, number, number, number];
     let width = 2;
 
     let isRelated = false;

@@ -21,4 +21,4 @@ export const hexToRgba01 = (hex: string, alpha = 0.9): RGBA => {
   return [1, 1, 1, alpha];
 };
 
-export const COLOR_DEFAULT_LINK: RGBA = [0.7, 0.7, 0.7, 1.0];
+export const COLOR_DEFAULT_LINK: RGBA = [0.5, 0.5, 0.5, 1.0];
