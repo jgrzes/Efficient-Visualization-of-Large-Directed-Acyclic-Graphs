@@ -300,6 +300,22 @@ export function useGraph(
     void applyColors(selectedIndices, parents, children, { zoomToSelected: false });
   }, [focusedNodeIndices, applyColors]);
 
+  // Trigger color re-application when focus mode changes
+  useEffect(() => {
+    const g = graphInstance.current;
+    if (!g) return;
+
+    const selectedIndex = selectedIndexRef.current;
+    const selectedIndices = selectedIndex !== null ? [selectedIndex] : [];
+
+    const { parents, children } = computeParentsChildren(
+      selectedIndices,
+      linksRef.current
+    );
+
+    void applyColors(selectedIndices, parents, children, { zoomToSelected: false });
+  }, [focusMode, applyColors]);
+
   useEffect(() => {
     const g = graphInstance.current;
     if (!g) return;
