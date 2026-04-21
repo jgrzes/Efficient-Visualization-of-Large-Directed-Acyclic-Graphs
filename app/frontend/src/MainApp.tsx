@@ -8,6 +8,7 @@ import { NodeInfoProps } from "./components/leftsidebar/NodeInfo";
 import AnalysisPanel from "./components/analysispanel/AnalysisPanel";
 import LeftSidebar from "./components/leftsidebar/LeftSidebar";
 import ToolTip from "./components/ToolTip";
+import FocusedNodesList from "./components/FocusedNodesList";
 import OntologyModal from "./components/modals/OntologyModal";
 import LoadingModal from "./components/modals/LoadingModal";
 import RightSidebar from "./components/rightsidebar/RightSidebar";
@@ -41,6 +42,10 @@ export default function MainApp() {
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext!.currentGraphUUID;
   const setCurrentGraphUUID = appContext!.setCurrentGraphUUID;
+
+  const [focusMode, setFocusMode] = useState<"off" | "on">("off");
+  const [focusedNodeIndices, setFocusedNodeIndices] = useState<Set<number>>(new Set());
+  const parentChildrenCacheRef = useRef<Map<number, { parents: number[]; children: number[] }>>(new Map());
 
   // Refs
   const graphRef = useRef<HTMLDivElement>(null);
@@ -86,8 +91,8 @@ export default function MainApp() {
   const comments = useComments();
 
   // Graph engine
-  const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover, startDragFromTooltip } =
-    useGraph(graphRef, pointPositions, links, setSelectedNode, graphConfig, nodeNames || undefined);
+  const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover, startDragFromTooltip, addToFocusedNodes, removeFromFocusedNodes, clearFocusedNodes } =
+    useGraph(graphRef, pointPositions, links, setSelectedNode, graphConfig, nodeNames || undefined, focusMode, focusedNodeIndices, setFocusedNodeIndices, parentChildrenCacheRef);
 
   // Right sidebar state
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
@@ -135,6 +140,7 @@ export default function MainApp() {
 
     currentGraphUUID,
     currentGraphHash,
+    onGraphLoaded: () => setFocusMode("off"),
   });
 
   const toast = useAppToast();
@@ -292,6 +298,18 @@ export default function MainApp() {
     }
   };
 
+  const handleFocusModeToggle = () => {
+    const newMode = focusMode === "off" ? "on" : "off";
+    setFocusMode(newMode);
+    if (newMode === "on") {
+      focusedNodeIndices.clear();
+      toast.showInfo("Focus mode on - click nodes to add them and their connections");
+    } else {
+      toast.showInfo("Focus mode off");
+      clearFocusedNodes();
+    }
+  }
+
   return (
     <div id="layout" className="flex h-screen flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-200">
       <div ref={canvasRef} className="grow" />
@@ -305,7 +323,7 @@ export default function MainApp() {
             y={tt.y}
             content={tt.content}
             onPointerDown={(e) => startDragFromTooltip(tt.index, e)}
-            onClick={() => selectNodeByIndex(tt.index, {zoom: false})}
+            onClick={() => focusMode === "on" ? addToFocusedNodes(tt.index) : selectNodeByIndex(tt.index, {zoom: false})}
           />
         ))}
 
@@ -318,6 +336,23 @@ export default function MainApp() {
             content={<strong>{hoverTooltip.content}</strong>}
           />
         )}
+
+        {focusMode === "on" && (
+          <div className="absolute left-1/2 top-4 z-50 -translate-x-1/2">
+            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full shadow-lg bg-yellow-300 text-black dark:bg-yellow-600 dark:text-black">
+              <span className="font-medium">Focus mode on</span>
+              <button
+                className="underline text-sm"
+                onClick={() => {
+                  setFocusMode("off");
+                  clearFocusedNodes();
+                }}
+              >
+                Turn off
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {analysisResult && (
@@ -327,6 +362,17 @@ export default function MainApp() {
           nodeNames={nodeNames}
           onSelectNode={(node) => selectNodeByIndex(node.index)}
           onHoverResultCard={(node) => highlightResultHover(node?.index)}
+        />
+      )}
+
+      {focusMode === "on" && focusedNodeIndices.size > 0 && (
+        <FocusedNodesList
+          nodeIndices={Array.from(focusedNodeIndices)}
+          nodeNames={nodeNames}
+          onRemoveNode={removeFromFocusedNodes}
+          onClear={clearFocusedNodes}
+          onSelectNode={(index) => selectNodeByIndex(index, { zoom: true })}
+          onHoverNode={highlightResultHover}
         />
       )}
 
@@ -342,6 +388,7 @@ export default function MainApp() {
         }}
         handleChangeLayoutClick={handleChangeLayoutClick}
         handleOpenSettings={handleOpenSettings}
+        handleFocusModeToggle={handleFocusModeToggle}
         selectedNode={selectedNode}
       />
 
