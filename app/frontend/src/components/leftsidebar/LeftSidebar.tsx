@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Save,
-  Crosshair
 } from "lucide-react";
 import NodeInfo, { NodeInfoProps } from "./NodeInfo";
 
@@ -23,7 +22,6 @@ interface LeftSidebarProps {
   handleSaveLayoutClick: () => void;
   handleChangeLayoutClick: () => void;
   handleOpenSettings: () => void;
-  handleFocusModeToggle: () => void;
   selectedNode?: NodeInfoProps | null;
 }
 
@@ -53,7 +51,6 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   handleSaveLayoutClick,
   handleChangeLayoutClick,
   handleOpenSettings,
-  handleFocusModeToggle,
   selectedNode,
 }) => {
   const [expanded, setExpanded] = useState(false);
@@ -89,7 +86,6 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
     { label: "Analyze", shortLabel: "Analyze", icon: <LineChart size={18} />, onClick: handleAnalyzeClick },
     { label: "Change layout", shortLabel: "Layout", icon: <Orbit size={18} />, onClick: handleChangeLayoutClick },
     { label: "Save layout", shortLabel: "Save", icon: <Save size={18} />, onClick: handleSaveLayoutClick },
-    { label: "Focus mode", shortLabel: "Focus", icon: <Crosshair size={18} />, onClick: handleFocusModeToggle },
   ];
 
   const bottom: Item[] = [
