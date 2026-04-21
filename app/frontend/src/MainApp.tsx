@@ -22,7 +22,12 @@ import { useFavorites } from "./hooks/useFavorites";
 import { useComments } from "./hooks/useComments";
 
 import type { GraphColors } from "./graph/types";
-import { DEFAULT_GRAPH_COLORS, DEFAULT_POINT_SIZE } from "./graph/config";
+import {
+  DEFAULT_GRAPH_COLORS,
+  DEFAULT_MASKED_LINK_OPACITY,
+  DEFAULT_MASKED_POINT_OPACITY,
+  DEFAULT_POINT_SIZE,
+} from "./graph/config";
 
 import { useGraph } from "./hooks/useGraph";
 import { useSearch } from "./hooks/useSearch";
@@ -36,6 +41,8 @@ import { useAppToast } from "./hooks/useAppToast";
 type GraphConfig = {
   pointSize: number;
   colors: GraphColors;
+  maskedPointOpacity: number;
+  maskedLinkOpacity: number;
 };
 
 export default function MainApp() {
@@ -63,6 +70,8 @@ export default function MainApp() {
   const [graphConfig, setGraphConfig] = useState<GraphConfig>({
     pointSize: DEFAULT_POINT_SIZE,
     colors: DEFAULT_GRAPH_COLORS,
+    maskedPointOpacity: DEFAULT_MASKED_POINT_OPACITY,
+    maskedLinkOpacity: DEFAULT_MASKED_LINK_OPACITY,
   });
 
   const [nodeNames, setNodeNames] = useState<string[] | null>(null);
@@ -310,6 +319,26 @@ export default function MainApp() {
     }
   }
 
+  const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+
+  const handleMaskedPointOpacityChange = (value: string) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return;
+    setGraphConfig((prev) => ({
+      ...prev,
+      maskedPointOpacity: clamp01(parsed),
+    }));
+  };
+
+  const handleMaskedLinkOpacityChange = (value: string) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return;
+    setGraphConfig((prev) => ({
+      ...prev,
+      maskedLinkOpacity: clamp01(parsed),
+    }));
+  };
+
   return (
     <div id="layout" className="flex h-screen flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-200">
       <div ref={canvasRef} className="grow" />
@@ -339,17 +368,67 @@ export default function MainApp() {
 
         {focusMode === "on" && (
           <div className="absolute left-1/2 top-4 z-50 -translate-x-1/2">
-            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full shadow-lg bg-yellow-300 text-black dark:bg-yellow-600 dark:text-black">
-              <span className="font-medium">Focus mode on</span>
-              <button
-                className="underline text-sm"
-                onClick={() => {
-                  setFocusMode("off");
-                  clearFocusedNodes();
-                }}
-              >
-                Turn off
-              </button>
+            <div className="rounded-2xl shadow-lg bg-yellow-300 text-black dark:bg-yellow-600 dark:text-black px-4 py-3 min-w-[360px]">
+              <div className="inline-flex items-center gap-3 w-full justify-between">
+                <span className="font-medium">Focus mode on</span>
+                <button
+                  className="underline text-sm"
+                  onClick={() => {
+                    setFocusMode("off");
+                    clearFocusedNodes();
+                  }}
+                >
+                  Turn off
+                </button>
+              </div>
+
+              <div className="mt-2 space-y-2 text-xs">
+                <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+                  <label htmlFor="masked-point-opacity">Masked vertices opacity</label>
+                  <input
+                    id="masked-point-opacity"
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={graphConfig.maskedPointOpacity}
+                    onChange={(e) => handleMaskedPointOpacityChange(e.target.value)}
+                    className="w-16 rounded border border-black/25 bg-white/80 px-1 py-0.5 text-right"
+                  />
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={graphConfig.maskedPointOpacity}
+                  onChange={(e) => handleMaskedPointOpacityChange(e.target.value)}
+                  className="w-full accent-black"
+                />
+
+                <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+                  <label htmlFor="masked-link-opacity">Masked edges opacity</label>
+                  <input
+                    id="masked-link-opacity"
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={graphConfig.maskedLinkOpacity}
+                    onChange={(e) => handleMaskedLinkOpacityChange(e.target.value)}
+                    className="w-16 rounded border border-black/25 bg-white/80 px-1 py-0.5 text-right"
+                  />
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={graphConfig.maskedLinkOpacity}
+                  onChange={(e) => handleMaskedLinkOpacityChange(e.target.value)}
+                  className="w-full accent-black"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -498,7 +577,7 @@ export default function MainApp() {
         pointSize={graphConfig.pointSize || 1}
         colors={graphConfig.colors || DEFAULT_GRAPH_COLORS}
         onApply={(pointSize, colors) => {
-          setGraphConfig({ pointSize, colors });
+          setGraphConfig((prev) => ({ ...prev, pointSize, colors }));
           setSettingsModalOpen(false);
         }}
       />

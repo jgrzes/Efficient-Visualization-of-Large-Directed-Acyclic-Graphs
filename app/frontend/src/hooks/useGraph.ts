@@ -26,6 +26,8 @@ import type { GraphColors } from "../graph/types";
 type UseGraphInitialConfig = {
   pointSize?: number;
   colors?: GraphColors;
+  maskedPointOpacity?: number;
+  maskedLinkOpacity?: number;
 };
 
 export function useGraph(
@@ -70,6 +72,8 @@ export function useGraph(
     initialConfig?.colors ?? DEFAULT_GRAPH_COLORS
   );
   const sizeRef = useRef<number>(initialConfig?.pointSize ?? 1);
+  const maskedPointOpacityRef = useRef<number>(initialConfig?.maskedPointOpacity ?? 0.2);
+  const maskedLinkOpacityRef = useRef<number>(initialConfig?.maskedLinkOpacity ?? 0.2);
 
   const getName = useCallback(
     (idx: number) => namesCacheRef.current.get(idx) ?? `Node ${idx}`,
@@ -106,6 +110,14 @@ export function useGraph(
   useEffect(() => {
     sizeRef.current = initialConfig?.pointSize ?? 1;
   }, [initialConfig?.pointSize]);
+
+  useEffect(() => {
+    maskedPointOpacityRef.current = initialConfig?.maskedPointOpacity ?? 0.2;
+  }, [initialConfig?.maskedPointOpacity]);
+
+  useEffect(() => {
+    maskedLinkOpacityRef.current = initialConfig?.maskedLinkOpacity ?? 0.2;
+  }, [initialConfig?.maskedLinkOpacity]);
 
   useEffect(() => {
     focusModeRef.current = focusMode ?? "off";
@@ -251,6 +263,8 @@ export function useGraph(
         hoveredCardIndex: hoveredCardIndexRef.current,
         focusMode: focusModeRef.current,
         focusedNodeIndices: focusedNodeIndicesRef.current,
+        maskedPointOpacity: maskedPointOpacityRef.current,
+        maskedLinkOpacity: maskedLinkOpacityRef.current,
       });
 
       const hoverIdx = hoverIndexRef.current;
@@ -338,6 +352,8 @@ export function useGraph(
     initialConfig?.colors?.search,
     initialConfig?.colors?.background,
     initialConfig?.pointSize,
+    initialConfig?.maskedPointOpacity,
+    initialConfig?.maskedLinkOpacity,
     applyColors,
   ]);
 

@@ -24,6 +24,8 @@ import {
 type GraphConfig = {
   pointSize: number;
   colors: GraphColors;
+  maskedPointOpacity: number;
+  maskedLinkOpacity: number;
 };
 
 function errMessage(e: unknown, fallback: string) {
@@ -131,8 +133,8 @@ export function useGraphLoader(params: {
     setNodeNames(data.names ? data.names : null);
 
     setGraphConfig((prev) => ({
+      ...prev,
       pointSize: data.config?.point_size ?? prev.pointSize,
-      colors: prev.colors,
     }));
 
     // favorites/comments from graph

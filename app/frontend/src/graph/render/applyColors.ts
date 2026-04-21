@@ -16,6 +16,8 @@ export const applyGraphColors = (args: {
   hoveredCardIndex: number | null;
   focusMode?: "off" | "on";
   focusedNodeIndices?: Set<number>;
+  maskedPointOpacity?: number;
+  maskedLinkOpacity?: number;
 }): number[] => {
   const {
     g,
@@ -29,9 +31,19 @@ export const applyGraphColors = (args: {
     hoveredCardIndex,
     focusMode = "off",
     focusedNodeIndices = new Set(),
+    maskedPointOpacity = 0.2,
+    maskedLinkOpacity = 0.2,
   } = args;
 
-  const alphaMultiplier = focusMode === "on" ? 0.2 : 1.0;
+  const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+  const pointMaskMultiplier = focusMode === "on" ? clamp01(maskedPointOpacity) : 1.0;
+  const linkMaskMultiplier = focusMode === "on" ? clamp01(maskedLinkOpacity) : 1.0;
+  const scaleAlpha = (rgba: [number, number, number, number], factor: number): [number, number, number, number] => [
+    rgba[0],
+    rgba[1],
+    rgba[2],
+    rgba[3] * factor,
+  ];
 
   const positions = g.getPointPositions();
   if (!positions || positions.length === 0) return [];
@@ -39,12 +51,12 @@ export const applyGraphColors = (args: {
   const pointCount = positions.length / 2;
   const linkCount = links.length / 2;
 
-  const DEFAULT_POINT = hexToRgba01(colors.default, 0.9 * alphaMultiplier);
+  const DEFAULT_POINT = hexToRgba01(colors.default, 0.9);
   const SELECTED_POINT = hexToRgba01(colors.selected, 0.9);
   const PARENT_POINT = hexToRgba01(colors.parent, 0.9);
   const CHILD_POINT = hexToRgba01(colors.child, 0.9);
   const HOVER_POINT = hexToRgba01(colors.hover, 0.95);
-  const SEARCH_POINT = hexToRgba01(colors.search, 0.9 * alphaMultiplier);
+  const SEARCH_POINT = hexToRgba01(colors.search, 0.9);
 
   const DEFAULT_POINT_SOLID = hexToRgba01(colors.default, 1.0);
   const SELECTED_POINT_SOLID = hexToRgba01(colors.selected, 1.0);
@@ -73,7 +85,7 @@ export const applyGraphColors = (args: {
     const source = links[i];
     const target = links[i + 1];
 
-    let color = [...COLOR_DEFAULT_LINK.slice(0, 3), 0.6 * alphaMultiplier] as [number, number, number, number];
+    let color = [...COLOR_DEFAULT_LINK.slice(0, 3), 0.6] as [number, number, number, number];
     let width = 2;
 
     let isRelated = false;
@@ -96,6 +108,11 @@ export const applyGraphColors = (args: {
         color = FOCUSED_LINK;
       }
       width = Math.max(width, 3);
+    }
+
+    const isMaskedLink = focusMode === "on" && !focusedNodeIndices.has(source) && !focusedNodeIndices.has(target);
+    if (isMaskedLink) {
+      color = scaleAlpha(color, linkMaskMultiplier);
     }
 
     linkColors.set(color, edgeIndex * 4);
@@ -126,6 +143,10 @@ export const applyGraphColors = (args: {
 
     if (isFocused) {
       pointSize = Math.max(pointSize, size * 1.5);
+    }
+
+    if (focusMode === "on" && !isFocused) {
+      color = scaleAlpha(color, pointMaskMultiplier);
     }
 
     pointColors.set(color, i * 4);

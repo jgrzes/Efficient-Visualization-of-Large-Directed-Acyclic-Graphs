@@ -20,3 +20,5 @@ export const DEFAULT_GRAPH_COLORS: GraphColors = {
 };
 
 export const DEFAULT_POINT_SIZE = 1;
+export const DEFAULT_MASKED_POINT_OPACITY = 0.2;
+export const DEFAULT_MASKED_LINK_OPACITY = 0.2;

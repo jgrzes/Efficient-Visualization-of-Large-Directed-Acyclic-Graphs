@@ -83,7 +83,7 @@ A **Python backend** coordinates data flow, graph analysis, and communication be
 ### ▶️ Run the application
 
 ```bash
-git clone https://github.com/Grzeslaw115/Efficient-Visualization-of-Large-Directed-Acyclic-Graphs
+git clone https://github.com/jgrzes/Efficient-Visualization-of-Large-Directed-Acyclic-Graphs
 cd Efficient-Visualization-of-Large-Directed-Acyclic-Graphs
 docker compose build && docker compose up
 ```
@@ -96,7 +96,7 @@ docker compose build && docker compose up
 
 ## 🧑‍💻 Authors
 
-- **[Jakub Grześ](https://github.com/Grzeslaw115)**
+- **[Jakub Grześ](https://github.com/jgrzes)**
 - **[Jan Masternak](https://github.com/janmast1o)**
 - **[Tomasz Smyda](https://github.com/tsmyda)**
 
