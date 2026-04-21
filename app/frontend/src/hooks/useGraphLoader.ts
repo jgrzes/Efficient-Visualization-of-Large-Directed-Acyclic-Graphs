@@ -60,7 +60,6 @@ export function useGraphLoader(params: {
 
   currentGraphUUID: string | null;
   currentGraphHash: string | null;
-  onGraphLoaded?: () => void;
 }) {
   const {
     setCurrentGraphUUID,
@@ -82,7 +81,6 @@ export function useGraphLoader(params: {
     setPrevFromLoaded,
     currentGraphUUID,
     currentGraphHash,
-    onGraphLoaded,
   } = params;
 
   const [loading, setLoading] = React.useState(false);
@@ -157,13 +155,6 @@ export function useGraphLoader(params: {
     else clearHashInUrl();
 
     if (options?.fit) setTimeout(() => fitView(), 100);
-
-    // Notify caller that a graph was loaded so they can perform UI updates
-    try {
-      onGraphLoaded?.();
-    } catch (err) {
-      console.error("onGraphLoaded callback error:", err);
-    }
   }
 
   // groups
