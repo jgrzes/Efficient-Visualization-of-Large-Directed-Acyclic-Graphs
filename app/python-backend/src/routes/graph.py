@@ -63,15 +63,15 @@ def _progress_event(
     message: str,
     data: Optional[Dict[str, Any]] = None,
 ) -> str:
-        event = {
-            "stage": stage,
-            "message": message,
-        }
+    event = {
+        "stage": stage,
+        "message": message,
+    }
 
-        if data is not None:
-            event["data"] = data
+    if data is not None:
+        event["data"] = data
 
-        return json.dumps(event) + "\n"
+    return json.dumps(event) + "\n"
 
 @graph_bp.route("/session_keepalive", methods=["POST"])
 def session_keepalive():
