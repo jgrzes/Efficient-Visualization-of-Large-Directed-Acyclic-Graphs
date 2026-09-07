@@ -413,6 +413,7 @@ export function useGraphLoader(params: {
         setSelectedNode(null);
         if (Array.isArray(data.names)) setNodeNames(data.names);
         setTimeout(() => fitView(), 100);
+        return Boolean(data.fallback_used);
       } catch (e) {
         throw new Error(errMessage(e, "Failed to recompute layout."));
       } finally {

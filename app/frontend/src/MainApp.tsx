@@ -241,9 +241,19 @@ export default function MainApp() {
     if (layoutModalMode === "recompute") {
       setShowLayoutModal(false);
       setLayoutModalMode(null);
-      void loader.recomputeCurrentLayout(layoutType).catch((e) => {
-        toast.showError(e instanceof Error ? e.message : "Layout recompute failed");
-      });
+      void loader
+        .recomputeCurrentLayout(layoutType)
+        .then((fallbackUsed) => {
+          if (fallbackUsed) {
+            toast.showInfo(
+              "The C++ layout service was unavailable, so the graph was loaded using a radial layout.",
+              "Radial layout used"
+            );
+          }
+        })
+        .catch((e) => {
+          toast.showError(e instanceof Error ? e.message : "Layout recompute failed");
+        });
       return;
     }
 

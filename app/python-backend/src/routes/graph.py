@@ -39,25 +39,23 @@ def _compute_layout(
     layout_type: str,
     layout_host: str,
     layout_port: int,
-    logger,
-    on_radial_fallback: Optional[Callable[[], None]] = None,
-) -> List[tuple]:
+    logger
+) -> tuple[List[tuple], bool]:
     if layout_type == "radial":
         logger.debug("Using radial layout computation")
-        return make_graph_structure(G_gt)
+        return make_graph_structure(G_gt), False
     else:
         logger.debug("Using GRPC layout computation")
         try:
-            return send_layout_computation_request_to_grpc_server(
-                G_gt, layout_host, layout_port, logger=logger
+            postions = send_layout_computation_request_to_grpc_server(
+                G_gt, layout_host, layout_port, logger
             )
+            return postions, False
         except Exception as e:
             logger.warning(
                 f"GRPC server failed to conclude layout computation: {e}. Falling back to radial layout."
             )
-            if on_radial_fallback is not None:
-                on_radial_fallback()
-            return make_graph_structure(G_gt)
+            return make_graph_structure(G_gt), True
 
 def _progress_event(
     stage: str,
@@ -215,23 +213,16 @@ def flask_make_graph_structure():
             "and created a graph tool object based on it"
         )
 
-        radial_fallback = False
-
-        def mark_radial_fallback():
-            nonlocal radial_fallback
-            radial_fallback = True
-
         yield _progress_event("layout", "Computing graph layout...")
-        canvas_positions = _compute_layout(
+        canvas_positions, fallback_used = _compute_layout(
             G_gt,
             layout_type,
             layout_host,
             layout_port,
             logger,
-            on_radial_fallback=mark_radial_fallback,
         )
 
-        if radial_fallback:
+        if fallback_used:
             yield _progress_event(
                 "layout_fallback",
                 "Radial layout computed because the C++ layout service was unavailable.",
@@ -417,7 +408,7 @@ def load_graph_from_json():
 
     G_gt = build_gt_graph_from_graph_dict(graph_data)
 
-    canvas_positions = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
+    canvas_positions, fallback_used = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
 
     (
         linearized_canvas_positions,
@@ -445,6 +436,7 @@ def load_graph_from_json():
         jsonify(
             {
                 "graph_hash": None,
+                "fallback_used": fallback_used,
                 "uuid": graph_uuid,
                 "canvas_positions": linearized_canvas_positions,
                 "links": linearized_links,
@@ -480,7 +472,7 @@ def recompute_layout(graph_uuid: str):
     if G_gt is None:
         return jsonify({"error": "Graph not available in session"}), 500
 
-    canvas_positions = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
+    canvas_positions, fallback_used = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
     canvas_positions, space_size = normalize_canvas_positions(canvas_positions)
 
     (
@@ -503,6 +495,7 @@ def recompute_layout(graph_uuid: str):
                 "links": links,
                 "names": names,
                 "space_size": space_size,
+                "fallback_used": fallback_used,
             }
         ),
         200,

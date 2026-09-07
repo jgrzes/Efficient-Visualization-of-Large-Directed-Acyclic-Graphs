@@ -15,6 +15,7 @@ export type LoadedGraph = {
     favorites?: number[];
     comments?: CommentItem[];
   };
+  fallback_used?: boolean;
 };
 
 export type GraphProgressEvent = {
@@ -120,6 +121,8 @@ export async function makeGraphStructure(
       break;
     }
   }
+
+  buffer += decoder.decode();
 
   if (buffer.trim()) {
     const event = JSON.parse(buffer) as GraphProgressEvent & {
