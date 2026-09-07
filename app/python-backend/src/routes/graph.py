@@ -1,8 +1,8 @@
 import json
+import io
 from typing import Any, Callable, Dict, List, Optional
 
 import graph_tool as gt
-import io
 from flask import Blueprint, Response, jsonify, redirect, request, stream_with_context
 from werkzeug.datastructures import FileStorage
 from generate_graph_structure import make_graph_structure
@@ -11,11 +11,17 @@ from graph_utils import (
     convert_to_json_parsable_representation,
     load_graph_from_uploaded_file,
 )
+from routes.graph_data import (
+    build_graph_from_graph_data,
+    build_vertex_metadata_for_graph,
+    extract_graph_config,
+    linearized_layout_to_pairs,
+    normalize_canvas_positions,
+)
 from layout_computation_backend_comms import (
     send_layout_computation_request_to_grpc_server,
 )
 from routes.helpers import (
-    EMPTY_PROPERTY_FIELD,
     build_response_json_string_for_make_graph_structure_req,
     extract_vertex_names,
     get_db_manager,
@@ -26,80 +32,6 @@ from routes.helpers import (
 
 graph_bp = Blueprint("graph", __name__)
 
-GRAPH_CONFIG_EXCLUDE_KEYS = {
-    "name",
-    "num_of_vertices",
-    "last_entry_update",
-    "vertices",
-    "_id",
-}
-
-
-def _extract_graph_config(graph_data: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        key: value
-        for key, value in graph_data.items()
-        if key not in GRAPH_CONFIG_EXCLUDE_KEYS
-    }
-
-
-def _normalize_canvas_positions(canvas_positions: List[tuple]) -> tuple[List[tuple], float]:
-    space_size = 0.0
-    coeff_x_denominator = float("-inf")
-    coeff_y_denominator = float("-inf")
-
-    for x, y in canvas_positions:
-        space_size = max(space_size, abs(x), abs(y))
-        coeff_y_denominator = max(coeff_y_denominator, abs(y))
-        coeff_x_denominator = max(coeff_x_denominator, abs(x))
-
-    coeff_x = 8192 / coeff_x_denominator if coeff_x_denominator > 8192 else 1
-    coeff_y = 8192 / coeff_y_denominator if coeff_y_denominator > 8192 else 1
-    scaled_canvas_positions = [(x * coeff_x, y * coeff_y) for x, y in canvas_positions]
-
-    return scaled_canvas_positions, space_size
-
-
-def _linearized_layout_to_pairs(linearized_layout: List[float]) -> List[tuple]:
-    return [
-        (linearized_layout[2 * i], linearized_layout[2 * i + 1])
-        for i in range(len(linearized_layout) // 2)
-    ]
-
-
-def _build_vertex_metadata_for_graph(G_gt: gt.Graph) -> List[Dict[str, Any]]:
-    all_vertex_properties = list(G_gt.vertex_properties.keys())
-    n = G_gt.num_vertices()
-    vertices_metadata: List[Dict[str, Any]] = [None for _ in range(n)]
-
-    for i, v in enumerate(G_gt.vertices()):
-        vertices_metadata[i] = {}
-        for p in all_vertex_properties:
-            val = G_gt.vertex_properties[p][v]
-            if val == EMPTY_PROPERTY_FIELD:
-                continue
-            vertices_metadata[i][p] = convert_to_json_parsable_representation(val)
-
-    return vertices_metadata
-
-
-def _build_linearized_links_and_positions(graph_data: Dict[str, Any]) -> tuple[List[int], List[float]]:
-    n = graph_data["num_of_vertices"]
-    vertices_data = graph_data["vertices"]
-
-    linearized_links: List[int] = []
-    for v in range(n):
-        Nv = vertices_data[v]["N"]
-        for w in Nv:
-            linearized_links.extend((v, w))
-
-    linearized_canvas_positions: List[float] = [0.0 for _ in range(2 * n)]
-    for i in range(n):
-        x, y = vertices_data[i]["pos"]
-        linearized_canvas_positions[2 * i] = x
-        linearized_canvas_positions[2 * i + 1] = y
-
-    return linearized_links, linearized_canvas_positions
 
 def _compute_layout(
     G_gt: gt.Graph,
@@ -305,7 +237,7 @@ def flask_make_graph_structure():
             )
 
         yield _progress_event("normalizing", "Normalizing graph positions...")
-        canvas_positions, space_size = _normalize_canvas_positions(
+        canvas_positions, space_size = normalize_canvas_positions(
             canvas_positions
         )
 
@@ -392,8 +324,8 @@ def save_graph_to_db(graph_uuid: str):
                 return jsonify({"error": "Invalid group password"}), 403
 
     linearized_layout = data["canvas_positions"]
-    layout = _linearized_layout_to_pairs(linearized_layout)
-    vertices_metadata = _build_vertex_metadata_for_graph(G_gt)
+    layout = linearized_layout_to_pairs(linearized_layout)
+    vertices_metadata = build_vertex_metadata_for_graph(G_gt)
 
     additional_config_keys = ["point_size", "space_size", "group_name"]
     additional_config = {
@@ -428,43 +360,6 @@ def save_graph_to_db(graph_uuid: str):
     return jsonify({"hash": graph_hash}), 200
 
 
-def _build_graph_from_graph_data(graph_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Builds the response dict for loading a graph from the database, given the graph data dict
-    as stored in the database.
-    """
-    G_gt = build_gt_graph_from_graph_dict(graph_data)
-    linearized_links, linearized_canvas_positions = _build_linearized_links_and_positions(
-        graph_data
-    )
-
-    payload = {
-        "name": graph_data["name"],
-        "graph": G_gt,
-        "root_id": None,
-        "godag": None,
-        "layout": linearized_canvas_positions,
-    }
-
-    payload["point_size"] = graph_data.get("point_size", 1)
-    payload["space_size"] = graph_data.get("space_size", 256)
-
-    config = _extract_graph_config(graph_data)
-
-    storage = get_graph_storage()
-    graph_uuid = storage.register_new_graph_data(payload)
-
-    names = extract_vertex_names(G_gt)
-
-    return {
-        "uuid": graph_uuid,
-        "canvas_positions": linearized_canvas_positions,
-        "links": linearized_links,
-        "config": config,
-        "names": names,
-    }
-
-
 @graph_bp.route("/load_graph/<string:graph_hash>", methods=["GET"])
 def load_graph_from_db(graph_hash: str):
     db_manager = get_db_manager()
@@ -473,7 +368,7 @@ def load_graph_from_db(graph_hash: str):
     if graph_data is None:
         return jsonify({"error": "No graph with such hash kept in the database"}), 404
 
-    built = _build_graph_from_graph_data(graph_data)
+    built = build_graph_from_graph_data(graph_data)
 
     return jsonify({"graph_hash": graph_hash, **built}), 200
 
@@ -516,7 +411,7 @@ def load_graph_from_json():
     )
 
     if has_layout:
-        built = _build_graph_from_graph_data(graph_data)
+        built = build_graph_from_graph_data(graph_data)
         return jsonify({"graph_hash": None, **built}), 200
 
     G_gt = build_gt_graph_from_graph_dict(graph_data)
@@ -541,7 +436,7 @@ def load_graph_from_json():
         }
     )
 
-    config = _extract_graph_config(graph_data)
+    config = extract_graph_config(graph_data)
 
     names = extract_vertex_names(G_gt)
 
@@ -585,7 +480,7 @@ def recompute_layout(graph_uuid: str):
         return jsonify({"error": "Graph not available in session"}), 500
 
     canvas_positions = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
-    canvas_positions, space_size = _normalize_canvas_positions(canvas_positions)
+    canvas_positions, space_size = normalize_canvas_positions(canvas_positions)
 
     (
         transformed_canvas_positions,
