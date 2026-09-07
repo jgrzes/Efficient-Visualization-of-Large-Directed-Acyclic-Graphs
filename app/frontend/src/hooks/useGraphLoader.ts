@@ -371,14 +371,23 @@ export function useGraphLoader(params: {
     async (file: File, namespace: string, layoutType: LayoutType) => {
       setLoading(true);
       setLoadingMessage("Starting graph build...");
+      let radialFallback = false;
       try {
         const data = await makeGraphStructure(
           file,
           namespace,
           layoutType,
-          ({ message }: GraphProgressEvent) => setLoadingMessage(message)
+          ({ stage, message }: GraphProgressEvent) => {
+            if (stage === "layout_fallback") {
+              radialFallback = true;
+              return;
+            }
+
+            setLoadingMessage(message);
+          }
         );
         applyLoadedGraph(data, { fit: true });
+        return radialFallback;
       } catch (e) {
         throw new Error(errMessage(e, "Upload error"));
       } finally {

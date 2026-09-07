@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import graph_tool as gt
 import io
@@ -101,7 +101,14 @@ def _build_linearized_links_and_positions(graph_data: Dict[str, Any]) -> tuple[L
 
     return linearized_links, linearized_canvas_positions
 
-def _compute_layout(G_gt: gt.Graph, layout_type: str, layout_host: str, layout_port: int, logger) -> List[tuple]:
+def _compute_layout(
+    G_gt: gt.Graph,
+    layout_type: str,
+    layout_host: str,
+    layout_port: int,
+    logger,
+    on_radial_fallback: Optional[Callable[[], None]] = None,
+) -> List[tuple]:
     if layout_type == "radial":
         logger.debug("Using radial layout computation")
         return make_graph_structure(G_gt)
@@ -115,6 +122,8 @@ def _compute_layout(G_gt: gt.Graph, layout_type: str, layout_host: str, layout_p
             logger.warning(
                 f"GRPC server failed to conclude layout computation: {e}. Falling back to radial layout."
             )
+            if on_radial_fallback is not None:
+                on_radial_fallback()
             return make_graph_structure(G_gt)
 
 def _progress_event(
@@ -273,6 +282,12 @@ def flask_make_graph_structure():
             "and created a graph tool object based on it"
         )
 
+        radial_fallback = False
+
+        def mark_radial_fallback():
+            nonlocal radial_fallback
+            radial_fallback = True
+
         yield _progress_event("layout", "Computing graph layout...")
         canvas_positions = _compute_layout(
             G_gt,
@@ -280,7 +295,14 @@ def flask_make_graph_structure():
             layout_host,
             layout_port,
             logger,
+            on_radial_fallback=mark_radial_fallback,
         )
+
+        if radial_fallback:
+            yield _progress_event(
+                "layout_fallback",
+                "Radial layout computed because the C++ layout service was unavailable.",
+            )
 
         yield _progress_event("normalizing", "Normalizing graph positions...")
         canvas_positions, space_size = _normalize_canvas_positions(

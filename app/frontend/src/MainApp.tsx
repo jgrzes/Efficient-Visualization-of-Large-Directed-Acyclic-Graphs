@@ -282,7 +282,17 @@ export default function MainApp() {
     if (!selectedFile) return;
     setShowOntologyOptions(false);
     try {
-      await loader.uploadFileWithNamespace(selectedFile, namespace, selectedLayoutType);
+      const radialFallback = await loader.uploadFileWithNamespace(
+        selectedFile,
+        namespace,
+        selectedLayoutType
+      );
+      if (radialFallback) {
+        toast.showInfo(
+          "The C++ layout service was unavailable, so the graph was loaded using a radial layout.",
+          "Radial layout used"
+        );
+      }
     } catch (e) {
       toast.showError(e instanceof Error ? e.message : "Upload failed");
     }
