@@ -522,7 +522,7 @@ export default function MainApp() {
         />
       )}
 
-      {loader.loading && <LoadingModal />}
+      {loader.loading && <LoadingModal message={loader.loadingMessage} />}
 
       <RightSidebar
         onSearch={search.handleSearch}

@@ -18,6 +18,7 @@ import {
   analyzeGraph,
   type LayoutType,
   type LoadedGraph,
+  type GraphProgressEvent,
   type SaveGraphBody,
 } from "../graph/api/graphs";
 
@@ -88,6 +89,7 @@ export function useGraphLoader(params: {
   } = params;
 
   const [loading, setLoading] = React.useState(false);
+  const [loadingMessage, setLoadingMessage] = React.useState("Loading graph...");
 
   const [groups, setGroups] = React.useState<GroupInfo[]>([]);
   const [groupsLoading, setGroupsLoading] = React.useState(false);
@@ -368,13 +370,20 @@ export function useGraphLoader(params: {
   const uploadFileWithNamespace = React.useCallback(
     async (file: File, namespace: string, layoutType: LayoutType) => {
       setLoading(true);
+      setLoadingMessage("Starting graph build...");
       try {
-        const data = await makeGraphStructure(file, namespace, layoutType);
+        const data = await makeGraphStructure(
+          file,
+          namespace,
+          layoutType,
+          ({ message }: GraphProgressEvent) => setLoadingMessage(message)
+        );
         applyLoadedGraph(data, { fit: true });
       } catch (e) {
         throw new Error(errMessage(e, "Upload error"));
       } finally {
         setLoading(false);
+        setLoadingMessage("Loading graph...");
       }
     },
     []
@@ -451,6 +460,7 @@ export function useGraphLoader(params: {
   return {
     // state
     loading,
+    loadingMessage,
 
     groups,
     groupsLoading,

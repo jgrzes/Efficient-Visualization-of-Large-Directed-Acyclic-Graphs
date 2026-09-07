@@ -2,7 +2,9 @@ import json
 from typing import Any, Dict, List, Optional
 
 import graph_tool as gt
-from flask import Blueprint, jsonify, redirect, request
+import io
+from flask import Blueprint, Response, jsonify, redirect, request, stream_with_context
+from werkzeug.datastructures import FileStorage
 from generate_graph_structure import make_graph_structure
 from graph_utils import (
     build_gt_graph_from_graph_dict,
@@ -115,6 +117,21 @@ def _compute_layout(G_gt: gt.Graph, layout_type: str, layout_host: str, layout_p
             )
             return make_graph_structure(G_gt)
 
+def _progress_event(
+    stage: str,
+    message: str,
+    data: Optional[Dict[str, Any]] = None,
+) -> str:
+        event = {
+            "stage": stage,
+            "message": message,
+        }
+
+        if data is not None:
+            event["data"] = data
+
+        return json.dumps(event) + "\n"
+
 @graph_bp.route("/session_keepalive", methods=["POST"])
 def session_keepalive():
     logger = get_logger()
@@ -217,36 +234,76 @@ def flask_make_graph_structure():
         f"{file.filename} with layout_type={layout_type}"
     )
 
-    root_id, godag = None, None
-    G_gt: Optional[gt.Graph] = None
+    file_contents = file.read()
+    filename = file.filename
 
-    try:
-        G_gt, root_id, godag = load_graph_from_uploaded_file(file)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        logger.error(f"Error while loading graph: {e}")
-        return jsonify({"error": "Failed to construct graph from file"}), 500
+    def generate():
+        yield _progress_event(
+            "parsing",
+            "Parsing graph file..."
+        )
 
-    logger.debug(
-        f"Successfully extracted graph from {file.filename} and created a graph tool object based on it"
-    )
+        try:
+            uploaded_file = FileStorage(stream=io.BytesIO(file_contents), filename=filename)
+            G_gt, root_id, godag = load_graph_from_uploaded_file(uploaded_file)
+        except ValueError as e:
+            yield _progress_event(
+                "error",
+                str(e)
+            )
+            return
+        except Exception as e:
+            logger.error(f"Error while loading graph: {e}")
+            yield _progress_event(
+                "error",
+                "Failed to construct graph from file"
+            )
+            return
 
-    if G_gt is not None:
-        canvas_positions = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
-        canvas_positions, space_size = _normalize_canvas_positions(canvas_positions)
+        if G_gt is None:
+            logger.error(f"Failed to create graph from file {file.filename}")
+            yield _progress_event(
+                "error",
+                "Failed to create graph"
+            )
+            return
 
+        logger.debug(
+            f"Successfully extracted graph from {file.filename} "
+            "and created a graph tool object based on it"
+        )
+
+        yield _progress_event("layout", "Computing graph layout...")
+        canvas_positions = _compute_layout(
+            G_gt,
+            layout_type,
+            layout_host,
+            layout_port,
+            logger,
+        )
+
+        yield _progress_event("normalizing", "Normalizing graph positions...")
+        canvas_positions, space_size = _normalize_canvas_positions(
+            canvas_positions
+        )
+
+        yield _progress_event("preparing", "Preparing graph data...")
         (
             transformed_canvas_positions,
             links,
         ) = build_response_json_string_for_make_graph_structure_req(
-            G_gt=G_gt, canvas_positions=canvas_positions
+            G_gt=G_gt,
+            canvas_positions=canvas_positions,
         )
+
+        names = extract_vertex_names(G_gt)
 
         logger.debug(
-            f"Computed layout for {file.filename}, waiting for graph uuid generation..."
+            f"Computed layout for {file.filename}, "
+            "waiting for graph uuid generation..."
         )
 
+        yield _progress_event("registering", "Registering graph session...")
         graph_uuid = storage.register_new_graph_data(
             {
                 "name": file.filename,
@@ -257,24 +314,26 @@ def flask_make_graph_structure():
                 "space_size": int(space_size * 1.2),
             }
         )
-
-        names = extract_vertex_names(G_gt)
-
-        return (
-            jsonify(
-                {
-                    "uuid": graph_uuid,
-                    "canvas_positions": transformed_canvas_positions,
-                    "links": links,
-                    "names": names,
-                    "space_size": space_size,
-                }
-            ),
-            200,
+        yield _progress_event(
+            "done",
+            "Graph loaded successfully",
+            {
+                "uuid": graph_uuid,
+                "canvas_positions": transformed_canvas_positions,
+                "links": links,
+                "names": names,
+                "space_size": space_size,
+            },
         )
 
-    logger.error(f"Failed to create layout for graph stored in file {file.filename}")
-    return jsonify({"error": "Failed to create graph layout"}), 500
+    return Response(
+        stream_with_context(generate()),
+        mimetype="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @graph_bp.route("/save_graph/<string:graph_uuid>", methods=["POST"])
