@@ -22,6 +22,7 @@ from layout_computation_backend_comms import (
     send_layout_computation_request_to_grpc_server,
 )
 from routes.helpers import (
+    EMPTY_PROPERTY_FIELD,
     build_response_json_string_for_make_graph_structure_req,
     extract_vertex_names,
     get_db_manager,

@@ -129,6 +129,7 @@ export async function makeGraphStructure(
     onProgress?.({ stage: event.stage, message: event.message });
 
     if (event.stage === "error") {
+      await reader.cancel().catch(() => {});
       throw new Error(event.message);
     }
 
