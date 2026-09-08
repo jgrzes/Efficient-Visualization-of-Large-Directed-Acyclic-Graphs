@@ -6,6 +6,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useMemo,
 } from "react";
 import { Graph, GraphConfigInterface } from "@cosmograph/cosmos";
 import { NodeInfoProps } from "../components/leftsidebar/NodeInfo";
@@ -14,7 +15,7 @@ import { DEFAULT_GRAPH_COLORS } from "../graph/config";
 
 import { fetchNodeData } from "../graph/api/node";
 import { sleep } from "../graph/utils/time";
-import { computeParentsChildren, computeShortestPathToRoot } from "../graph/utils/relationships";
+import { buildParentsByNode, computeParentsChildren, computeShortestPathToRoot } from "../graph/utils/relationships";
 import {
   computePinnedTooltips,
   computeHoverTooltip,
@@ -67,6 +68,8 @@ export function useGraph(
 
   const focusPathNodeIndicesRef = useRef<Set<number>>(new Set());
   const focusPathEdgeIndicesRef = useRef<Set<number>>(new Set());
+
+  const parentsByNode = useMemo(() => buildParentsByNode(links), [links]);
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext?.currentGraphUUID;
@@ -151,7 +154,7 @@ export function useGraph(
         pathEdges: edgePath,
       } = computeShortestPathToRoot(
         focusedNodeIndex,
-        links
+        parentsByNode
       );
 
       for (const nodeIndex of nodePath) {
@@ -169,7 +172,7 @@ export function useGraph(
     focusMode,
     highlightPathToRoot,
     focusedNodeIndices,
-    links,
+    parentsByNode,
   ]);
 
   useEffect(() => {
@@ -863,6 +866,10 @@ export function useGraph(
       // Also remove from cache
       if (parentChildrenCacheRef) {
         parentChildrenCacheRef.current.delete(index);
+      }
+
+      if (selectedIndexRef.current === index) {
+        clearSelection();
       }
     },
     [setFocusedNodeIndices, parentChildrenCacheRef]

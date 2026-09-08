@@ -65,7 +65,10 @@ const FocusedNodesList: React.FC<FocusedNodesListProps> = ({
               </span>
             </button>
             <button
-              onClick={() => onRemoveNode(index)}
+              onClick={() => {
+                onHoverNode?.(undefined);
+                onRemoveNode(index);
+              }}
               className="ml-2 p-1 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 dark:hover:bg-red-900/20 rounded transition"
               title="Remove from focused nodes"
               aria-label={`Remove node ${getNodeName(index)} from focused nodes`}

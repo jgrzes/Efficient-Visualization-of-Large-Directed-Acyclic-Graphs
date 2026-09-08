@@ -1,3 +1,10 @@
+type ParentEdge = {
+  parent: number;
+  edgeIndex: number;
+};
+
+export type ParentsByNode = Map<number, ParentEdge[]>;
+
 export const computeParentsChildren = (
   selectedIndices: number[],
   flatLinks: Float32Array
@@ -17,14 +24,10 @@ export const computeParentsChildren = (
   return { parents, children };
 };
 
-export const computeShortestPathToRoot = (
-  startNode: number,
+export const buildParentsByNode = (
   flatLinks: Float32Array
-) => {
-  const parentsByNode = new Map<
-    number,
-    Array<{ parent: number; edgeIndex: number }>
-  >();
+): ParentsByNode => {
+  const parentsByNode: ParentsByNode = new Map();
 
   for (let i = 0; i < flatLinks.length; i += 2) {
     const source = flatLinks[i];
@@ -41,6 +44,13 @@ export const computeShortestPathToRoot = (
     parentsByNode.set(target, parents);
   }
 
+  return parentsByNode;
+};
+
+export const computeShortestPathToRoot = (
+  startNode: number,
+  parentsByNode: ParentsByNode
+) => {
   const queue: number[] = [startNode];
   let head = 0;
 
