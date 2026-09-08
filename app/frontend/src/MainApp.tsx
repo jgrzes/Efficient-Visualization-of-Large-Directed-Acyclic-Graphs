@@ -241,9 +241,19 @@ export default function MainApp() {
     if (layoutModalMode === "recompute") {
       setShowLayoutModal(false);
       setLayoutModalMode(null);
-      void loader.recomputeCurrentLayout(layoutType).catch((e) => {
-        toast.showError(e instanceof Error ? e.message : "Layout recompute failed");
-      });
+      void loader
+        .recomputeCurrentLayout(layoutType)
+        .then((fallbackUsed) => {
+          if (fallbackUsed) {
+            toast.showInfo(
+              "The C++ layout service was unavailable, so the graph was loaded using a radial layout.",
+              "Radial layout used"
+            );
+          }
+        })
+        .catch((e) => {
+          toast.showError(e instanceof Error ? e.message : "Layout recompute failed");
+        });
       return;
     }
 
@@ -282,7 +292,17 @@ export default function MainApp() {
     if (!selectedFile) return;
     setShowOntologyOptions(false);
     try {
-      await loader.uploadFileWithNamespace(selectedFile, namespace, selectedLayoutType);
+      const radialFallback = await loader.uploadFileWithNamespace(
+        selectedFile,
+        namespace,
+        selectedLayoutType
+      );
+      if (radialFallback) {
+        toast.showInfo(
+          "The C++ layout service was unavailable, so the graph was loaded using a radial layout.",
+          "Radial layout used"
+        );
+      }
     } catch (e) {
       toast.showError(e instanceof Error ? e.message : "Upload failed");
     }
@@ -522,7 +542,7 @@ export default function MainApp() {
         />
       )}
 
-      {loader.loading && <LoadingModal />}
+      {loader.loading && <LoadingModal message={loader.loadingMessage} />}
 
       <RightSidebar
         onSearch={search.handleSearch}

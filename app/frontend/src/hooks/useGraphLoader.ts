@@ -18,6 +18,7 @@ import {
   analyzeGraph,
   type LayoutType,
   type LoadedGraph,
+  type GraphProgressEvent,
   type SaveGraphBody,
 } from "../graph/api/graphs";
 
@@ -88,6 +89,7 @@ export function useGraphLoader(params: {
   } = params;
 
   const [loading, setLoading] = React.useState(false);
+  const [loadingMessage, setLoadingMessage] = React.useState("Loading graph...");
 
   const [groups, setGroups] = React.useState<GroupInfo[]>([]);
   const [groupsLoading, setGroupsLoading] = React.useState(false);
@@ -358,6 +360,7 @@ export function useGraphLoader(params: {
     try {
       const data = await loadGraphFromJson(file, layoutType);
       applyLoadedGraph(data, { fit: true });
+      return Boolean(data.fallback_used);
     } catch (e) {
       throw new Error(errMessage(e, "Unexpected error while loading JSON graph."));
     } finally {
@@ -368,13 +371,29 @@ export function useGraphLoader(params: {
   const uploadFileWithNamespace = React.useCallback(
     async (file: File, namespace: string, layoutType: LayoutType) => {
       setLoading(true);
+      setLoadingMessage("Starting graph build...");
+      let radialFallback = false;
       try {
-        const data = await makeGraphStructure(file, namespace, layoutType);
+        const data = await makeGraphStructure(
+          file,
+          namespace,
+          layoutType,
+          ({ stage, message }: GraphProgressEvent) => {
+            if (stage === "layout_fallback") {
+              radialFallback = true;
+              return;
+            }
+
+            setLoadingMessage(message);
+          }
+        );
         applyLoadedGraph(data, { fit: true });
+        return radialFallback;
       } catch (e) {
         throw new Error(errMessage(e, "Upload error"));
       } finally {
         setLoading(false);
+        setLoadingMessage("Loading graph...");
       }
     },
     []
@@ -395,6 +414,7 @@ export function useGraphLoader(params: {
         setSelectedNode(null);
         if (Array.isArray(data.names)) setNodeNames(data.names);
         setTimeout(() => fitView(), 100);
+        return Boolean(data.fallback_used);
       } catch (e) {
         throw new Error(errMessage(e, "Failed to recompute layout."));
       } finally {
@@ -451,6 +471,7 @@ export function useGraphLoader(params: {
   return {
     // state
     loading,
+    loadingMessage,
 
     groups,
     groupsLoading,

@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function LoadingModal() {
+export default function LoadingModal({ message = "Loading graph..." }: { message?: string }) {
   return (
     <AnimatePresence>
       <motion.div
@@ -37,7 +37,7 @@ export default function LoadingModal() {
 
           {/* Text */}
           <p className="text-center font-semibold text-base tracking-wide text-gray-900 dark:text-gray-100">
-            Loading graph...
+            {message}
           </p>
         </motion.div>
       </motion.div>
