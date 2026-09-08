@@ -214,7 +214,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     Graph settings
                   </h2>
                   <p className={cx("text-xs", subtleTextCls)}>
-                    Preview changes here — apply globally only after you press Apply.
+                    Preview changes here - apply globally only after you press Apply.
                   </p>
                 </div>
               </div>

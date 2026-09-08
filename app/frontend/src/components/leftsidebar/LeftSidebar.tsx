@@ -4,7 +4,6 @@ import {
   Focus,
   RotateCcw,
   Orbit,
-  Download,
   LineChart,
   Settings,
   ChevronLeft,
@@ -13,12 +12,14 @@ import {
   Crosshair
 } from "lucide-react";
 import NodeInfo, { NodeInfoProps } from "./NodeInfo";
+import ExportMenuButton from "./ExportMenuButton";
 
 interface LeftSidebarProps {
   handleLoadClick: () => void;
   fitView: () => void;
   resetView: () => void;
   handleExportClick: () => void;
+  handleExportHtmlClick: () => void;
   handleAnalyzeClick: () => void;
   handleSaveLayoutClick: () => void;
   handleChangeLayoutClick: () => void;
@@ -32,6 +33,7 @@ interface Item {
   shortLabel?: string;
   icon: React.ReactNode;
   onClick?: () => void;
+  custom?: React.ReactNode;
 }
 
 const COLLAPSED_W = 64;
@@ -49,6 +51,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   fitView,
   resetView,
   handleExportClick,
+  handleExportHtmlClick,
   handleAnalyzeClick,
   handleSaveLayoutClick,
   handleChangeLayoutClick,
@@ -85,7 +88,19 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
     { label: "Load data", shortLabel: "Load", icon: <Upload size={18} />, onClick: handleLoadClick },
     { label: "Fit view", shortLabel: "Fit", icon: <Focus size={18} />, onClick: fitView },
     { label: "Reset layout", shortLabel: "Reset", icon: <RotateCcw size={18} />, onClick: resetView },
-    { label: "Export", shortLabel: "Export", icon: <Download size={18} />, onClick: handleExportClick },
+    {
+      label: "Export",
+      custom: (
+        <ExportMenuButton
+          expanded={expanded}
+          isCollapsed={isCollapsed}
+          isCompact={isCompact}
+          onExportJson={handleExportClick}
+          onExportHtml={handleExportHtmlClick}
+        />
+      ),
+      icon: null,
+    },
     { label: "Analyze", shortLabel: "Analyze", icon: <LineChart size={18} />, onClick: handleAnalyzeClick },
     { label: "Change layout", shortLabel: "Layout", icon: <Orbit size={18} />, onClick: handleChangeLayoutClick },
     { label: "Save layout", shortLabel: "Save", icon: <Save size={18} />, onClick: handleSaveLayoutClick },
@@ -174,29 +189,33 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
       {/* ACTION BUTTONS */}
       <nav className="px-2 py-2 space-y-1 border-b border-black/10 dark:border-white/10">
-        {items.map((item) => (
-          <button
-            key={item.label}
-            type="button"
-            onClick={() => {
-              if (isResizing) return;
-              item.onClick?.();
-            }}
-            className="group w-full flex items-center px-2.5 py-2 rounded-lg
-              hover:bg-black/5 dark:hover:bg-white/5 transition"
-            title={item.label}
-          >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/5 dark:bg-white/5">
-              {item.icon}
-            </span>
-
-            {expanded && !isCollapsed && (
-              <span className="ml-3 text-sm truncate">
-                {isCompact ? item.shortLabel : item.label}
+        {items.map((item) =>
+          item.custom ? (
+            <React.Fragment key={item.label}>{item.custom}</React.Fragment>
+          ) : (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => {
+                if (isResizing) return;
+                item.onClick?.();
+              }}
+              className="group w-full flex items-center px-2.5 py-2 rounded-lg
+                hover:bg-black/5 dark:hover:bg-white/5 transition"
+              title={item.label}
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/5 dark:bg-white/5">
+                {item.icon}
               </span>
-            )}
-          </button>
-        ))}
+
+              {expanded && !isCollapsed && (
+                <span className="ml-3 text-sm truncate">
+                  {isCompact ? item.shortLabel : item.label}
+                </span>
+              )}
+            </button>
+          )
+        )}
       </nav>
 
       {/* NODE INFO */}

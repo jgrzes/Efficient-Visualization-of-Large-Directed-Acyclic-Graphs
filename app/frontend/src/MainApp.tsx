@@ -193,6 +193,25 @@ export default function MainApp() {
     }
   };
 
+  const handleExportHtmlClick = async () => {
+    try {
+      await loader.handleExportHtml();
+    } catch (e) {
+      if (
+        (e instanceof DOMException && e.name === "AbortError") ||
+        (e instanceof Error && e.name === "AbortError") ||
+        (typeof e === "object" &&
+          e !== null &&
+          "message" in e &&
+          String((e as any).message).includes("The user aborted a request"))
+      ) {
+        return;
+      }
+
+      toast.showError(e instanceof Error ? e.message : "HTML export failed");
+    }
+  };
+
   const handleAnalyzeClick = async () => {
     try {
       const result = await loader.handleAnalyze();
@@ -483,6 +502,7 @@ export default function MainApp() {
         fitView={fitView}
         resetView={handleResetView}
         handleExportClick={handleExportClick}
+        handleExportHtmlClick={handleExportHtmlClick}
         handleAnalyzeClick={handleAnalyzeClick}
         handleSaveLayoutClick={() => {
           setSaveModalOpen(true);

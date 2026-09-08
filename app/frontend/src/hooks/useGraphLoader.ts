@@ -20,6 +20,7 @@ import {
   type LoadedGraph,
   type SaveGraphBody,
 } from "../graph/api/graphs";
+import { buildStandaloneGraphHtml } from "../graph/export/buildStandaloneHtml";
 
 type GraphConfig = {
   pointSize: number;
@@ -32,6 +33,28 @@ function errMessage(e: unknown, fallback: string) {
   if (e instanceof Error) return e.message || fallback;
   if (typeof e === "string") return e;
   return fallback;
+}
+
+async function saveBlobToFile(blob: Blob, filename: string, description: string, accept: Record<string, string[]>) {
+  if ((window as any).showSaveFilePicker) {
+    const opts = {
+      suggestedName: filename,
+      types: [{ description, accept }],
+    };
+    const handle = await (window as any).showSaveFilePicker(opts);
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+  } else {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function useGraphLoader(params: {
@@ -413,30 +436,25 @@ export function useGraphLoader(params: {
     try {
       const data = await exportGraph(currentGraphUUID);
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-
-      const filename = "graph-data.json";
-
-      if ((window as any).showSaveFilePicker) {
-        const opts = {
-          suggestedName: filename,
-          types: [{ description: "JSON Files", accept: { "application/json": [".json"] } }],
-        };
-        const handle = await (window as any).showSaveFilePicker(opts);
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
+      await saveBlobToFile(blob, "graph-data.json", "JSON Files", { "application/json": [".json"] });
     } catch (e) {
       throw new Error(errMessage(e, "Failed to export graph from backend."));
+    }
+  }, [currentGraphUUID]);
+
+  const handleExportHtml = React.useCallback(async () => {
+    if (!currentGraphUUID) {
+      throw new Error("No graph loaded, cannot export.");
+    }
+
+    try {
+      const data = await exportGraph(currentGraphUUID);
+      const html = buildStandaloneGraphHtml(data);
+      const blob = new Blob([html], { type: "text/html" });
+      const filename = `${(data.name || "graph").replace(/[^a-z0-9_-]+/gi, "_")}.html`;
+      await saveBlobToFile(blob, filename, "HTML Files", { "text/html": [".html"] });
+    } catch (e) {
+      throw new Error(errMessage(e, "Failed to export graph as HTML."));
     }
   }, [currentGraphUUID]);
 
@@ -485,6 +503,7 @@ export function useGraphLoader(params: {
 
     // export/analyze
     handleExport,
+    handleExportHtml,
     handleAnalyze,
   };
 }
