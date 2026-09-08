@@ -14,7 +14,7 @@ import { DEFAULT_GRAPH_COLORS } from "../graph/config";
 
 import { fetchNodeData } from "../graph/api/node";
 import { sleep } from "../graph/utils/time";
-import { computeParentsChildren } from "../graph/utils/relationships";
+import { computeParentsChildren, computeShortestPathToRoot } from "../graph/utils/relationships";
 import {
   computePinnedTooltips,
   computeHoverTooltip,
@@ -40,7 +40,8 @@ export function useGraph(
   focusMode?: "off" | "on",
   focusedNodeIndices?: Set<number>,
   setFocusedNodeIndices?: Dispatch<SetStateAction<Set<number>>>,
-  parentChildrenCacheRef?: React.MutableRefObject<Map<number, { parents: number[]; children: number[] }>>
+  parentChildrenCacheRef?: React.MutableRefObject<Map<number, { parents: number[]; children: number[] }>>,
+  highlightPathToRoot?: boolean
 ) {
   /* -------------------------------------------------------------------------- */
   /* Core refs and state                                                        */
@@ -63,6 +64,9 @@ export function useGraph(
   const hoveredCardIndexRef = useRef<number | null>(null);
   const focusModeRef = useRef<"off" | "on">(focusMode ?? "off");
   const focusedNodeIndicesRef = useRef<Set<number>>(focusedNodeIndices ?? new Set());
+
+  const focusPathNodeIndicesRef = useRef<Set<number>>(new Set());
+  const focusPathEdgeIndicesRef = useRef<Set<number>>(new Set());
 
   const appContext = useContext(AppContext);
   const currentGraphUUID = appContext?.currentGraphUUID;
@@ -126,6 +130,47 @@ export function useGraph(
   useEffect(() => {
     focusedNodeIndicesRef.current = focusedNodeIndices ?? new Set();
   }, [focusedNodeIndices]);
+
+  useEffect(() => {
+    const pathNodes = new Set<number>();
+    const pathEdges = new Set<number>();
+
+    if (
+      focusMode !== "on" ||
+      !highlightPathToRoot ||
+      !focusedNodeIndices
+    ) {
+      focusPathNodeIndicesRef.current = pathNodes;
+      focusPathEdgeIndicesRef.current = pathEdges;
+      return;
+    }
+
+    for (const focusedNodeIndex of focusedNodeIndices) {
+      const {
+        pathNodes: nodePath,
+        pathEdges: edgePath,
+      } = computeShortestPathToRoot(
+        focusedNodeIndex,
+        links
+      );
+
+      for (const nodeIndex of nodePath) {
+        pathNodes.add(nodeIndex);
+      }
+
+      for (const edgeIndex of edgePath) {
+        pathEdges.add(edgeIndex);
+      }
+    }
+
+    focusPathNodeIndicesRef.current = pathNodes;
+    focusPathEdgeIndicesRef.current = pathEdges;
+  }, [
+    focusMode,
+    highlightPathToRoot,
+    focusedNodeIndices,
+    links,
+  ]);
 
   useEffect(() => {
     currentGraphUUIDRef.current = currentGraphUUID ?? null;
@@ -265,6 +310,9 @@ export function useGraph(
         focusedNodeIndices: focusedNodeIndicesRef.current,
         maskedPointOpacity: maskedPointOpacityRef.current,
         maskedLinkOpacity: maskedLinkOpacityRef.current,
+        focusPathNodeIndices: focusPathNodeIndicesRef.current,
+        focusPathEdgeIndices: focusPathEdgeIndicesRef.current,
+        
       });
 
       const hoverIdx = hoverIndexRef.current;
@@ -312,7 +360,12 @@ export function useGraph(
     );
 
     void applyColors(selectedIndices, parents, children, { zoomToSelected: false });
-  }, [focusedNodeIndices, focusMode, applyColors]);
+  }, [
+    focusedNodeIndices,
+    focusMode,
+    highlightPathToRoot,
+    applyColors,
+  ]);
 
   useEffect(() => {
     const g = graphInstance.current;

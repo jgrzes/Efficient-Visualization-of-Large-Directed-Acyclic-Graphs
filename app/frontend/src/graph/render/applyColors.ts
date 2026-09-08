@@ -18,6 +18,8 @@ export const applyGraphColors = (args: {
   focusedNodeIndices?: Set<number>;
   maskedPointOpacity?: number;
   maskedLinkOpacity?: number;
+  focusPathNodeIndices?: Set<number>;
+  focusPathEdgeIndices?: Set<number>;
 }): number[] => {
   const {
     g,
@@ -33,6 +35,8 @@ export const applyGraphColors = (args: {
     focusedNodeIndices = new Set(),
     maskedPointOpacity = 0.2,
     maskedLinkOpacity = 0.2,
+    focusPathNodeIndices = new Set(),
+    focusPathEdgeIndices = new Set(),
   } = args;
 
   const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
@@ -89,6 +93,10 @@ export const applyGraphColors = (args: {
     }
   }
 
+  for (const nodeIndex of focusPathNodeIndices) {
+    focusVisibleNodes.add(nodeIndex);
+  }
+
   const FOCUSED_LINK = COLOR_DEFAULT_LINK;
   const PARENT_LINK_SOLID = hexToRgba01(colors.parent, 1.0);
   const CHILD_LINK_SOLID = hexToRgba01(colors.child, 1.0);
@@ -98,6 +106,11 @@ export const applyGraphColors = (args: {
     const edgeIndex = i / 2;
     const source = links[i];
     const target = links[i + 1];
+
+    const isFocusedLink =
+      focusedNodeIndices.has(source) ||
+      focusedNodeIndices.has(target) ||
+      focusPathEdgeIndices.has(edgeIndex);
 
     let color = [...COLOR_DEFAULT_LINK.slice(0, 3), 0.6] as [number, number, number, number];
     let width = 2;
@@ -115,7 +128,7 @@ export const applyGraphColors = (args: {
       }
     }
 
-    if (focusedNodeIndices.has(source) || focusedNodeIndices.has(target)) {
+    if (isFocusedLink) {
       if (isRelated) {
         color = selectedSet.has(target) ? PARENT_LINK_SOLID : CHILD_LINK_SOLID;
       } else {
@@ -124,10 +137,7 @@ export const applyGraphColors = (args: {
       width = Math.max(width, 3);
     }
 
-    const isMaskedLink = focusMode === "on" && !focusedNodeIndices.has(source) && !focusedNodeIndices.has(target);
-    if (isMaskedLink) {
-      color = scaleAlpha(color, linkMaskMultiplier);
-    }
+    const isMaskedLink = focusMode === "on" && !isFocusedLink;
 
     linkColors.set(color, edgeIndex * 4);
     linkWidths[edgeIndex] = width;

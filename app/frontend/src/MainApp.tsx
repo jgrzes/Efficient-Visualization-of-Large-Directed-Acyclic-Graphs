@@ -51,6 +51,7 @@ export default function MainApp() {
   const setCurrentGraphUUID = appContext!.setCurrentGraphUUID;
 
   const [focusMode, setFocusMode] = useState<"off" | "on">("off");
+  const [highlightPathToRoot, setHighlightPathToRoot] = useState(false);
   const [focusedNodeIndices, setFocusedNodeIndices] = useState<Set<number>>(new Set());
   const parentChildrenCacheRef = useRef<Map<number, { parents: number[]; children: number[] }>>(new Map());
 
@@ -101,7 +102,7 @@ export default function MainApp() {
 
   // Graph engine
   const { fitView, selectNodeByIndex, tooltips, hoverTooltip, highlightSearchResults, highlightResultHover, startDragFromTooltip, addToFocusedNodes, removeFromFocusedNodes, clearFocusedNodes } =
-    useGraph(graphRef, pointPositions, links, setSelectedNode, graphConfig, nodeNames || undefined, focusMode, focusedNodeIndices, setFocusedNodeIndices, parentChildrenCacheRef);
+    useGraph(graphRef, pointPositions, links, setSelectedNode, graphConfig, nodeNames || undefined, focusMode, focusedNodeIndices, setFocusedNodeIndices, parentChildrenCacheRef, highlightPathToRoot);
 
   // Right sidebar state
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
@@ -445,6 +446,14 @@ export default function MainApp() {
               </div>
 
               <div className="mt-2 space-y-2 text-xs">
+                <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={highlightPathToRoot}
+                      onChange={(e) => setHighlightPathToRoot(e.target.checked)}
+                    />
+                    Highlight path to root
+                </label>
                 <div className="grid grid-cols-[1fr_auto] items-center gap-2">
                   <label htmlFor="masked-point-opacity">Masked vertices opacity</label>
                   <input
