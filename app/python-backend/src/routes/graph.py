@@ -1,6 +1,6 @@
 import json
 import io
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import graph_tool as gt
 from flask import Blueprint, Response, jsonify, redirect, request, stream_with_context

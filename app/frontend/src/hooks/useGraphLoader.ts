@@ -360,6 +360,7 @@ export function useGraphLoader(params: {
     try {
       const data = await loadGraphFromJson(file, layoutType);
       applyLoadedGraph(data, { fit: true });
+      return Boolean(data.fallback_used);
     } catch (e) {
       throw new Error(errMessage(e, "Unexpected error while loading JSON graph."));
     } finally {
