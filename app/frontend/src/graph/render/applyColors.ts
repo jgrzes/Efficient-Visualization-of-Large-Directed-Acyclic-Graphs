@@ -75,6 +75,20 @@ export const applyGraphColors = (args: {
   const parentsSet = new Set<number>(parents);
   const childrenSet = new Set<number>(children);
 
+  const focusVisibleNodes = new Set<number>(focusedNodeIndices);
+
+  for (let i = 0; i < links.length; i += 2) {
+    const source = links[i];
+    const target = links[i + 1];
+
+    if (
+      focusedNodeIndices.has(source) || focusedNodeIndices.has(target)
+    ) {
+      focusVisibleNodes.add(source);
+      focusVisibleNodes.add(target);
+    }
+  }
+
   const FOCUSED_LINK = COLOR_DEFAULT_LINK;
   const PARENT_LINK_SOLID = hexToRgba01(colors.parent, 1.0);
   const CHILD_LINK_SOLID = hexToRgba01(colors.child, 1.0);
@@ -123,7 +137,7 @@ export const applyGraphColors = (args: {
   for (let i = 0; i < pointCount; i++) {
     let color = DEFAULT_POINT;
     let pointSize = size;
-    const isFocused = focusedNodeIndices.has(i);
+    const isFocused = focusVisibleNodes.has(i);
 
     if (hoveredCardIndex != null && hoveredCardIndex === i) {
       color = isFocused ? HOVER_POINT_SOLID : HOVER_POINT;
