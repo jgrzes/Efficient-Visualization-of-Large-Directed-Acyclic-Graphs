@@ -28,7 +28,7 @@ const FocusedNodesList: React.FC<FocusedNodesListProps> = ({
       drag
       dragMomentum={false}
       dragElastic={0.15}
-      className="fixed bottom-4 right-4 max-h-[300px] w-80 bg-white dark:bg-black/90 border border-black/10 dark:border-white/10 rounded-xl shadow-lg overflow-hidden flex flex-col"
+      className="fixed top-4 left-20 max-h-[300px] w-80 bg-white dark:bg-black/90 border border-black/10 dark:border-white/10 rounded-xl shadow-lg overflow-hidden flex flex-col"
       style={{ zIndex: 30, touchAction: "none" }}
     >
       {/* Header */}

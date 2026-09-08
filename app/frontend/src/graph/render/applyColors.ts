@@ -41,7 +41,6 @@ export const applyGraphColors = (args: {
 
   const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
   const pointMaskMultiplier = focusMode === "on" ? clamp01(maskedPointOpacity) : 1.0;
-  const linkMaskMultiplier = focusMode === "on" ? clamp01(maskedLinkOpacity) : 1.0;
   const scaleAlpha = (rgba: [number, number, number, number], factor: number): [number, number, number, number] => [
     rgba[0],
     rgba[1],
@@ -136,8 +135,6 @@ export const applyGraphColors = (args: {
       }
       width = Math.max(width, 3);
     }
-
-    const isMaskedLink = focusMode === "on" && !isFocusedLink;
 
     linkColors.set(color, edgeIndex * 4);
     linkWidths[edgeIndex] = width;
