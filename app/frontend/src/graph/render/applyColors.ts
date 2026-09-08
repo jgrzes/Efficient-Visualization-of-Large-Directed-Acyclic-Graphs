@@ -81,15 +81,15 @@ export const applyGraphColors = (args: {
 
   const focusVisibleNodes = new Set<number>(focusedNodeIndices);
 
-  for (let i = 0; i < links.length; i += 2) {
-    const source = links[i];
-    const target = links[i + 1];
+  if (focusedNodeIndices.size > 0) {
+    for (let i = 0; i < links.length; i += 2) {
+      const source = links[i];
+      const target = links[i + 1];
 
-    if (
-      focusedNodeIndices.has(source) || focusedNodeIndices.has(target)
-    ) {
-      focusVisibleNodes.add(source);
-      focusVisibleNodes.add(target);
+      if (focusedNodeIndices.has(source) || focusedNodeIndices.has(target)) {
+        focusVisibleNodes.add(source);
+        focusVisibleNodes.add(target);
+      }
     }
   }
 
