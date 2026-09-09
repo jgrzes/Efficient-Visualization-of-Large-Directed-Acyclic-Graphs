@@ -28,7 +28,7 @@ const FocusedNodesList: React.FC<FocusedNodesListProps> = ({
       drag
       dragMomentum={false}
       dragElastic={0.15}
-      className="fixed bottom-4 right-4 max-h-[300px] w-80 bg-white dark:bg-black/90 border border-black/10 dark:border-white/10 rounded-xl shadow-lg overflow-hidden flex flex-col"
+      className="fixed top-4 left-20 max-h-[300px] w-80 bg-white dark:bg-black/90 border border-black/10 dark:border-white/10 rounded-xl shadow-lg overflow-hidden flex flex-col"
       style={{ zIndex: 30, touchAction: "none" }}
     >
       {/* Header */}
@@ -65,7 +65,10 @@ const FocusedNodesList: React.FC<FocusedNodesListProps> = ({
               </span>
             </button>
             <button
-              onClick={() => onRemoveNode(index)}
+              onClick={() => {
+                onHoverNode?.(undefined);
+                onRemoveNode(index);
+              }}
               className="ml-2 p-1 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 dark:hover:bg-red-900/20 rounded transition"
               title="Remove from focused nodes"
               aria-label={`Remove node ${getNodeName(index)} from focused nodes`}
