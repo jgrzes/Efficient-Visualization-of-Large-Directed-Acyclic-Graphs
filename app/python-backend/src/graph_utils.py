@@ -207,37 +207,42 @@ def build_graph_from_json_contents(raw_contents: str) -> gt.Graph:
     return build_gt_graph_from_graph_dict(graph_data)
 
 
-def load_graph_from_uploaded_file(file) -> Tuple[gt.Graph, Optional[str], Any]:
+def load_graph_from_uploaded_file(
+    file,
+) -> Tuple[gt.Graph, Optional[str], Any, Optional[gt.Graph], Optional[Dict[str, tuple]]]:
     """
     Accepts a file from the request, builds a graph-tool Graph based on the extension,
-    and returns: (G_gt, root_id, godag).
+    and returns: (G_gt, root_id, godag, full_graph, roots).
 
     - OBO: uses build_gt_graph_from_obo + optional filtering by root namespace.
-    - JSON: parses a saved graph (format as in the database/export).
+      `full_graph` (unfiltered) and `roots` (namespace -> (root_id, root_vertex)) are
+      also returned so the category/namespace can later be switched via `filter_graph_by_root`
+      without re-parsing the OBO file.
+    - JSON/TXT: parses a saved graph (format as in the database/export); these formats have
+      no namespaces, so `full_graph`/`roots` are None.
     """
     ext = file.filename.rsplit(".", 1)[-1].lower()
     raw_contents = file.read().decode("utf-8")
 
-    root_id: Optional[str] = None
-    godag: Any = None
-
     if ext == "obo":
-        G_gt, roots, godag = build_gt_graph_from_obo(raw_contents)
+        G_gt_full, roots, godag = build_gt_graph_from_obo(raw_contents)
 
+        root_id: Optional[str] = None
+        G_gt = G_gt_full
         root_namespace = request.form.get("root", None)
         if root_namespace is not None:
             root_id, root_vertex = roots.get(root_namespace, (None, None))
             if root_vertex is not None:
-                G_gt = filter_graph_by_root(G_gt, root_vertex)
+                G_gt = filter_graph_by_root(G_gt_full, root_vertex)
 
-        return G_gt, root_id, godag
+        return G_gt, root_id, godag, G_gt_full, roots
 
     elif ext == "json":
         G_gt = build_graph_from_json_contents(raw_contents)
-        return G_gt, None, None
+        return G_gt, None, None, None, None
 
     elif ext == "txt":  # maybe we should get rid of this format?
         G_gt = build_graph_from_txt(raw_contents)
-        return G_gt, None, None
+        return G_gt, None, None, None, None
 
     raise ValueError(f"Unsupported file type: {ext}")

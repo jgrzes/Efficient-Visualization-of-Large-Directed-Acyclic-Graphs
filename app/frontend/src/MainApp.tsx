@@ -9,14 +9,13 @@ import AnalysisPanel from "./components/analysispanel/AnalysisPanel";
 import LeftSidebar from "./components/leftsidebar/LeftSidebar";
 import ToolTip from "./components/ToolTip";
 import FocusedNodesList from "./components/FocusedNodesList";
-import OntologyModal from "./components/modals/OntologyModal";
 import LoadingModal from "./components/modals/LoadingModal";
 import RightSidebar from "./components/rightsidebar/RightSidebar";
 import SaveGraphModal from "./components/modals/SaveGraphModal/SaveGraphModal";
 import GraphListModal from "./components/modals/GraphListModal";
 import LoadSourceModal from "./components/modals/LoadSourceModal/LoadSourceModal";
 import SettingsModal from "./components/modals/SettingsModal/SettingsModal";
-import LayoutModal from "./components/modals/LayoutModal";
+import LayoutCategoryModal from "./components/modals/LayoutCategoryModal";
 
 import { useFavorites } from "./hooks/useFavorites";
 import { useComments } from "./hooks/useComments";
@@ -77,16 +76,13 @@ export default function MainApp() {
 
   const [nodeNames, setNodeNames] = useState<string[] | null>(null);
 
-  // UI state (local)
-  const [showOntologyOptions, setShowOntologyOptions] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-  // layout selection flow
+  // layout/category selection flow
   const [showLayoutModal, setShowLayoutModal] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingExt, setPendingExt] = useState<"obo" | "txt" | "json" | null>(null);
-  const [selectedLayoutType, setSelectedLayoutType] = useState<LayoutType>("cpp");
-  const [layoutModalMode, setLayoutModalMode] = useState<"upload" | "recompute" | null>(null);
+  const [layoutModalMode, setLayoutModalMode] = useState<
+    "upload" | "recompute" | "change-category" | null
+  >(null);
 
   // modals
   const [loadSourceModalOpen, setLoadSourceModalOpen] = useState(false);
@@ -257,7 +253,7 @@ export default function MainApp() {
     toast.showError(`Unhandled file format: .${ext ?? "unknown"}`, "Unsupported file");
   };
 
-  const handleLayoutConfirm = (layoutType: LayoutType) => {
+  const handleLayoutConfirm = (layoutType: LayoutType, category?: string) => {
     if (layoutModalMode === "recompute") {
       setShowLayoutModal(false);
       setLayoutModalMode(null);
@@ -276,61 +272,84 @@ export default function MainApp() {
       return;
     }
 
+    if (layoutModalMode === "change-category") {
+      setShowLayoutModal(false);
+      setLayoutModalMode(null);
+      if (!category) return;
+      void loader
+        .changeCurrentCategory(category, layoutType)
+        .then((fallbackUsed) => {
+          if (fallbackUsed) {
+            toast.showInfo(
+              "Radial layout computed because the hierarchical layout could not be computed."
+            );
+          }
+        })
+        .catch((e) => {
+          toast.showError(e instanceof Error ? e.message : "Failed to change category");
+        });
+      return;
+    }
+
+    // upload mode
     if (!pendingFile || !pendingExt) {
       setShowLayoutModal(false);
       setLayoutModalMode(null);
       return;
     }
 
-    setSelectedLayoutType(layoutType);
+    const fileToUpload = pendingFile;
+    const ext = pendingExt;
+
     setShowLayoutModal(false);
     setLayoutModalMode(null);
-
-    if (pendingExt === "json") {
-      void loader.loadJsonGraph(pendingFile, layoutType);
-      setPendingFile(null);
-      setPendingExt(null);
-      return;
-    }
-
-    setSelectedFile(pendingFile);
-    setShowOntologyOptions(true);
-  };
-
-  const handleChangeLayoutClick = () => {
-    if (!currentGraphUUID) {
-      toast.showError("Load a graph first to change its layout.", "No graph loaded");
-      return;
-    }
-
-    setLayoutModalMode("recompute");
-    setShowLayoutModal(true);
-  };
-
-  const uploadFileWithNamespace = async (namespace: string) => {
-    if (!selectedFile) return;
-    setShowOntologyOptions(false);
-    try {
-      const radialFallback = await loader.uploadFileWithNamespace(
-        selectedFile,
-        namespace,
-        selectedLayoutType
-      );
-      if (radialFallback) {
-        toast.showInfo(
-          "The C++ layout service was unavailable, so the graph was loaded using a radial layout.",
-          "Radial layout used"
-        );
-      }
-    } catch (e) {
-      toast.showError(e instanceof Error ? e.message : "Upload failed");
-    }
-
-    setSelectedFile(null);
     setPendingFile(null);
     setPendingExt(null);
 
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (ext === "json") {
+      void loader.loadJsonGraph(fileToUpload, layoutType).catch((e) => {
+        toast.showError(e instanceof Error ? e.message : "JSON load failed");
+      });
+      return;
+    }
+
+    // Category (ontology namespace) only exists for .obo files.
+    if (ext === "obo" && !category) {
+      toast.showError("Please choose a category.", "Category required");
+      return;
+    }
+
+    void loader
+      .uploadFileWithNamespace(fileToUpload, ext === "obo" ? category! : "", layoutType)
+      .then((radialFallback) => {
+        if (radialFallback) {
+          toast.showInfo(
+            "The C++ layout service was unavailable, so the graph was loaded using a radial layout.",
+            "Radial layout used"
+          );
+        }
+      })
+      .catch((e) => {
+        toast.showError(e instanceof Error ? e.message : "Upload failed");
+      })
+      .finally(() => {
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      });
+  };
+
+  // Single entry point for changing the graph's layout and, when the loaded
+  // graph came from an .obo file, its ontology category. Other formats
+  // (.txt, .json) have no categories, so the modal falls back to a
+  // layout-only recompute for them.
+  const handleChangeViewClick = () => {
+    if (!currentGraphUUID) {
+      toast.showError("Load a graph first to change its view.", "No graph loaded");
+      return;
+    }
+
+    const hasCategories = Boolean(loader.categories && loader.categories.length > 0);
+    setLayoutModalMode(hasCategories ? "change-category" : "recompute");
+    setShowLayoutModal(true);
   };
 
   // save modal submit wrapper
@@ -536,7 +555,7 @@ export default function MainApp() {
           setSaveModalOpen(true);
           loader.fetchGroups();
         }}
-        handleChangeLayoutClick={handleChangeLayoutClick}
+        handleChangeViewClick={handleChangeViewClick}
         handleOpenSettings={handleOpenSettings}
         handleFocusModeToggle={handleFocusModeToggle}
         selectedNode={selectedNode}
@@ -550,8 +569,15 @@ export default function MainApp() {
         className="hidden"
       />
 
-      <LayoutModal
+      <LayoutCategoryModal
         open={showLayoutModal}
+        showCategory={
+          layoutModalMode === "change-category" ||
+          (layoutModalMode === "upload" && pendingExt === "obo")
+        }
+        categories={layoutModalMode === "change-category" ? loader.categories ?? undefined : undefined}
+        currentCategory={layoutModalMode === "change-category" ? loader.currentCategory ?? undefined : undefined}
+        fileName={layoutModalMode === "upload" ? pendingFile?.name : undefined}
         onCancel={() => {
           setShowLayoutModal(false);
           setLayoutModalMode(null);
@@ -561,14 +587,6 @@ export default function MainApp() {
         }}
         onConfirm={handleLayoutConfirm}
       />
-
-      {showOntologyOptions && selectedFile && (
-        <OntologyModal
-          fileName={selectedFile.name}
-          onSelect={uploadFileWithNamespace}
-          onCancel={() => setShowOntologyOptions(false)}
-        />
-      )}
 
       {loader.loading && <LoadingModal message={loader.loadingMessage} />}
 

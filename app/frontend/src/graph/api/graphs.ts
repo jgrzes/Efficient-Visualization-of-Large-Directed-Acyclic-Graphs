@@ -16,6 +16,18 @@ export type LoadedGraph = {
     comments?: CommentItem[];
   };
   fallback_used?: boolean;
+  categories?: string[] | null;
+  current_category?: string | null;
+};
+
+export type ChangeCategoryResult = {
+  uuid: string;
+  canvas_positions: number[];
+  links: number[];
+  names?: string[];
+  space_size?: number;
+  fallback_used?: boolean;
+  category: string;
 };
 
 export type GraphProgressEvent = {
@@ -153,6 +165,18 @@ export async function recomputeLayout(graphUuid: string, layoutType: LayoutType)
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ layout_type: layoutType }),
+  });
+}
+
+export async function changeCategory(
+  graphUuid: string,
+  category: string,
+  layoutType: LayoutType
+) {
+  return fetchJson<ChangeCategoryResult>(`${API_BASE}/change_category/${graphUuid}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ category, layout_type: layoutType }),
   });
 }
 

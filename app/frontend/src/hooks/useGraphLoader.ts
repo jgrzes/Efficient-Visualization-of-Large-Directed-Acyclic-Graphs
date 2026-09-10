@@ -13,6 +13,7 @@ import {
   loadGraphFromJson,
   makeGraphStructure,
   recomputeLayout as recomputeLayoutApi,
+  changeCategory as changeCategoryApi,
   saveGraphToDb,
   exportGraph,
   analyzeGraph,
@@ -131,6 +132,9 @@ export function useGraphLoader(params: {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [loadLoading, setLoadLoading] = React.useState(false);
 
+  const [categories, setCategories] = React.useState<string[] | null>(null);
+  const [currentCategory, setCurrentCategory] = React.useState<string | null>(null);
+
   const setGraphHashInUrl = (hash: string) => {
     const url = new URL(window.location.href);
     url.searchParams.set("g", hash);
@@ -156,6 +160,8 @@ export function useGraphLoader(params: {
     setSelectedNode(null);
 
     setNodeNames(data.names ? data.names : null);
+    setCategories(data.categories ?? null);
+    setCurrentCategory(data.current_category ?? null);
 
     setGraphConfig((prev) => ({
       ...prev,
@@ -447,6 +453,32 @@ export function useGraphLoader(params: {
     [currentGraphUUID, fitView, setInitialLayout, setLinks, setNodeNames, setPointPositions, setSelectedNode]
   );
 
+  const changeCurrentCategory = React.useCallback(
+    async (category: string, layoutType: LayoutType) => {
+      if (!currentGraphUUID) {
+        throw new Error("No graph loaded, cannot change category.");
+      }
+
+      setLoading(true);
+      try {
+        const data = await changeCategoryApi(currentGraphUUID, category, layoutType);
+        setPointPositions(new Float32Array(data.canvas_positions));
+        setInitialLayout(new Float32Array(data.canvas_positions));
+        setLinks(new Float32Array(data.links));
+        setSelectedNode(null);
+        if (Array.isArray(data.names)) setNodeNames(data.names);
+        setCurrentCategory(data.category);
+        setTimeout(() => fitView(), 100);
+        return Boolean(data.fallback_used);
+      } catch (e) {
+        throw new Error(errMessage(e, "Failed to change category."));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentGraphUUID, fitView, setInitialLayout, setLinks, setNodeNames, setPointPositions, setSelectedNode]
+  );
+
   // export / analyze
   const handleExport = React.useCallback(async () => {
     if (!currentGraphUUID) {
@@ -510,6 +542,9 @@ export function useGraphLoader(params: {
     handleLoadByHash,
     setLoadError,
 
+    categories,
+    currentCategory,
+
     saveModalHash,
     saveModalError,
     saveModalLoading,
@@ -521,6 +556,7 @@ export function useGraphLoader(params: {
     loadJsonGraph,
     uploadFileWithNamespace,
     recomputeCurrentLayout,
+    changeCurrentCategory,
 
     // export/analyze
     handleExport,

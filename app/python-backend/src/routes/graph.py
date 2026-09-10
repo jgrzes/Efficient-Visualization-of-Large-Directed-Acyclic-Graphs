@@ -9,6 +9,7 @@ from generate_graph_structure import make_graph_structure
 from graph_utils import (
     build_gt_graph_from_graph_dict,
     convert_to_json_parsable_representation,
+    filter_graph_by_root,
     load_graph_from_uploaded_file,
 )
 from routes.graph_data import (
@@ -164,6 +165,7 @@ def flask_make_graph_structure():
         return jsonify({"error": "No file provided"}), 400
 
     layout_type = request.form.get("layout_type", "cpp")
+    root_namespace = request.form.get("root", None)
 
     logger = get_logger()
     storage = get_graph_storage()
@@ -185,7 +187,7 @@ def flask_make_graph_structure():
 
         try:
             uploaded_file = FileStorage(stream=io.BytesIO(file_contents), filename=filename)
-            G_gt, root_id, godag = load_graph_from_uploaded_file(uploaded_file)
+            G_gt, root_id, godag, full_graph, roots = load_graph_from_uploaded_file(uploaded_file)
         except ValueError as e:
             yield _progress_event(
                 "error",
@@ -258,6 +260,8 @@ def flask_make_graph_structure():
                 "godag": godag,
                 "layout": transformed_canvas_positions,
                 "space_size": int(space_size * 1.2),
+                "full_graph": full_graph,
+                "roots": roots,
             }
         )
         yield _progress_event(
@@ -269,6 +273,8 @@ def flask_make_graph_structure():
                 "links": links,
                 "names": names,
                 "space_size": space_size,
+                "categories": list(roots.keys()) if roots else None,
+                "current_category": root_namespace,
             },
         )
 
@@ -496,6 +502,74 @@ def recompute_layout(graph_uuid: str):
                 "names": names,
                 "space_size": space_size,
                 "fallback_used": fallback_used,
+            }
+        ),
+        200,
+    )
+
+
+@graph_bp.route("/change_category/<string:graph_uuid>", methods=["POST"])
+def change_category(graph_uuid: str):
+    logger = get_logger()
+    storage = get_graph_storage()
+    layout_host, layout_port = get_layout_service_config()
+
+    try:
+        graph_data = storage.get_graph_data_for_id(graph_uuid)
+    except RuntimeError:
+        return jsonify({"error": "Graph not found"}), 404
+
+    try:
+        data = request.get_json(force=True) or {}
+    except Exception:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    category = data.get("category")
+    if not category:
+        return jsonify({"error": "Missing 'category'"}), 400
+
+    layout_type = data.get("layout_type", "cpp")
+    if layout_type not in {"cpp", "radial"}:
+        return jsonify({"error": "Unsupported layout_type"}), 400
+
+    full_graph = graph_data.get("full_graph")
+    roots = graph_data.get("roots")
+    if full_graph is None or not roots:
+        return jsonify({"error": "This graph does not support changing category"}), 400
+
+    root_id, root_vertex = roots.get(category, (None, None))
+    if root_vertex is None:
+        return jsonify({"error": f"Unknown category '{category}'"}), 400
+
+    G_gt = filter_graph_by_root(full_graph, root_vertex)
+
+    canvas_positions, fallback_used = _compute_layout(G_gt, layout_type, layout_host, layout_port, logger)
+    canvas_positions, space_size = normalize_canvas_positions(canvas_positions)
+
+    (
+        transformed_canvas_positions,
+        links,
+    ) = build_response_json_string_for_make_graph_structure_req(
+        G_gt=G_gt, canvas_positions=canvas_positions
+    )
+
+    graph_data["graph"] = G_gt
+    graph_data["root_id"] = root_id
+    graph_data["layout"] = transformed_canvas_positions
+    graph_data["space_size"] = int(space_size * 1.2)
+
+    names = extract_vertex_names(G_gt)
+
+    return (
+        jsonify(
+            {
+                "uuid": graph_uuid,
+                "canvas_positions": transformed_canvas_positions,
+                "links": links,
+                "names": names,
+                "space_size": space_size,
+                "fallback_used": fallback_used,
+                "category": category,
             }
         ),
         200,
