@@ -1,9 +1,0 @@
-{
-  "devDependencies": {
-    "rollup": "^4.60.3",
-    "vite": "^6.4.2"
-  },
-  "dependencies": {
-    "tar": "^7.5.13"
-  }
-}
