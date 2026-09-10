@@ -8,7 +8,7 @@ interface WelcomeScreenProps {
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLoadClick }) => {
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center">
+    <div className="absolute inset-0 z-20 flex items-center justify-center">
       <div
         className="
           w-[min(90vw,520px)]
