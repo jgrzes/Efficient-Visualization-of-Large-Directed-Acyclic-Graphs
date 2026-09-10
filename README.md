@@ -11,7 +11,7 @@ The system is designed to handle graphs with **thousands of nodes and edges**, f
 
 ## 🎬 Demo
 
-![](https://github.com/jgrzes/Efficient-Visualization-of-Large-Directed-Acyclic-Graphs/blob/main/docs/gifs/demo.gif)
+![](docs/gifs/demo.gif)
 
 
 ## 📌 Use Cases
