@@ -59,8 +59,8 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   handleFocusModeToggle,
   selectedNode,
 }) => {
-  const [expanded, setExpanded] = useState(false);
-  const [width, setWidth] = useState<number>(COLLAPSED_W);
+  const [expanded, setExpanded] = useState(true);
+  const [width, setWidth] = useState<number>(FULL_W);
   const [isResizing, setIsResizing] = useState(false);
 
   const lastExpandedWidthRef = useRef<number>(360);
