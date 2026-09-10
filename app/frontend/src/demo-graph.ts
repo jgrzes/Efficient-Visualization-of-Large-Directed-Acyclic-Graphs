@@ -9,7 +9,7 @@ const levels: number[][] = [];
 let nodeIndex = 0;
 
 for (const size of LEVEL_SIZES) {
-  const level = [];
+  const level: number[] = [];
   for (let i = 0; i < size; i++) {
     level.push(nodeIndex++);
   }
