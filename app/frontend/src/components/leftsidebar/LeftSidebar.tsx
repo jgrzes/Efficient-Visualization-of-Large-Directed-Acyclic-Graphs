@@ -25,9 +25,7 @@ interface LeftSidebarProps {
   handleChangeLayoutClick: () => void;
   handleOpenSettings: () => void;
   handleFocusModeToggle: () => void;
-  selectedNode?: NodeInfoProps | null;
-  graphLoaded?: boolean;
-}
+  graphLoaded: boolean;
 
 interface Item {
   label: string;
