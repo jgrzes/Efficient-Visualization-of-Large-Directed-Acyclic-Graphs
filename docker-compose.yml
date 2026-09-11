@@ -24,7 +24,9 @@ services:
       retries: 10
 
   python-backend:
-    build: ./app/python-backend
+    build: 
+      context: ./app
+      dockerfile: ./python-backend/Dockerfile
     environment:
       MONGODB_URI: "mongodb://inz_user:devpass@mongo:27017/inz?authSource=inz"
       MONGO_DB_NAME: "inz"
