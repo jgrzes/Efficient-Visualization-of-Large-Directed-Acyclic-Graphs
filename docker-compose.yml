@@ -69,6 +69,7 @@ services:
       - "30311-30315:30311-30315"
     volumes:
       - ./app/cpp-backend:/app
+      - ./app/proto:/proto:ro
     stdin_open: true
     tty: true
     networks:
