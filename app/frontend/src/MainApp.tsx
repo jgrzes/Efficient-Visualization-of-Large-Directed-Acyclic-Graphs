@@ -1,6 +1,6 @@
 import React, { useContext, useRef, useState, ChangeEvent } from "react";
 import "./style.css";
-import { initialPointPositions, initialLinks } from "./data-gen";
+import { initialPointPositions, initialLinks } from "./demo-graph";
 
 import { AppContext } from "./context/AppContext";
 
@@ -16,6 +16,7 @@ import GraphListModal from "./components/modals/GraphListModal";
 import LoadSourceModal from "./components/modals/LoadSourceModal/LoadSourceModal";
 import SettingsModal from "./components/modals/SettingsModal/SettingsModal";
 import LayoutCategoryModal from "./components/modals/LayoutCategoryModal";
+import WelcomeScreen from "./WelcomeScreen";
 
 import { useFavorites } from "./hooks/useFavorites";
 import { useComments } from "./hooks/useComments";
@@ -413,6 +414,11 @@ export default function MainApp() {
       <div ref={canvasRef} className="grow" />
 
       <div ref={graphRef} id="graph" className="relative grow">
+
+        {!currentGraphUUID && !loader.loading && (
+          <WelcomeScreen onLoadClick={handleLoadClick} />
+        )}
+
         {tooltips.map((tt) => (
           <ToolTip
             key={tt.index}
@@ -559,6 +565,7 @@ export default function MainApp() {
         handleOpenSettings={handleOpenSettings}
         handleFocusModeToggle={handleFocusModeToggle}
         selectedNode={selectedNode}
+        graphLoaded={!!currentGraphUUID}
       />
 
       <input

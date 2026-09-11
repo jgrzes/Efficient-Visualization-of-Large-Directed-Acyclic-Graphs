@@ -23,6 +23,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   colors,
   onApply,
 }) => {
+
+  const MIN_POINT_SIZE = 0.1;
+  const MAX_POINT_SIZE = 7;
+  const STEP_POINT_SIZE = 0.1;
+
   const [pointSizeInput, setPointSizeInput] = useState(pointSize.toString());
   const [error, setError] = useState<string | null>(null);
 
@@ -282,9 +287,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className={cx("text-[10px]", "text-gray-500")}>px</span>
                     <input
                       type="number"
-                      min={0.4}
-                      max={7}
-                      step={0.2}
+                      min={MIN_POINT_SIZE}
+                      max={MAX_POINT_SIZE}
+                      step={STEP_POINT_SIZE}
                       value={pointSizeInput}
                       onChange={(e) => setPointSizeInput(e.target.value)}
                       className={inputCls}
@@ -294,17 +299,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <input
                   type="range"
-                  min={0.4}
-                  max={7}
-                  step={0.2}
+                  min={MIN_POINT_SIZE}
+                  max={MAX_POINT_SIZE}
+                  step={STEP_POINT_SIZE}
                   value={pointSizeInput}
                   onChange={(e) => setPointSizeInput(e.target.value)}
                   className={cx("w-full cursor-pointer", isDark ? "accent-blue-500" : "accent-blue-600")}
                 />
 
                 <div className={cx("flex justify-between text-[10px]", "text-gray-500")}>
-                  <span>0.4</span>
-                  <span>7</span>
+                  <span>{MIN_POINT_SIZE}</span>
+                  <span>{MAX_POINT_SIZE}</span>
                 </div>
               </div>
 
