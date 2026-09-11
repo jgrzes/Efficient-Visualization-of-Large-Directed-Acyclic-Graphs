@@ -14,8 +14,9 @@ RUN mkdir -p /opt/generated-proto && \
         --python_out=/opt/generated-proto \
         --grpc_python_out=/opt/generated-proto \
         /proto/py_to_cpp_backend.proto
-
+        
 ENV PATH="/opt/.venv/bin:$PATH"
+ENV PYTHONPATH="/opt/generated-proto:/app/src"
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app/src

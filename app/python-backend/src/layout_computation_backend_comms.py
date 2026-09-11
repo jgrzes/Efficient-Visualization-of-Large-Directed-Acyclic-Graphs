@@ -86,6 +86,24 @@ def request_graph_layout_computation(
         message_to_be_sent = f"|{current_message_head}| is_final=true {current_message_tail}|"
         server_socket.sendall(message_to_be_sent)
 
+def create_default_layout_params():
+    return py_to_cpp_backend_pb2.LayoutParams(
+        graph_colourer=py_to_cpp_backend_pb2.GraphColourerParams(
+            d_edges_threshold_coeff=3,
+            min_cum_count_of_vertices=3,
+            merge_common_vertices_threshold=3,
+            min_number_of_vertices_at_starting_level=3,
+        ),
+        layout_drawer=py_to_cpp_backend_pb2.LayoutDrawerParams(
+            x_interspring_weight=3.0,
+            x_interspring_power=1.0,
+            interspring_upwards_transfer_coeff=0.75,
+            box_width_coeff=3.0,
+            noise_interval_width_percentage=0.04,
+            nested_colour_child_padding=0.4,
+            min_required_distance_between_adjacent_levels=10.0,
+        ),
+    )
 
 def send_layout_computation_request_to_grpc_server(
     G_gt: gt.Graph, server_ip_addr: str, server_port: int, logger: Optional[logging.Logger] = None
@@ -101,7 +119,7 @@ def send_layout_computation_request_to_grpc_server(
             edges.append(py_to_cpp_backend_pb2.Edge(srcVertexIndex=u, destVertexIndex=v))
 
     response = None
-    edge_list = py_to_cpp_backend_pb2.EdgeList(edges=edges)
+    edge_list = py_to_cpp_backend_pb2.EdgeList(edges=edges, layout_params=create_default_layout_params())
     with grpc.insecure_channel(f"{server_ip_addr}:{server_port}") as channel:
         stub = py_to_cpp_backend_pb2_grpc.GraphLayoutServiceStub(channel)
         response = stub.computeGraphLayout(edge_list)
