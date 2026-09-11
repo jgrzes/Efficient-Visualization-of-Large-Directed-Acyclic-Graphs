@@ -1,5 +1,29 @@
 syntax = "proto3";
 
+message GraphColourerParams {
+    uint32 d_edges_threshold_coeff = 1;
+    uint32 min_cum_count_of_vertices = 2;
+    uint32 merge_common_vertices_threshold = 3;
+    uint32 min_number_of_vertices_at_starting_level = 4;
+}
+
+message LayoutDrawerParams {
+    double x_interspring_weight = 1;
+    double x_interspring_power = 2;
+    double interspring_upwards_transfer_coeff = 3;
+
+    double box_width_coeff = 4;
+    double noise_interval_width_percentage = 5;
+
+    double nested_colour_child_padding = 6;
+    double min_required_distance_between_adjacent_levels = 7;
+}
+
+message LayoutParams {
+    GraphColourerParams graph_colourer = 1;
+    LayoutDrawerParams layout_drawer = 2;
+}
+
 message Edge {
     uint32 srcVertexIndex = 1;
     uint32 destVertexIndex = 2;
@@ -7,6 +31,7 @@ message Edge {
 
 message EdgeList {
     repeated Edge edges = 1;
+    LayoutParams layout_params = 2;
 }
 
 message CartesianCoord {

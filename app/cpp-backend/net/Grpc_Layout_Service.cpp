@@ -8,6 +8,8 @@
 #include "../utils/input_generation_for_qap.h"
 #include "../data-structures/Pretend_Matrix.hpp"
 
+#include "../algorithms/algorithm_params_creation.hpp"
+
 #define DEBUGGING true
 
 namespace net {
@@ -71,7 +73,69 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                 logging::log_trace(
                     "Colouring vertices in graph with id = " + graphUUIDInStrForm + "..."
                 );
-                GraphColourer graphColourer(m_colouringAlgParams);
+
+                auto colouringAlgParams = m_colouringAlgParams;
+                auto layoutAlgParams = m_layoutAlgParams;
+
+                if (edgeList->has_layout_params()) {
+                    const auto& grpcLayoutParams = edgeList->layout_params();
+
+                    if (grpcLayoutParams.has_graph_colourer()) {
+                        const auto& grpcColourerParams =
+                            grpcLayoutParams.graph_colourer();
+
+                        algorithms::GraphColourerTuningParams params;
+
+                        params.dEdgesThresholdCoeff =
+                            grpcColourerParams.d_edges_threshold_coeff();
+
+                        params.minCumCountOfVertices =
+                            grpcColourerParams.min_cum_count_of_vertices();
+
+                        params.mergeCommonVerticesThreshold =
+                            grpcColourerParams.merge_common_vertices_threshold();
+
+                        params.minNumberOfVerticesAtStartingLevel =
+                            grpcColourerParams.min_number_of_vertices_at_starting_level();
+
+                        colouringAlgParams =
+                            algorithms::createGraphColourerAlgParams(params);
+                    }
+
+                    if (grpcLayoutParams.has_layout_drawer()) {
+                        const auto& grpcDrawerParams =
+                            grpcLayoutParams.layout_drawer();
+
+                        algorithms::LayoutDrawerTuningParams params;
+
+                        params.xInterspringWeight =
+                            grpcDrawerParams.x_interspring_weight();
+
+                        params.xInterspringPower =
+                            grpcDrawerParams.x_interspring_power();
+
+                        params.interspringUpwardsTransferCoeff =
+                            grpcDrawerParams.interspring_upwards_transfer_coeff();
+
+                        params.boxWidthCoeff =
+                            grpcDrawerParams.box_width_coeff();
+
+                        params.noiseIntervalWidthPercentage =
+                            grpcDrawerParams.noise_interval_width_percentage();
+
+                        params.nestedColourChildPadding =
+                            grpcDrawerParams.nested_colour_child_padding();
+
+                        params.minRequiredDistanceBetweenAdjacentLevels =
+                            grpcDrawerParams
+                                .min_required_distance_between_adjacent_levels();
+
+                        layoutAlgParams =
+                            algorithms::createLayoutDrawerAlgParams(params);
+                    }
+                }
+
+                GraphColourer graphColourer(colouringAlgParams);
                 graphColourer.setLogGraphId(graphUUIDInStrForm);
                 auto&& [colouredGraph, colourHierarchyRootPtr] = graphColourer.assignColoursToGraph(
                     graph, true, m_maxRecursionDepthInGraphColouring
@@ -108,7 +172,8 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                 logging::log_trace(
                     "Computing layout for graph with id = " + graphUUIDInStrForm + "..."
                 );
-                LayoutDrawer layoutDrawer(m_layoutAlgParams);
+
+                LayoutDrawer layoutDrawer(layoutAlgParams);
                 layoutDrawer.setLogGraphId(graphUUIDInStrForm);
                 auto layoutPositons = layoutDrawer.findLayoutForGraph(
                     colouredGraph, *colourHierarchyRootPtr, m_defaultEpsilonInLayoutDrawing
