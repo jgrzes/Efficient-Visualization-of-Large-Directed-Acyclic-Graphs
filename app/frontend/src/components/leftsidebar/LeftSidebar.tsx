@@ -3,7 +3,7 @@ import {
   Upload,
   Focus,
   RotateCcw,
-  Orbit,
+  Layers,
   LineChart,
   Settings,
   ChevronLeft,
@@ -22,7 +22,7 @@ interface LeftSidebarProps {
   handleExportHtmlClick: () => void;
   handleAnalyzeClick: () => void;
   handleSaveLayoutClick: () => void;
-  handleChangeLayoutClick: () => void;
+  handleChangeViewClick: () => void;
   handleOpenSettings: () => void;
   handleFocusModeToggle: () => void;
   selectedNode?: NodeInfoProps | null;
@@ -55,7 +55,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   handleExportHtmlClick,
   handleAnalyzeClick,
   handleSaveLayoutClick,
-  handleChangeLayoutClick,
+  handleChangeViewClick,
   handleOpenSettings,
   handleFocusModeToggle,
   selectedNode,
@@ -117,7 +117,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
       icon: null,
     },
     { label: "Analyze", shortLabel: "Analyze", icon: <LineChart size={18} />, onClick: handleAnalyzeClick },
-    { label: "Change layout", shortLabel: "Layout", icon: <Orbit size={18} />, onClick: handleChangeLayoutClick },
+    { label: "Change view", shortLabel: "View", icon: <Layers size={18} />, onClick: handleChangeViewClick },
     { label: "Save layout", shortLabel: "Save", icon: <Save size={18} />, onClick: handleSaveLayoutClick },
     { label: "Focus mode", shortLabel: "Focus", icon: <Crosshair size={18} />, onClick: handleFocusModeToggle },
   ];

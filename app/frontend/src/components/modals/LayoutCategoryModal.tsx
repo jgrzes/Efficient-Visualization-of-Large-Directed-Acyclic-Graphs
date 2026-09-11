@@ -1,24 +1,62 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Orbit, LayoutTemplate, Info } from "lucide-react";
+import { X, Orbit, LayoutTemplate, Info, Check } from "lucide-react";
+import type { LayoutType } from "../../graph/api/graphs";
 
-interface LayoutModalProps {
-  open: boolean;
-  onCancel: () => void;
-  onConfirm: (layoutType: "cpp" | "radial") => void;
+const DEFAULT_CATEGORY_OPTIONS = [
+  { key: "cellular_component", label: "Cellular Component" },
+  { key: "molecular_function", label: "Molecular Function" },
+  { key: "biological_process", label: "Biological Process" },
+];
+
+function toCategoryLabel(key: string): string {
+  return key
+    .split("_")
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+    .join(" ");
 }
 
-const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) => {
-  const [layoutType, setLayoutType] = useState<"cpp" | "radial">("cpp");
+interface LayoutCategoryModalProps {
+  open: boolean;
+  showCategory?: boolean;
+  fileName?: string;
+  categories?: string[];
+  currentCategory?: string | null;
+  onCancel: () => void;
+  onConfirm: (layoutType: LayoutType, category?: string) => void;
+}
+
+const LayoutCategoryModal: React.FC<LayoutCategoryModalProps> = ({
+  open,
+  showCategory = false,
+  fileName,
+  categories,
+  currentCategory,
+  onCancel,
+  onConfirm,
+}) => {
+  const [layoutType, setLayoutType] = useState<LayoutType>("cpp");
+  const [category, setCategory] = useState<string | null>(null);
+
+  const categoryOptions =
+    categories && categories.length > 0
+      ? categories.map((key) => ({ key, label: toCategoryLabel(key) }))
+      : DEFAULT_CATEGORY_OPTIONS;
 
   useEffect(() => {
-    if (open) setLayoutType("cpp");
-  }, [open]);
+    if (open) {
+      setLayoutType("cpp");
+      setCategory(currentCategory ?? null);
+    }
+  }, [open, currentCategory]);
 
   if (!open) return null;
 
+  const canConfirm = !showCategory || Boolean(category);
+
   const handleConfirm = () => {
-    onConfirm(layoutType);
+    if (!canConfirm) return;
+    onConfirm(layoutType, category ?? undefined);
   };
 
   return (
@@ -39,7 +77,7 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
           transition={{ type: "spring", stiffness: 220, damping: 20 }}
           className="
             relative w-[min(96vw,640px)]
-            max-h-[80vh]
+            max-h-[85vh] overflow-y-auto
             rounded-2xl border
             shadow-2xl
             p-5
@@ -213,6 +251,61 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
             </button>
           </div>
 
+          {showCategory && (
+            <div className="pt-4 border-t border-black/10 dark:border-white/10">
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                  Choose category
+                </h2>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  {fileName ? (
+                    <>
+                      Select the ontology namespace to load from{" "}
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {fileName}
+                      </span>
+                      .
+                    </>
+                  ) : (
+                    "Select the ontology namespace (category) for this graph."
+                  )}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {categoryOptions.map(({ key, label }) => {
+                  const isSelected = category === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setCategory(key)}
+                      className={`
+                        inline-flex items-center gap-1
+                        px-2.5 py-1 rounded-full border
+                        text-[11px] font-medium leading-tight transition
+                        ${
+                          isSelected
+                            ? `
+                              border-blue-600/50 bg-blue-600/10 text-blue-800
+                              dark:border-blue-500/70 dark:bg-blue-600/15 dark:text-blue-100
+                            `
+                            : `
+                              border-black/10 bg-black/2 text-gray-700 hover:border-blue-600/30 hover:bg-blue-600/5
+                              dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-blue-500/40 dark:hover:bg-white/10
+                            `
+                        }
+                      `}
+                    >
+                      {isSelected && <Check size={11} className="shrink-0" />}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Footer / actions */}
           <div className="mt-2 flex justify-end gap-2 pt-2 border-t border-black/10 dark:border-white/10">
             <button
@@ -232,16 +325,20 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
             <button
               type="button"
               onClick={handleConfirm}
-              className="
+              disabled={!canConfirm}
+              className={`
                 inline-flex items-center gap-1.5
                 rounded-lg px-3 py-1.5
                 text-xs font-medium
-                bg-blue-600/90 text-white
-                hover:bg-blue-500
                 transition
-              "
+                ${
+                  canConfirm
+                    ? "bg-blue-600/90 text-white hover:bg-blue-500"
+                    : "bg-black/10 text-gray-500 cursor-not-allowed dark:bg-white/10 dark:text-gray-500"
+                }
+              `}
             >
-              Confirm layout
+              Confirm
             </button>
           </div>
         </motion.div>
@@ -250,4 +347,4 @@ const LayoutModal: React.FC<LayoutModalProps> = ({ open, onCancel, onConfirm }) 
   );
 };
 
-export default LayoutModal;
+export default LayoutCategoryModal;
