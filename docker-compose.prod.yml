@@ -44,7 +44,8 @@ services:
 
   python-backend:
     build:
-      context: ./app/python-backend
+      context: ./app
+      dockerfile: ./python-backend/Dockerfile
     environment:
       MONGODB_URI: mongodb://${MONGO_APP_USERNAME:?Set MONGO_APP_USERNAME in .env}:${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD in .env}@mongo:27017/${MONGO_DB_NAME:-dagmara}?authSource=${MONGO_DB_NAME:-dagmara}
       MONGO_DB_NAME: ${MONGO_DB_NAME:-dagmara}
