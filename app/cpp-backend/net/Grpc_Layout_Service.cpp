@@ -179,58 +179,6 @@ grpc::Status GrpcLayoutService::computeGraphLayout(grpc::ServerContext* context,
                     colouredGraph, *colourHierarchyRootPtr, m_defaultEpsilonInLayoutDrawing
                 );
 
-                // Experimental fixed leveling
-
-                double minX = std::numeric_limits<double>::max();
-                double maxX = std::numeric_limits<double>::lowest();
-
-                for (uint32_t i = 0; i < numberOfVertices; ++i) {
-                    minX = std::min(minX, layoutPositons[i].first);
-                    maxX = std::max(maxX, layoutPositons[i].first);
-                }
-
-                double layoutWidth = maxX - minX;
-
-                uint32_t maxLevel = 0;
-
-                for (uint32_t i = 0; i < numberOfVertices; ++i) {
-                    maxLevel = std::max(
-                        maxLevel,
-                        static_cast<uint32_t>(
-                            colouredGraph.getVertex(i).level
-                        )
-                    );
-                }
-
-                constexpr double targetAspectRatio = 4.0;
-
-                double levelDistance =
-                    layoutAlgParams.minRequiredDistanceBetweenAdjacentLevels;
-
-                if (maxLevel > 0) {
-                    double distanceForAspectRatio =
-                        layoutWidth
-                        / (
-                            targetAspectRatio
-                            * static_cast<double>(maxLevel)
-                        );
-
-                    levelDistance = std::max(
-                        levelDistance,
-                        distanceForAspectRatio
-                    );
-                }
-
-                for (uint32_t i = 0; i < numberOfVertices; ++i) {
-                    uint32_t level =
-                        colouredGraph.getVertex(i).level;
-
-                    layoutPositons[i].second =
-                        static_cast<double>(level) * levelDistance;
-                }
-
-                // End of experimental fixed leveling
-                
                 logging::log_trace("Trimming helper colour roots for " + graphUUIDInStrForm + ".");
                 layoutPositons.resize(numberOfVertices); // Trimming vertices that may have been added as helper colour roots
                 logging::log_debug("Trimmed helper colour roots for " + graphUUIDInStrForm + ".");

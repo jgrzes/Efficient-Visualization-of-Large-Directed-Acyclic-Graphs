@@ -346,6 +346,8 @@ private:
 
     std::optional<std::string> m_optLogGraphId;
 
+    void adjustYCoordinatesToUniformLevels();
+
 };
 
 }
