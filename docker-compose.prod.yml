@@ -2,6 +2,7 @@ services:
   mongo:
     image: mongo:7
     command: ["--auth", "--wiredTigerCacheSizeGB", "0.75", "--quiet"]
+    attach: false
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}

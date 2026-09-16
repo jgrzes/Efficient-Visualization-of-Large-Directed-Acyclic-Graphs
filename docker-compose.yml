@@ -2,6 +2,7 @@ services:
   mongo:
     image: mongo:7
     container_name: mongo_local
+    attach: false
     command: ["--auth", "--wiredTigerCacheSizeGB", "0.75", "--quiet"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}

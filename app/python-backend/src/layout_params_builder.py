@@ -26,27 +26,6 @@ class GraphCharacteristics:
     max_level_width: int
 
 
-def calculate_graph_characteristics(
-    graph: gt.Graph,
-) -> GraphCharacteristics:
-    basic = analyze_dag_basic(graph)
-    levels = compute_hierarchy_levels(graph)
-
-    max_depth = max(levels.keys(), default=0)
-    max_level_width = max(levels.values(), default=0)
-
-    return GraphCharacteristics(
-        num_vertices=basic["n_vertices"],
-        num_edges=basic["n_edges"],
-        avg_out_degree=basic["out_degree"]["avg"],
-        max_out_degree=basic["out_degree"]["max"],
-        num_roots=basic["roots"]["count"],
-        num_leaves=basic["sinks"]["count"],
-        max_depth=max_depth,
-        max_level_width=max_level_width,
-    )
-
-
 def clamp(
     value: float,
     minimum: float,
@@ -67,6 +46,27 @@ def lerp(
     t = 1.0 -> maximum
     """
     return minimum + (maximum - minimum) * t
+
+
+def calculate_graph_characteristics(
+    graph: gt.Graph,
+) -> GraphCharacteristics:
+    basic = analyze_dag_basic(graph)
+    levels = compute_hierarchy_levels(graph)
+
+    max_depth = max(levels.keys(), default=0)
+    max_level_width = max(levels.values(), default=0)
+
+    return GraphCharacteristics(
+        num_vertices=basic["n_vertices"],
+        num_edges=basic["n_edges"],
+        avg_out_degree=basic["out_degree"]["avg"],
+        max_out_degree=basic["out_degree"]["max"],
+        num_roots=basic["roots"]["count"],
+        num_leaves=basic["sinks"]["count"],
+        max_depth=max_depth,
+        max_level_width=max_level_width,
+    )
 
 
 def calculate_graph_size_score(
@@ -91,12 +91,6 @@ def calculate_layout_params(
     characteristics: GraphCharacteristics,
     size_score: float,
 ) -> LayoutPreset:
-    """
-    Calculate layout parameters smoothly based on graph size.
-
-    This is an initial heuristic and can later be replaced
-    with values obtained through experiments / optimization.
-    """
 
     box_width_coeff = lerp(
         2.0,
@@ -160,15 +154,6 @@ def build_layout_params(
     params = calculate_layout_params(
         characteristics,
         size_score,
-    )
-
-    print(
-        f"[LAYOUT PARAMS] "
-        f"vertices={characteristics.num_vertices}, "
-        f"size_score={size_score:.3f}, "
-        f"box_width={params.layout_drawer.box_width_coeff:.3f}, "
-        f"level_distance="
-        f"{params.layout_drawer.min_required_distance_between_adjacent_levels:.3f}"
     )
 
     return params
