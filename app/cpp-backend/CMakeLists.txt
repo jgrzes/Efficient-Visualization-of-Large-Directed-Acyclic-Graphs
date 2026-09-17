@@ -43,6 +43,8 @@ add_subdirectory(graph-preprocessing)
 add_subdirectory(concurrency)
 # add_subdirectory(qap-solver)
 add_subdirectory(net)
+target_link_libraries(EGVB PRIVATE grpc_generated) # created in net/CMakeLists.txt
+
 add_subdirectory(algorithms)
 
 # Adding QAP Solver as a library

@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create production env file
+        run: cp .env.example .env
+
+      - name: Validate production compose config
+        run: docker compose -f docker-compose.prod.yml --env-file .env config
+
+      - name: Build development Docker images
+        run: docker compose build
+
+      - name: Build production Docker images
+        run: docker compose -f docker-compose.prod.yml --env-file .env build
+
+      - name: Start production stack
+        run: |
+          docker compose \
+            -f docker-compose.prod.yml \
+            --env-file .env \
+            up -d --wait
+
+      - name: Show production logs on failure
+        if: failure()
+        run: |
+          docker compose \
+            -f docker-compose.prod.yml \
+            --env-file .env \
+            logs --no-color
+
+      - name: Stop production stack
+        if: always()
+        run: |
+          docker compose \
+            -f docker-compose.prod.yml \
+            --env-file .env \
+            down -v
+
+
+  layout-smoke-test: # tests if layout is computerd and returned by both hierachical and radial layout services
+    needs: docker-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create env file
+        run: cp .env.example .env
+
+      - name: Build layout services
+        run: docker compose build cpp-backend python-backend
+
+      - name: Start layout services
+        run: docker compose up -d --wait cpp-backend python-backend
+
+      - name: Test Radial Layout Computation
+        run: |
+          curl -sS --fail \
+            -F "file=@app/python-backend/data/go-yeast.obo" \
+            -F "layout_type=radial" \
+            http://localhost:30301/flask_make_graph_structure \
+            > /tmp/python-layout.ndjson
+
+          grep -q '"stage": "done"' /tmp/python-layout.ndjson
+          ! grep -q '"stage": "error"' /tmp/python-layout.ndjson
+
+          echo "Radial layout OK"
+
+      - name: Test Hierachical Layout Computation
+        run: |
+          curl -sS --fail \
+            -F "file=@app/python-backend/data/go-mouse.obo" \
+            -F "layout_type=cpp" \
+            http://localhost:30301/flask_make_graph_structure \
+            > /tmp/cpp-layout.ndjson
+
+          grep -q '"stage": "done"' /tmp/cpp-layout.ndjson
+          ! grep -q '"stage": "error"' /tmp/cpp-layout.ndjson
+          ! grep -q '"stage": "layout_fallback"' /tmp/cpp-layout.ndjson
+
+          echo "Hierarchical layout OK"
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs python-backend cpp-backend
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down -v

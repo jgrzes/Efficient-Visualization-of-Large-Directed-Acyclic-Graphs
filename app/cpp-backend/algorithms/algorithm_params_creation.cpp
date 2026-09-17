@@ -8,49 +8,107 @@ namespace algorithms {
 #define SIGNUM_EPS 1e-6
 #define _signum(_x) ((std::abs(_x) < SIGNUM_EPS) ? 0 : (_x > 0 ? 1 : -1))
 
-GraphColourer::AlgorithmParams createDefaultGraphColourerAlgParams() {
+GraphColourer::AlgorithmParams createGraphColourerAlgParams(
+    const GraphColourerTuningParams& params
+) {
     return GraphColourer::AlgorithmParams(
-        [dEdgesThresholdCoeff = 3, minCumCountOfVertices = 3](uint32_t level, uint32_t cumDisputableEdgesAtLevel, uint32_t cumVerticesAtLevel) -> bool {
-            if (cumVerticesAtLevel < minCumCountOfVertices) return false;
-            return level >= 1 && (cumDisputableEdgesAtLevel * dEdgesThresholdCoeff) > cumVerticesAtLevel;
-        }, 
-        [](uint32_t level, uint32_t commonVerticesCount) -> bool {
-            return commonVerticesCount >= 3;
-        }, 3
+        [
+            dEdgesThresholdCoeff = params.dEdgesThresholdCoeff,
+            minCumCountOfVertices = params.minCumCountOfVertices
+        ](
+            uint32_t level,
+            uint64_t cumDisputableEdgesAtLevel,
+            uint32_t cumVerticesAtLevel
+        ) -> bool {
+            if (cumVerticesAtLevel < minCumCountOfVertices) {
+                return false;
+            }
+
+            return level >= 1 &&
+                (cumDisputableEdgesAtLevel * dEdgesThresholdCoeff)
+                    > cumVerticesAtLevel;
+        },
+
+        [
+            mergeCommonVerticesThreshold =
+                params.mergeCommonVerticesThreshold
+        ](
+            uint32_t level,
+            uint32_t commonVerticesCount
+        ) -> bool {
+            return commonVerticesCount >= mergeCommonVerticesThreshold;
+        },
+
+        params.minNumberOfVerticesAtStartingLevel
+    );
+}
+
+GraphColourer::AlgorithmParams createDefaultGraphColourerAlgParams() {
+    return createGraphColourerAlgParams(
+        GraphColourerTuningParams{}
     );
 }
 
 
-LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
+LayoutDrawer::AlgorithmParams createLayoutDrawerAlgParams(
+    const LayoutDrawerTuningParams& params
+) {
     LayoutDrawer::AlgorithmParams layoutAlgorithmParams;
     
     layoutAlgorithmParams.FInterspringCalculator = [
-        w1XInterspring = 3, w2XInterspring = 1, 
-        w1YInterspring = 3, w2YInterspring = 1, 
-        w3YInterspring = 1, w4YInterspring = 1
-    ](uint32_t uColour, uint32_t uLevel, uint32_t vColour, uint32_t vLevel) -> std::pair<double, double> {
+        w1XInterspring = params.xInterspringWeight,
+        w2XInterspring = params.xInterspringPower,
+        w1YInterspring = 3.0,
+        w2YInterspring = 1.0,
+        w3YInterspring = 1.0,
+        w4YInterspring = 1.0
+    ](
+        uint32_t uColour, 
+        uint32_t uLevel, 
+        uint32_t vColour, 
+        uint32_t vLevel) -> std::pair<double, double> {
         int64_t a = static_cast<int64_t>(uColour) - static_cast<int64_t>(vColour);
         uint32_t b = std::abs(a);
         int64_t c = static_cast<int64_t>(uLevel) - static_cast<int64_t>(vLevel);
+        
         return {
-            w1XInterspring * static_cast<double>(std::pow(b, w2XInterspring)) * _signum(-a), 
-            w1YInterspring * static_cast<double>(std::pow(b, w2YInterspring)) * w3YInterspring * static_cast<double>(std::pow(std::abs(c), w4YInterspring)) * _signum(c)
+            w1XInterspring
+                * static_cast<double>(std::pow(b, w2XInterspring))
+                * _signum(-a),
+
+            w1YInterspring
+                * static_cast<double>(std::pow(b, w2YInterspring))
+                * w3YInterspring
+                * static_cast<double>(
+                    std::pow(std::abs(c), w4YInterspring)
+                )
+                * _signum(c)
         };
     };
     
-    layoutAlgorithmParams.FInterspringPushUpwardsValueCalculator = [](auto p) -> std::pair<double, double> {
-        return {p.first * 0.75, 0};
-    };
+     layoutAlgorithmParams.FInterspringPushUpwardsValueCalculator =
+        [
+            coeff = params.interspringUpwardsTransferCoeff
+        ](auto p) -> std::pair<double, double> {
+            return {
+                p.first * coeff,
+                0
+            };
+        };
 
-    layoutAlgorithmParams.epsilonForColourRootCalculator = [boxWidthCoeff = 3.0](uint32_t maxWidth) -> double {
+    layoutAlgorithmParams.epsilonForColourRootCalculator = [
+        boxWidthCoeff = params.boxWidthCoeff
+    ](uint32_t maxWidth) -> double {
         return static_cast<double>(maxWidth) * boxWidthCoeff;
     };
 
-    layoutAlgorithmParams.maxVertexCountFromEpsilonCalculator = [inverseBoxWidthCoeff = 1.0 / 3.0](double epsilon) -> uint32_t {
+    layoutAlgorithmParams.maxVertexCountFromEpsilonCalculator = [inverseBoxWidthCoeff = 1.0 / params.boxWidthCoeff](double epsilon) -> 
+    uint32_t {
         return static_cast<uint32_t>(epsilon * inverseBoxWidthCoeff);
     };
 
-    layoutAlgorithmParams.maxNoiseEpsilonCalculator = [intervalWidthPercentage = 0.04](uint32_t n, double intervalWidth) -> double {
+    layoutAlgorithmParams.maxNoiseEpsilonCalculator = [intervalWidthPercentage = params.noiseIntervalWidthPercentage]
+    (uint32_t n, double intervalWidth) -> double {
         double eps0 = intervalWidth * intervalWidthPercentage;
         return eps0 / std::log2(static_cast<double>(n+1));
     };
@@ -69,7 +127,7 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
     };
 
     layoutAlgorithmParams.firstLevelChildPadding = 2.5;
-    layoutAlgorithmParams.nestedColourChildPadding = 0.4;
+    layoutAlgorithmParams.nestedColourChildPadding = params.nestedColourChildPadding;
     layoutAlgorithmParams.gAcceleration = 9.81;
     layoutAlgorithmParams.baseVerexWeight = 1.0;
     // layoutAlgorithmParams.addWeightFromChildrenCoeff = 0.04;
@@ -79,7 +137,7 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
     layoutAlgorithmParams.minDistanceBetweenLevelsCoeff = 0.25;
 
     layoutAlgorithmParams.minRequiredEdgeAngleRequriedRad = 20 * (M_PI/180);
-    layoutAlgorithmParams.minRequiredDistanceBetweenAdjacentLevels = 10.0;
+    layoutAlgorithmParams.minRequiredDistanceBetweenAdjacentLevels = params.minRequiredDistanceBetweenAdjacentLevels;
 
     layoutAlgorithmParams.sCoeff = 1.05; 
     layoutAlgorithmParams.defaultAlphaP = 0.5;
@@ -147,6 +205,10 @@ LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
     layoutAlgorithmParams.minYDistanceBetweenUncolouredLevels = 4;
 
     return layoutAlgorithmParams;
+}
+
+LayoutDrawer::AlgorithmParams createDefaultLayoutDrawerAlgParams() {
+    return createLayoutDrawerAlgParams(LayoutDrawerTuningParams{});
 }
 
 #undef SIGNUM_EPS

@@ -275,6 +275,9 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
         findLayoutForColouredSubgraph(
             verticesPerLevel, {0, 0}, {leftBoxBoudForUncoloured, rightBoxBoundForUncoloured}
         );
+
+        adjustYCoordinatesToUniformLevels(); // Adjust Y coordinates to ensure uniform levels, might be changed if we find something better
+
         return m_layoutPositions;
     }
 
@@ -290,6 +293,8 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
 
     bool nestedColoursExist = (m_maxColour - (rootColourNode.childrenPtrs.size()));
     if (nestedColoursExist) adjustAllYCoordinatesToSatisifyDownwardFlow();
+
+    adjustYCoordinatesToUniformLevels(); // Adjust Y coordinates to ensure uniform levels, might be changed if we find something better
 
     return m_layoutPositions;
 }
@@ -1564,6 +1569,66 @@ void LayoutDrawer::drawUncolouredPartOfGraph(
 
     // uint32_t rootIndex = const_cast<ArrayOfArraysInterface<uint32_t>&>(verticesPerLevel).getNestedArrayView(0)[0];
     // m_layoutPositions[rootIndex] = {leftBoxBound + W*0.5, -h};
+}
+
+void LayoutDrawer::adjustYCoordinatesToUniformLevels() {
+    const auto& graph = *m_graph;
+
+    uint32_t numberOfVertices = graph.getVertexCount();
+
+    double minX = std::numeric_limits<double>::max();
+    double maxX = std::numeric_limits<double>::lowest();
+
+    uint32_t maxLevel = 0;
+
+    for (uint32_t i = 0; i < numberOfVertices; ++i) {
+
+        const auto& vertex = graph.getVertex(i);
+
+        if (!vertex.seeIfLevelComputed()) {
+            continue;
+        }
+
+        minX = std::min(minX, m_layoutPositions[i].first);
+        maxX = std::max(maxX, m_layoutPositions[i].first);
+
+        maxLevel = std::max(
+            maxLevel,
+            static_cast<uint32_t>(graph.getVertex(i).level)
+        );
+    }
+
+    double layoutWidth = maxX - minX;
+
+    constexpr double targetAspectRatio = 4.0;
+
+    double levelDistance =
+        m_algorithmParams.minRequiredDistanceBetweenAdjacentLevels;
+
+    if (maxLevel > 0) {
+        double distanceForAspectRatio =
+            layoutWidth /
+            (
+                targetAspectRatio *
+                static_cast<double>(maxLevel)
+            );
+
+        levelDistance = std::max(
+            levelDistance,
+            distanceForAspectRatio
+        );
+    }
+
+    for (uint32_t i = 0; i < numberOfVertices; ++i) {
+        const auto& vertex = graph.getVertex(i);
+
+        if (!vertex.seeIfLevelComputed()) {
+            continue;
+        }
+
+        m_layoutPositions[i].second =
+            static_cast<double>(vertex.level) * levelDistance;
+    }
 }
 
 #undef EPS_FOR_SIGNUM

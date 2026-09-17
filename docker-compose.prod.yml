@@ -2,6 +2,7 @@ services:
   mongo:
     image: mongo:7
     command: ["--auth", "--wiredTigerCacheSizeGB", "0.75", "--quiet"]
+    attach: false
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
@@ -31,6 +32,8 @@ services:
       dockerfile: Dockerfile
     expose:
       - "30311"
+    volumes:
+      - ./app/proto:/proto:ro
     networks:
       - app-internal
     restart: unless-stopped
@@ -43,7 +46,8 @@ services:
 
   python-backend:
     build:
-      context: ./app/python-backend
+      context: ./app
+      dockerfile: ./python-backend/Dockerfile
     environment:
       MONGODB_URI: mongodb://${MONGO_APP_USERNAME:?Set MONGO_APP_USERNAME in .env}:${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD in .env}@mongo:27017/${MONGO_DB_NAME:-dagmara}?authSource=${MONGO_DB_NAME:-dagmara}
       MONGO_DB_NAME: ${MONGO_DB_NAME:-dagmara}

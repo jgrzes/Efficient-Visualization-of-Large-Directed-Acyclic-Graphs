@@ -5,8 +5,8 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
-#include "net_compiled_from_proto/py_to_cpp_backend.grpc.pb.h"
-#include "net_compiled_from_proto/py_to_cpp_backend.pb.h"
+#include "py_to_cpp_backend.grpc.pb.h"
+#include "py_to_cpp_backend.pb.h"
 #include "../algorithms/Graph_Colourer.h"
 #include "../algorithms/Layout_Drawer.h"
 #include "../logging/boost_logging.hpp"
