@@ -26,35 +26,46 @@ jobs:
       - name: Build production Docker images
         run: docker compose -f docker-compose.prod.yml --env-file .env build
 
+      - name: Start production stack
+        run: |
+          docker compose \
+            -f docker-compose.prod.yml \
+            --env-file .env \
+            up -d --wait
 
-  layout-smoke-test:
+      - name: Show production logs on failure
+        if: failure()
+        run: |
+          docker compose \
+            -f docker-compose.prod.yml \
+            --env-file .env \
+            logs --no-color
+
+      - name: Stop production stack
+        if: always()
+        run: |
+          docker compose \
+            -f docker-compose.prod.yml \
+            --env-file .env \
+            down -v
+
+
+  layout-smoke-test: # tests if layout is computerd and returned by both hierachical and radial layout services
+    needs: docker-build
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Create env file
+        run: cp .env.example .env
+
       - name: Build layout services
         run: docker compose build cpp-backend python-backend
 
       - name: Start layout services
-        run: docker compose up -d cpp-backend python-backend
-
-      - name: Wait for Python backend
-        run: |
-          timeout 180 bash -c '
-            until curl -s http://localhost:30301/ > /dev/null; do
-              sleep 2
-            done
-          '
-
-      - name: Wait for C++ backend
-        run: |
-          timeout 180 bash -c '
-            until (echo > /dev/tcp/127.0.0.1/30311) 2>/dev/null; do
-              sleep 2
-            done
-          '
+        run: docker compose up -d --wait cpp-backend python-backend
 
       - name: Test Radial Layout Computation
         run: |
@@ -89,4 +100,4 @@ jobs:
 
       - name: Stop containers
         if: always()
-        run: docker compose down
+        run: docker compose down -v

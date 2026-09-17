@@ -32,6 +32,8 @@ services:
       dockerfile: Dockerfile
     expose:
       - "30311"
+    volumes:
+      - ./app/proto:/proto:ro
     networks:
       - app-internal
     restart: unless-stopped
