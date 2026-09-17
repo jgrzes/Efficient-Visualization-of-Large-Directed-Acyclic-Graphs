@@ -1,12 +1,7 @@
 import math
 
 import graph_tool as gt
-
-from layout_params import (
-    GraphColourerParams,
-    LayoutDrawerParams,
-    LayoutTuningParams,
-)
+from layout_params import GraphColourerParams, LayoutDrawerParams, LayoutTuningParams
 
 
 def clamp(
@@ -35,14 +30,13 @@ def calculate_graph_size_score(
     Logarithmic scaling prevents large graphs from dominating the metric.
     """
     return clamp(
-        math.log1p(num_vertices)
-        / math.log1p(100_000),
+        math.log1p(num_vertices) / math.log1p(100_000),
         0.0,
         1.0,
     )
 
 
-def calculate_layout_params(
+def calculate_layout_params(  # should be developed
     size_score: float,
 ) -> LayoutTuningParams:
     box_width_coeff = lerp(
@@ -81,15 +75,9 @@ def calculate_layout_params(
             x_interspring_power=1.0,
             interspring_upwards_transfer_coeff=0.75,
             box_width_coeff=box_width_coeff,
-            noise_interval_width_percentage=(
-                noise_interval_width_percentage
-            ),
-            nested_colour_child_padding=(
-                nested_colour_child_padding
-            ),
-            min_required_distance_between_adjacent_levels=(
-                min_level_distance
-            ),
+            noise_interval_width_percentage=(noise_interval_width_percentage),
+            nested_colour_child_padding=(nested_colour_child_padding),
+            min_required_distance_between_adjacent_levels=(min_level_distance),
         ),
     )
 
@@ -97,8 +85,6 @@ def calculate_layout_params(
 def build_layout_params(
     graph: gt.Graph,
 ) -> LayoutTuningParams:
-    size_score = calculate_graph_size_score(
-        graph.num_vertices()
-    )
+    size_score = calculate_graph_size_score(graph.num_vertices())
 
     return calculate_layout_params(size_score)

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 import py_to_cpp_backend_pb2
 
 
@@ -22,12 +23,16 @@ class LayoutDrawerParams:
     nested_colour_child_padding: float
     min_required_distance_between_adjacent_levels: float
 
+
 @dataclass(frozen=True)
 class LayoutTuningParams:
     graph_colourer: GraphColourerParams
     layout_drawer: LayoutDrawerParams
 
-def layout_params_to_proto(params: LayoutTuningParams) -> py_to_cpp_backend_pb2.LayoutParams:
+
+def layout_params_to_proto(
+    params: LayoutTuningParams,
+) -> py_to_cpp_backend_pb2.LayoutParams:
     return py_to_cpp_backend_pb2.LayoutParams(
         graph_colourer=py_to_cpp_backend_pb2.GraphColourerParams(
             d_edges_threshold_coeff=params.graph_colourer.d_edges_threshold_coeff,

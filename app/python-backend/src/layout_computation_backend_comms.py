@@ -9,7 +9,6 @@ import graph_tool as gt
 import grpc
 import py_to_cpp_backend_pb2
 import py_to_cpp_backend_pb2_grpc
-
 from layout_params import layout_params_to_proto
 from layout_params_builder import build_layout_params
 

@@ -276,7 +276,7 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
             verticesPerLevel, {0, 0}, {leftBoxBoudForUncoloured, rightBoxBoundForUncoloured}
         );
 
-        adjustYCoordinatesToUniformLevels();
+        adjustYCoordinatesToUniformLevels(); // Adjust Y coordinates to ensure uniform levels, might be changed if we find something better
 
         return m_layoutPositions;
     }
@@ -294,7 +294,7 @@ std::vector<CartesianCoords> LayoutDrawer::findLayoutForGraph(
     bool nestedColoursExist = (m_maxColour - (rootColourNode.childrenPtrs.size()));
     if (nestedColoursExist) adjustAllYCoordinatesToSatisifyDownwardFlow();
 
-    adjustYCoordinatesToUniformLevels();
+    adjustYCoordinatesToUniformLevels(); // Adjust Y coordinates to ensure uniform levels, might be changed if we find something better
 
     return m_layoutPositions;
 }
@@ -1582,6 +1582,13 @@ void LayoutDrawer::adjustYCoordinatesToUniformLevels() {
     uint32_t maxLevel = 0;
 
     for (uint32_t i = 0; i < numberOfVertices; ++i) {
+
+        const auto& vertex = graph.getVertex(i);
+
+        if (!vertex.seeIfLevelComputed()) {
+            continue;
+        }
+
         minX = std::min(minX, m_layoutPositions[i].first);
         maxX = std::max(maxX, m_layoutPositions[i].first);
 
@@ -1613,10 +1620,14 @@ void LayoutDrawer::adjustYCoordinatesToUniformLevels() {
     }
 
     for (uint32_t i = 0; i < numberOfVertices; ++i) {
-        uint32_t level = graph.getVertex(i).level;
+        const auto& vertex = graph.getVertex(i);
+
+        if (!vertex.seeIfLevelComputed()) {
+            continue;
+        }
 
         m_layoutPositions[i].second =
-            static_cast<double>(level) * levelDistance;
+            static_cast<double>(vertex.level) * levelDistance;
     }
 }
 
