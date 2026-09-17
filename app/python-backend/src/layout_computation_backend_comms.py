@@ -10,7 +10,7 @@ import grpc
 import py_to_cpp_backend_pb2
 import py_to_cpp_backend_pb2_grpc
 
-from layout_presets import DEFAULT_PRESET, LayoutPreset, layout_preset_to_proto
+from layout_params import layout_params_to_proto
 from layout_params_builder import build_layout_params
 
 LayoutPositionsT = List[Tuple[float, float]]
@@ -90,8 +90,7 @@ def request_graph_layout_computation(
         server_socket.sendall(message_to_be_sent)
 
 def send_layout_computation_request_to_grpc_server(
-    G_gt: gt.Graph, server_ip_addr: str, server_port: int, logger: Optional[logging.Logger] = None,
-    layout_preset: LayoutPreset = DEFAULT_PRESET
+    G_gt: gt.Graph, server_ip_addr: str, server_port: int, logger: Optional[logging.Logger] = None
 ) -> LayoutPositionsT:
 
     if logger is not None:
@@ -105,7 +104,7 @@ def send_layout_computation_request_to_grpc_server(
 
     response = None
     layout_params = build_layout_params(G_gt)
-    edge_list = py_to_cpp_backend_pb2.EdgeList(edges=edges, layout_params=layout_preset_to_proto(layout_params))
+    edge_list = py_to_cpp_backend_pb2.EdgeList(edges=edges, layout_params=layout_params_to_proto(layout_params))
     with grpc.insecure_channel(f"{server_ip_addr}:{server_port}") as channel:
         stub = py_to_cpp_backend_pb2_grpc.GraphLayoutServiceStub(channel)
         response = stub.computeGraphLayout(edge_list)
