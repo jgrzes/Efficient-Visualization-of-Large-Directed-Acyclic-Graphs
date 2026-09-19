@@ -53,6 +53,7 @@ A **Python backend** coordinates data flow, graph analysis, and communication be
 ## 🧰 Tech Stack
 
 ### 🎨 Frontend
+- React
 - Vite
 - JavaScript / TypeScript
 
